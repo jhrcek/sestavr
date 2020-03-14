@@ -15,6 +15,7 @@ description: Please see the README on GitHub at <https://github.com/jhrcek/sesta
 dependencies:
   - base >= 4.7 && < 5
   - aeson
+  - bytestring
   - conduit
   - monad-logger
   - persistent

@@ -15,6 +15,7 @@ where
 import Api (SestavrAPI, sestavrApi)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
+import Data.ByteString.Lazy.Char8 (pack)
 import qualified Data.Text as Text
 import Database.Persist.Class (get, selectList)
 import Database.Persist.Sqlite
@@ -25,7 +26,7 @@ import Database.Persist.Sqlite
     runSqlPool,
   )
 import Database.Persist.Types (Entity)
-import Model (Position, PositionId, migrateAll)
+import Model (Exercise, Lesson, Position, PositionId, Target, migrateAll)
 import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
@@ -46,18 +47,30 @@ serveApp :: ConnectionPool -> Application
 serveApp pool = serve sestavrApi $ apiServer pool
 
 apiServer :: ConnectionPool -> Server SestavrAPI
-apiServer pool = getPositionsH :<|> getPositionH
+apiServer pool =
+  getPosition
+    :<|> getPositions
+    :<|> getExercises
+    :<|> getLessons
+    :<|> getTargets
   where
-    runPool action = runSqlPersistMPool action pool
+    runPool action = liftIO $ runSqlPersistMPool action pool
     --
-    getPositionsH :: Handler [Entity Position]
-    getPositionsH =
-      liftIO . runPool $ selectList [] []
-    --
-    getPositionH :: PositionId -> Handler Position
-    getPositionH positionId = do
-      mPosition <- liftIO . runPool $ get positionId
+    getPosition :: PositionId -> Handler Position
+    getPosition positionId = do
+      mPosition <- runPool $ get positionId
       case mPosition of
-        -- TODO which position
-        Nothing -> throwError $ err404 {errBody = "Position doesn't exist"}
+        Nothing -> throwError $ err404 {errBody = "Position doesn't exist : " <> pack (show positionId)}
         Just p -> pure p
+    --
+    getPositions :: Handler [Entity Position]
+    getPositions = runPool $ selectList [] []
+    --
+    getExercises :: Handler [Entity Exercise]
+    getExercises = runPool $ selectList [] []
+    --
+    getLessons :: Handler [Entity Lesson]
+    getLessons = runPool $ selectList [] []
+    --
+    getTargets :: Handler [Entity Target]
+    getTargets = runPool $ selectList [] []

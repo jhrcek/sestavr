@@ -13,8 +13,12 @@ import Model
 import Servant.API
 
 type SestavrAPI =
-  "position" :> Get '[JSON] [Entity Position]
-    :<|> "position" :> Capture "positionId" PositionId :> Get '[JSON] Position
+  "position" :> Capture "positionId" PositionId :> Get '[JSON] Position
+    :<|> "position" :> Get '[JSON] [Entity Position]
+    :<|> "exercise" :> Get '[JSON] [Entity Exercise]
+    :<|> "lesson" :> Get '[JSON] [Entity Lesson]
+    :<|> "target" :> Get '[JSON] [Entity Target]
+    
 
 sestavrApi :: Proxy SestavrAPI
 sestavrApi = Proxy

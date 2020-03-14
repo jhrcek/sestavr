@@ -13,14 +13,16 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Model
-    ( ExerciseId
+    ( Exercise
+    , ExerciseId
     , ExerciseTargetId
+    , Lesson
     , LessonId
-    , Position (..)
+    , Position 
     , PositionId
     , RoutineId
     , RoutineExerciseId
-    , TargetId
+    , Target
     , createDemoData
     , migrateAll
     ) where
@@ -36,13 +38,15 @@ share
   [persistLowerCase|
 Target json
     name Text
+    UniqueTargetName name
 Position json
     name Text
+    UniquePositionName name
 Exercise json
     name Text
     description Text
     positionId PositionId
-    deriving Show
+    UniqueExerciseName name
 ExerciseTarget json
     exerciseId ExerciseId
     targetId TargetId
