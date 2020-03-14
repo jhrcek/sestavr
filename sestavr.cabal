@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b96b40c91e5b8527c915218430078dfa0bd2d261eebc00abf03e4f9351b66da7
+-- hash: c68c70e8a8906a94cffe2300ba2385c8326244637f4b97408fdfee2363a9427d
 
 name:           sestavr
 version:        0.1.0.0
@@ -34,11 +34,14 @@ library
       Paths_sestavr
   hs-source-dirs:
       src
+  ghc-options: -Wall
   build-depends:
       aeson
     , base >=4.7 && <5
     , bytestring
     , conduit
+    , file-embed
+    , http-media
     , monad-logger
     , persistent
     , persistent-sqlite
@@ -57,12 +60,14 @@ executable sestavr-exe
       Paths_sestavr
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5
     , bytestring
     , conduit
+    , file-embed
+    , http-media
     , monad-logger
     , persistent
     , persistent-sqlite
@@ -83,12 +88,14 @@ test-suite sestavr-test
       Paths_sestavr
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5
     , bytestring
     , conduit
+    , file-embed
+    , http-media
     , monad-logger
     , persistent
     , persistent-sqlite

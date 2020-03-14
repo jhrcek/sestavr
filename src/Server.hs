@@ -4,8 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
-{-# OPTIONS_GHC -Wall #-}
 
 module Server
   ( run,
@@ -15,7 +15,9 @@ where
 import Api (SestavrAPI, sestavrApi)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
+import Data.ByteString (ByteString)
 import Data.ByteString.Lazy.Char8 (pack)
+import Data.FileEmbed (embedFile)
 import qualified Data.Text as Text
 import Database.Persist.Class (get, selectList)
 import Database.Persist.Sqlite
@@ -48,7 +50,9 @@ serveApp pool = serve sestavrApi $ apiServer pool
 
 apiServer :: ConnectionPool -> Server SestavrAPI
 apiServer pool =
-  getPosition
+  getIndex
+    :<|> getElmApp
+    :<|> getPosition
     :<|> getPositions
     :<|> getExercises
     :<|> getLessons
@@ -74,3 +78,15 @@ apiServer pool =
     --
     getTargets :: Handler [Entity Target]
     getTargets = runPool $ selectList [] []
+
+getIndex :: Handler ByteString
+getIndex = pure indexHtml
+
+getElmApp :: Handler ByteString
+getElmApp = pure elmApp
+
+indexHtml :: ByteString
+indexHtml = $(embedFile "client/dist/index.html")
+
+elmApp :: ByteString
+elmApp = $(embedFile "client/dist/main.js")

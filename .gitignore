@@ -1,3 +1,5 @@
 .stack-work/
 *~
 sestavr.db
+client/dist/main.js
+client/elm-stuff

@@ -23,6 +23,7 @@ module Model
     , RoutineId
     , RoutineExerciseId
     , Target
+    , TargetId
     , createDemoData
     , migrateAll
     ) where

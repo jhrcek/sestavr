@@ -17,6 +17,8 @@ dependencies:
   - aeson
   - bytestring
   - conduit
+  - file-embed
+  - http-media
   - monad-logger
   - persistent
   - persistent-template
@@ -27,8 +29,8 @@ dependencies:
   - time
   - wai
   - warp
-# ghc-options:
-#   - -Wall
+ghc-options:
+ - -Wall
 
 library:
   source-dirs: src
