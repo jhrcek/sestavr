@@ -4,16 +4,16 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8cb04f340fbfe366a2fb76ebde238f1ae59950363c6b88a3fdbd942c54550a8f
+-- hash: 01bf0205a72e00cf7e699a8cda41e97f4514258abb3b025c6c9759029d9baf0a
 
 name:           sestavr
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/sestavr#readme>
-homepage:       https://github.com/githubuser/sestavr#readme
-bug-reports:    https://github.com/githubuser/sestavr/issues
-author:         Author name here
+homepage:       https://github.com/jhrcek/sestavr#readme
+bug-reports:    https://github.com/jhrcek/sestavr/issues
+author:         Jan Hrček
 maintainer:     example@example.com
-copyright:      2020 Author name here
+copyright:      2020 Jan Hrček
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -23,17 +23,23 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/sestavr
+  location: https://github.com/jhrcek/sestavr
 
 library
   exposed-modules:
-      Lib
+      Model
   other-modules:
       Paths_sestavr
   hs-source-dirs:
       src
   build-depends:
       base >=4.7 && <5
+    , conduit
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , text
+    , time
   default-language: Haskell2010
 
 executable sestavr-exe
@@ -45,7 +51,13 @@ executable sestavr-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , conduit
+    , persistent
+    , persistent-sqlite
+    , persistent-template
     , sestavr
+    , text
+    , time
   default-language: Haskell2010
 
 test-suite sestavr-test
@@ -58,5 +70,11 @@ test-suite sestavr-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , conduit
+    , persistent
+    , persistent-sqlite
+    , persistent-template
     , sestavr
+    , text
+    , time
   default-language: Haskell2010

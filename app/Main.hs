@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import qualified Model
 
 main :: IO ()
-main = someFunc
+main = Model.createDemoData
