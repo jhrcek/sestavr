@@ -1,7 +1,5 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -18,7 +16,7 @@ import Api (SestavrAPI, sestavrApi)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
 import qualified Data.Text as Text
-import Database.Persist.Class (get)
+import Database.Persist.Class (get, selectList)
 import Database.Persist.Sqlite
   ( ConnectionPool,
     createSqlitePool,
@@ -26,6 +24,7 @@ import Database.Persist.Sqlite
     runSqlPersistMPool,
     runSqlPool,
   )
+import Database.Persist.Types (Entity)
 import Model (Position, PositionId, migrateAll)
 import Network.Wai
 import qualified Network.Wai.Handler.Warp as Warp
@@ -34,6 +33,7 @@ import Servant
 run :: IO ()
 run = do
   app <- mkApp "sestavr.db"
+  putStrLn "Running on http://localhost:3000"
   Warp.run 3000 app
 
 mkApp :: FilePath -> IO Application
@@ -46,11 +46,17 @@ serveApp :: ConnectionPool -> Application
 serveApp pool = serve sestavrApi $ apiServer pool
 
 apiServer :: ConnectionPool -> Server SestavrAPI
-apiServer pool = getPositionH
+apiServer pool = getPositionsH :<|> getPositionH
   where
+    runPool action = runSqlPersistMPool action pool
+    --
+    getPositionsH :: Handler [Entity Position]
+    getPositionsH =
+      liftIO . runPool $ selectList [] []
+    --
     getPositionH :: PositionId -> Handler Position
     getPositionH positionId = do
-      mPosition <- liftIO $ flip runSqlPersistMPool pool $ get positionId
+      mPosition <- liftIO . runPool $ get positionId
       case mPosition of
         -- TODO which position
         Nothing -> throwError $ err404 {errBody = "Position doesn't exist"}

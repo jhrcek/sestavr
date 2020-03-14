@@ -4,6 +4,6 @@ module Main where
 import qualified Server
 
 main :: IO ()
-main = do
+main =
   -- Model.createDemoData
   Server.run
