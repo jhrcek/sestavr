@@ -1,20 +1,31 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Model (createDemoData) where
+module Model
+    ( ExerciseId
+    , ExerciseTargetId
+    , LessonId
+    , Position (..)
+    , PositionId
+    , RoutineId
+    , RoutineExerciseId
+    , TargetId
+    , createDemoData
+    , migrateAll
+    ) where
 
 import Control.Monad.IO.Class (liftIO)
-import Data.Conduit
-import qualified Data.Conduit.List as CL
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Database.Persist.Sqlite
@@ -23,48 +34,46 @@ import Database.Persist.TH
 share
   [mkPersist sqlSettings, mkMigrate "migrateAll"]
   [persistLowerCase|
-Target
+Target json
     name Text
-Position
+Position json
     name Text
-Exercise
+Exercise json
     name Text
     description Text
     positionId PositionId
-ExerciseTarget
+    deriving Show
+ExerciseTarget json
     exerciseId ExerciseId
     targetId TargetId
     UniqueExerciseTarget exerciseId targetId
-Routine
+Routine json
     topic Text
-RoutineExercise
+RoutineExercise json
     routineId RoutineId
     exerciseId ExerciseId
     durationMin Int
     order Int
     UniqueExerciseRoutineOrder exerciseId routineId order
-Lesson
+Lesson json
     routine RoutineId
     datetime UTCTime
 |]
-
-main :: IO ()
-main = createDemoData
 
 createDemoData :: IO ()
 createDemoData = runSqlite "sestavr.db" $ do
   runMigration migrateAll
   
   breathId <- insert $ Target "Dech"
-  feetId <- insert $ Target "Chodidla"
+  _feetId <- insert $ Target "Chodidla"
   hipId <- insert $ Target "Kyčle"
   backId <- insert $ Target "Záda"
 
   sitId <- insert $ Position "sed"
-  standId <- insert $ Position "stoj"
+  _standId <- insert $ Position "stoj"
   kneelId <- insert $ Position "klek"
-  lyingId <- insert $ Position "leh na břiše"
-  lyingBackId <- insert $ Position "leh na zádech"
+  _lyingId <- insert $ Position "leh na břiše"
+  _lyingBackId <- insert $ Position "leh na zádech"
   plankPositionId <- insert $ Position "vzpor na rukou"
 
   plankId <- insert $ Exercise "prkno" "popis prkna ... dlouhý text" plankPositionId

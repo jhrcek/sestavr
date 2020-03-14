@@ -1,47 +1,55 @@
-name:                sestavr
-version:             0.1.0.0
-github:              "jhrcek/sestavr"
-license:             BSD3
-author:              "Jan Hrček"
-maintainer:          "example@example.com"
-copyright:           "2020 Jan Hrček"
+name: sestavr
+version: 0.1.0.0
+github: "jhrcek/sestavr"
+license: BSD3
+author: "Jan Hrček"
+maintainer: "example@example.com"
+copyright: "2020 Jan Hrček"
 
 extra-source-files:
-- README.md
-- ChangeLog.md
+  - README.md
+  - ChangeLog.md
 
-description:         Please see the README on GitHub at <https://github.com/githubuser/sestavr#readme>
+description: Please see the README on GitHub at <https://github.com/jhrcek/sestavr#readme>
 
 dependencies:
-- base >= 4.7 && < 5
-- conduit
-- persistent
-- persistent-template
-- persistent-sqlite
-- text
-- time
+  - base >= 4.7 && < 5
+  - aeson
+  - conduit
+  - monad-logger
+  - persistent
+  - persistent-template
+  - persistent-sqlite
+  - servant
+  - servant-server
+  - text
+  - time
+  - wai
+  - warp
+# ghc-options:
+#   - -Wall
 
 library:
   source-dirs: src
 
 executables:
   sestavr-exe:
-    main:                Main.hs
-    source-dirs:         app
+    main: Main.hs
+    source-dirs: app
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
     dependencies:
-    - sestavr
+      - sestavr
 
 tests:
   sestavr-test:
-    main:                Spec.hs
-    source-dirs:         test
+    main: Spec.hs
+    source-dirs: test
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
     dependencies:
-    - sestavr
+      - sestavr
