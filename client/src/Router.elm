@@ -5,7 +5,7 @@ module Router exposing
     )
 
 import Url exposing (Protocol(..), Url)
-import Url.Parser as P exposing ((</>), Parser)
+import Url.Parser as P exposing (Parser)
 
 
 type Route

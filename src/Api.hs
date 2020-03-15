@@ -27,6 +27,8 @@ type SestavrAPI =
     :<|> "exercise" :> Get '[JSON] [Entity Exercise]
     :<|> "lesson" :> Get '[JSON] [Entity Lesson]
     :<|> "target" :> Get '[JSON] [Entity Target]
+    --
+    :<|> "target" :> ReqBody '[JSON] Target :> Post '[JSON] (Entity Target)
 
 sestavrApi :: Proxy SestavrAPI
 sestavrApi = Proxy

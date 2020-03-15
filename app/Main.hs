@@ -1,6 +1,6 @@
 module Main where
 
-import qualified Model
+--import qualified Model
 import qualified Server
 
 main :: IO ()

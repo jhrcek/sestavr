@@ -1,11 +1,13 @@
 module Store exposing
     ( Msg
     , Store
+    , createTarget
     , getTargets
     , init
     , update
     )
 
+import Dict.Any
 import Domain exposing (Target, TargetIdTag)
 import Http
 import Id exposing (IdDict)
@@ -14,6 +16,7 @@ import Json.Decode as Decode
 
 type Msg
     = GotTargets (Result Http.Error (List Target))
+    | GotTarget (Result Http.Error Target)
 
 
 type alias Store =
@@ -39,13 +42,31 @@ update msg store =
                     --TODO do something about the error
                     store
 
+        GotTarget result ->
+            case result of
+                Ok target ->
+                    { store | targets = Dict.Any.insert target.id target store.targets }
 
-getTargets : (Msg -> msg) -> Cmd msg
-getTargets wrap =
+                Err e ->
+                    --TODO do something about the error
+                    store
+
+
+getTargets : Cmd Msg
+getTargets =
     Http.get
         { url = "/target"
         , expect =
             Http.expectJson
-                (wrap << GotTargets)
+                GotTargets
                 (Decode.list Domain.targetDecoder)
+        }
+
+
+createTarget : Target -> Cmd Msg
+createTarget target =
+    Http.post
+        { url = "/target"
+        , body = Http.jsonBody <| Domain.encodeTarget target
+        , expect = Http.expectJson GotTarget Domain.targetDecoder
         }

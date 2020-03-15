@@ -2,11 +2,13 @@ module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation exposing (Key)
+import Domain exposing (Target)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
 import Element.Font as Font
 import Html exposing (Html)
+import Page.Targets as Targets
 import Router exposing (Route)
 import Store exposing (Store)
 import Url exposing (Url)
@@ -29,7 +31,31 @@ type alias Model =
     , store : Store
     , route : Route
     , initialUrl : Url
+    , pageModel : PageModel
     }
+
+
+initPage : Route -> PageModel
+initPage route =
+    case route of
+        Router.Targets ->
+            TargetsModel Targets.init
+
+        Router.Home ->
+            HomeModel
+
+        Router.Exercises ->
+            ExercisesModel
+
+        Router.NotFound what ->
+            NotFoundModel what
+
+
+type PageModel
+    = TargetsModel Targets.Model
+    | HomeModel
+    | ExercisesModel
+    | NotFoundModel String
 
 
 type Msg
@@ -37,17 +63,24 @@ type Msg
     | UrlChange Url
     | StoreMsg Store.Msg
     | SetRoute Route
+    | TargetsMsg Targets.Msg
+    | CreateTarget Target
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
 init _ url key =
+    let
+        route =
+            Router.parseUrl url
+    in
     ( { navKey = key
       , store = Store.init
-      , route = Router.parseUrl url
+      , route = route
       , initialUrl = url
+      , pageModel = initPage route
       }
     , Cmd.batch
-        [ Store.getTargets StoreMsg
+        [ Cmd.map StoreMsg Store.getTargets
         ]
     )
 
@@ -62,22 +95,22 @@ view model =
 viewBody : Model -> Html Msg
 viewBody model =
     viewLayout model.route <|
-        case model.route of
-            Router.Home ->
+        case model.pageModel of
+            HomeModel ->
                 E.text "Home"
 
-            Router.Exercises ->
+            ExercisesModel ->
                 E.text "Cviky"
 
-            Router.Targets ->
-                E.text <| Debug.toString model
+            TargetsModel tmodel ->
+                Targets.view targetConfig model.store.targets tmodel
 
-            Router.NotFound what ->
+            NotFoundModel what ->
                 E.text <| "Tady nic není : " ++ what
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ initialUrl } as model) =
+update msg model =
     case msg of
         StoreMsg storeMsg ->
             ( { model | store = Store.update storeMsg model.store }
@@ -85,7 +118,14 @@ update msg ({ initialUrl } as model) =
             )
 
         UrlChange url ->
-            ( { model | route = Router.parseUrl url }
+            let
+                newRoute =
+                    Router.parseUrl url
+            in
+            ( { model
+                | route = newRoute
+                , pageModel = initPage newRoute
+              }
             , Cmd.none
             )
 
@@ -96,6 +136,31 @@ update msg ({ initialUrl } as model) =
 
         UrlRequest _ ->
             ( model, Cmd.none )
+
+        TargetsMsg targetsMsg ->
+            let
+                ( newPageModel, targetCmd ) =
+                    case model.pageModel of
+                        TargetsModel tm ->
+                            Tuple.mapFirst TargetsModel <|
+                                Targets.update targetConfig targetsMsg tm
+
+                        x ->
+                            ( x, Cmd.none )
+            in
+            ( { model | pageModel = newPageModel }
+            , targetCmd
+            )
+
+        CreateTarget target ->
+            ( model, Cmd.map StoreMsg <| Store.createTarget target )
+
+
+targetConfig : Targets.Config Msg
+targetConfig =
+    { createTarget = CreateTarget
+    , msg = TargetsMsg
+    }
 
 
 navigateToRoute : Key -> Url -> Route -> Cmd msg
@@ -115,13 +180,17 @@ viewLayout route content =
         E.row
             [ E.width E.fill ]
             [ navigationLeft route
-            , E.el [ E.width (E.fillPortion 10) ] content
+            , E.el
+                [ E.alignTop
+                , E.padding 50
+                ]
+                content
             ]
 
 
 navigationLeft : Route -> Element Msg
 navigationLeft currentRoute =
-    E.column [ E.height E.fill, E.width (E.fillPortion 1) ]
+    E.column [ E.height E.fill, E.width (E.px 180) ]
         [ menuItem currentRoute Router.Home "Domů"
         , menuItem currentRoute Router.Targets "Cílové partie"
         , menuItem currentRoute Router.Exercises "Cviky"

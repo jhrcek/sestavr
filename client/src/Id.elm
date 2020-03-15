@@ -4,6 +4,7 @@ module Id exposing
     , buildDict
     , decode
     , emptyDict
+    , fromInt
     )
 
 import Dict.Any exposing (AnyDict)
@@ -20,6 +21,11 @@ type alias IdDict tag a =
 
 type alias Resource tag r =
     { r | id : Id tag }
+
+
+fromInt : Int -> Id tag
+fromInt =
+    Id
 
 
 emptyDict : IdDict tag a

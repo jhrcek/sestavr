@@ -19,7 +19,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Lazy.Char8 (pack)
 import Data.FileEmbed (embedFile)
 import qualified Data.Text as Text
-import Database.Persist.Class (get, selectList)
+import Database.Persist.Class (get, insertEntity, selectList)
 import Database.Persist.Sqlite
   ( ConnectionPool,
     createSqlitePool,
@@ -57,6 +57,8 @@ apiServer pool =
     :<|> getExercises
     :<|> getLessons
     :<|> getTargets
+    --
+    :<|> createTarget
   where
     runPool action = liftIO $ runSqlPersistMPool action pool
     --
@@ -78,6 +80,10 @@ apiServer pool =
     --
     getTargets :: Handler [Entity Target]
     getTargets = runPool $ selectList [] []
+    --
+    createTarget :: Target -> Handler (Entity Target)
+    createTarget =
+      runPool . insertEntity
 
 getIndex :: Handler ByteString
 getIndex = pure indexHtml
