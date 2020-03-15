@@ -1,5 +1,6 @@
-.stack-work/
-*~
-sestavr.db
+
 client/dist/main.js
 client/elm-stuff
+client/.idea
+sestavr.db
+.stack-work/
