@@ -23,6 +23,7 @@ dependencies:
   - persistent
   - persistent-template
   - persistent-sqlite
+  - safe-exceptions
   - servant
   - servant-server
   - text
