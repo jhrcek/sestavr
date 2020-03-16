@@ -2,12 +2,14 @@ module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation exposing (Key)
-import Domain exposing (Target)
+import Domain exposing (Target, TargetId)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
 import Element.Font as Font
 import Html exposing (Html)
+import Html.Events
+import Http
 import Page.Targets as Targets
 import Router exposing (Route)
 import Store exposing (Store)
@@ -32,6 +34,7 @@ type alias Model =
     , route : Route
     , initialUrl : Url
     , pageModel : PageModel
+    , httpError : Maybe Http.Error
     }
 
 
@@ -65,6 +68,9 @@ type Msg
     | SetRoute Route
     | TargetsMsg Targets.Msg
     | CreateTarget Target
+    | DeleteTarget TargetId
+    | UpdateTarget Target
+    | ErrorAcked
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
@@ -78,6 +84,7 @@ init _ url key =
       , route = route
       , initialUrl = url
       , pageModel = initPage route
+      , httpError = Nothing
       }
     , Cmd.batch
         [ Cmd.map StoreMsg Store.getTargets
@@ -88,7 +95,18 @@ init _ url key =
 view : Model -> Document Msg
 view model =
     { title = "sestavr"
-    , body = [ viewBody model ]
+    , body =
+        [ case model.httpError of
+            Just error ->
+                -- TODO make this into modal
+                Html.div []
+                    [ Html.text <| Debug.toString error
+                    , Html.button [ Html.Events.onClick ErrorAcked ] [ Html.text " Ok" ]
+                    ]
+
+            Nothing ->
+                viewBody model
+        ]
     }
 
 
@@ -103,7 +121,7 @@ viewBody model =
                 E.text "Cviky"
 
             TargetsModel tmodel ->
-                Targets.view targetConfig model.store.targets tmodel
+                E.map TargetsMsg <| Targets.view model.store.targets tmodel
 
             NotFoundModel what ->
                 E.text <| "Tady nic není : " ++ what
@@ -113,7 +131,14 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         StoreMsg storeMsg ->
-            ( { model | store = Store.update storeMsg model.store }
+            let
+                ( newStore, maybeError ) =
+                    Store.update storeMsg model.store
+            in
+            ( { model
+                | store = newStore
+                , httpError = maybeError
+              }
             , Cmd.none
             )
 
@@ -153,13 +178,31 @@ update msg model =
             )
 
         CreateTarget target ->
-            ( model, Cmd.map StoreMsg <| Store.createTarget target )
+            ( model
+            , Cmd.map StoreMsg <| Store.createTarget target
+            )
+
+        DeleteTarget targetId ->
+            ( model
+            , Cmd.map StoreMsg <| Store.deleteTarget targetId
+            )
+
+        ErrorAcked ->
+            ( { model | httpError = Nothing }
+            , Cmd.none
+            )
+
+        UpdateTarget target ->
+            ( model
+            , Cmd.map StoreMsg <| Store.updateTarget target
+            )
 
 
 targetConfig : Targets.Config Msg
 targetConfig =
     { createTarget = CreateTarget
-    , msg = TargetsMsg
+    , deleteTarget = DeleteTarget
+    , updateTarget = UpdateTarget
     }
 
 

@@ -20,12 +20,12 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Lazy.Char8 (pack)
 import Data.FileEmbed (embedFile)
 import qualified Data.Text as Text
-import Database.Persist.Class (get, insertEntity, selectList)
+import Database.Persist.Class (delete, get, insertEntity, repsert, selectList)
 import Database.Persist.Sql (SqlPersistM)
 import Database.Persist.Sqlite (ConnectionPool, createSqlitePool, runMigration, runSqlPersistMPool, runSqlPool)
 import Database.Persist.Types (Entity)
 import Database.Sqlite (Error (ErrorConstraint), SqliteException, seError)
-import Model (Exercise, Lesson, Position, PositionId, Target, migrateAll)
+import Model (Exercise, Lesson, Position, PositionId, Target, TargetId, migrateAll)
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
 
@@ -55,6 +55,8 @@ apiServer pool =
     :<|> getTargets
     --
     :<|> createTarget
+    :<|> deleteTarget
+    :<|> updateTarget
   where
     runPool :: MonadIO m => SqlPersistM a -> m a
     runPool action = liftIO $ runSqlPersistMPool action pool
@@ -81,6 +83,22 @@ apiServer pool =
     createTarget :: Target -> Handler (Entity Target)
     createTarget target =
       runPool (insertEntity target)
+        `catch` ( \(e :: SqliteException) ->
+                    case seError e of
+                      ErrorConstraint -> throwError $ err409 {errBody = "Target with this name already exists"}
+                      _ -> throwM e
+                )
+    deleteTarget :: TargetId -> Handler ()
+    deleteTarget targetId =
+      runPool (delete targetId)
+        `catch` ( \(e :: SqliteException) ->
+                    case seError e of
+                      ErrorConstraint -> throwError $ err409 {errBody = "Target can't be deleted, because it's used by some Exercises"}
+                      _ -> throwM e
+                )
+    updateTarget :: TargetId -> Target -> Handler ()
+    updateTarget targetId target =
+      runPool (repsert targetId target)
         `catch` ( \(e :: SqliteException) ->
                     case seError e of
                       ErrorConstraint -> throwError $ err409 {errBody = "Target with this name already exists"}

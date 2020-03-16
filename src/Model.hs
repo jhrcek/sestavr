@@ -45,6 +45,7 @@ Position json
     UniquePositionName name
 Exercise json
     name Text
+    sanskritName Text Maybe
     description Text
     positionId PositionId
     UniqueExerciseName name
@@ -81,9 +82,9 @@ createDemoData = runSqlite "sestavr.db" $ do
   _lyingBackId <- insert $ Position "leh na zádech"
   plankPositionId <- insert $ Position "vzpor na rukou"
 
-  plankId <- insert $ Exercise "prkno" "popis prkna ... dlouhý text" plankPositionId
-  boatId <- insert $ Exercise "loďka (navasana)" "..." sitId
-  childId <- insert $ Exercise "pozice dítě (balasana)" "nejaky textovy popis" kneelId
+  plankId <- insert $ Exercise "prkno" Nothing "popis prkna ... dlouhý text" plankPositionId
+  boatId <- insert $ Exercise "loďka (navasana)" Nothing "..." sitId
+  childId <- insert $ Exercise "pozice dítě (balasana)" Nothing "nejaky textovy popis" kneelId
 
   _ <- insert $ ExerciseTarget childId hipId
   _ <- insert $ ExerciseTarget childId backId

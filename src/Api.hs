@@ -29,6 +29,8 @@ type SestavrAPI =
     :<|> "target" :> Get '[JSON] [Entity Target]
     --
     :<|> "target" :> ReqBody '[JSON] Target :> Post '[JSON] (Entity Target)
+    :<|> "target" :> Capture "targetId" TargetId :> Delete '[JSON] ()
+    :<|> "target" :> Capture "targetId" TargetId :> ReqBody '[JSON] Target :> Post '[JSON] ()
 
 sestavrApi :: Proxy SestavrAPI
 sestavrApi = Proxy

@@ -5,6 +5,7 @@ module Id exposing
     , decode
     , emptyDict
     , fromInt
+    , toString
     )
 
 import Dict.Any exposing (AnyDict)
@@ -41,6 +42,11 @@ buildDict =
 toInt : Id tag -> Int
 toInt (Id i) =
     i
+
+
+toString : Id tag -> String
+toString (Id i) =
+    String.fromInt i
 
 
 decode : Decoder (Id tag)
