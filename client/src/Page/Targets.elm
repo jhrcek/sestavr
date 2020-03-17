@@ -171,6 +171,15 @@ button =
 viewTargets : IdDict TargetIdTag Target -> Maybe Target -> Element Msg
 viewTargets targets maybeEdited =
     let
+        iconButton =
+            Input.button
+                [ Border.solid
+                , Border.width 1
+                , E.padding 5
+                , Border.rounded 4
+                , E.mouseOver [ Background.color (E.rgb255 192 192 192) ]
+                ]
+
         colHeader label =
             E.el
                 [ Border.color (E.rgb255 0 0 0)
@@ -196,7 +205,7 @@ viewTargets targets maybeEdited =
                         case maybeEdited of
                             Just editedTarget ->
                                 if target.id == editedTarget.id then
-                                    Input.text [ E.width (E.px 100) ]
+                                    Input.text [ E.width (E.px 100), E.height (E.px 30) ]
                                         { onChange = EditedNameChanged
                                         , text = editedTarget.name
                                         , placeholder = Nothing
@@ -225,19 +234,19 @@ viewTargets targets maybeEdited =
               , width = E.fill
               , view =
                     \target ->
-                        E.row [ E.spacing 5, E.padding 5 ]
-                            [ button <|
+                        E.row [ E.spacing 2 ]
+                            [ iconButton <|
                                 case maybeEdited of
                                     Just editedTarget ->
                                         if target.id == editedTarget.id then
-                                            { onPress = Just SaveEditedNameClicked, label = E.text "Uložit" }
+                                            { onPress = Just SaveEditedNameClicked, label = E.text "💾" }
 
                                         else
-                                            { onPress = Just (EditClicked target), label = E.text "Upravit" }
+                                            { onPress = Just (EditClicked target), label = E.text "🖉" }
 
                                     Nothing ->
-                                        { onPress = Just (EditClicked target), label = E.text "Upravit" }
-                            , button { onPress = Just (DeleteClicked target.id), label = E.text "Smazat" }
+                                        { onPress = Just (EditClicked target), label = E.text "🖉" }
+                            , iconButton { onPress = Just (DeleteClicked target.id), label = E.text "🗑" }
                             ]
               }
             ]

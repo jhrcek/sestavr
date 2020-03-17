@@ -12,15 +12,16 @@ module Store exposing
 import Dict.Any
 import Domain exposing (Target, TargetId, TargetIdTag)
 import Http
+import Http.Extra as Ht2
 import Id exposing (IdDict)
 import Json.Decode as Decode
 
 
 type Msg
-    = GotTargets (Result Http.Error (List Target))
-    | GotTarget (Result Http.Error Target)
-    | TargetDeleted (Result Http.Error TargetId)
-    | TargetUpdated (Result Http.Error Target)
+    = GotTargets (Result Ht2.Error (List Target))
+    | TargetCreated (Result Ht2.Error Target)
+    | TargetDeleted (Result Ht2.Error TargetId)
+    | TargetUpdated (Result Ht2.Error Target)
 
 
 type alias Store =
@@ -34,13 +35,13 @@ init =
     }
 
 
-update : Msg -> Store -> ( Store, Maybe Http.Error )
+update : Msg -> Store -> ( Store, Maybe Ht2.Error )
 update msg store =
     case msg of
         GotTargets result ->
             updateOrError result store (\targets s -> { s | targets = Id.buildDict targets })
 
-        GotTarget result ->
+        TargetCreated result ->
             updateOrError result store (\target s -> { s | targets = Dict.Any.insert target.id target store.targets })
 
         TargetDeleted result ->
@@ -50,7 +51,7 @@ update msg store =
             updateOrError result store (\target s -> { s | targets = Dict.Any.insert target.id target store.targets })
 
 
-updateOrError : Result Http.Error a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Http.Error )
+updateOrError : Result Ht2.Error a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
 updateOrError result store f =
     case result of
         Ok a ->
@@ -65,7 +66,7 @@ getTargets =
     Http.get
         { url = "/target"
         , expect =
-            Http.expectJson
+            Ht2.expectJson
                 GotTargets
                 (Decode.list Domain.targetDecoder)
         }
@@ -76,7 +77,7 @@ createTarget target =
     Http.post
         { url = "/target"
         , body = Http.jsonBody <| Domain.encodeTarget target
-        , expect = Http.expectJson GotTarget Domain.targetDecoder
+        , expect = Ht2.expectJson TargetCreated Domain.targetDecoder
         }
 
 
@@ -86,7 +87,7 @@ deleteTarget targetId =
         { method = "DELETE"
         , headers = []
         , url = "/target/" ++ Id.toString targetId
-        , expect = Http.expectWhatever (TargetDeleted << Result.map (\() -> targetId))
+        , expect = Ht2.expectWhatever (TargetDeleted << Result.map (\() -> targetId))
         , body = Http.emptyBody
         , timeout = Nothing
         , tracker = Nothing
@@ -98,5 +99,5 @@ updateTarget target =
     Http.post
         { url = "/target/" ++ Id.toString target.id
         , body = Http.jsonBody <| Domain.encodeTarget target
-        , expect = Http.expectWhatever (TargetUpdated << Result.map (\() -> target))
+        , expect = Ht2.expectWhatever (TargetUpdated << Result.map (\() -> target))
         }

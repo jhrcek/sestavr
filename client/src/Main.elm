@@ -7,9 +7,8 @@ import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
 import Element.Font as Font
-import Html exposing (Html)
-import Html.Events
-import Http
+import Http.Extra as Ht2
+import Modal
 import Page.Targets as Targets
 import Router exposing (Route)
 import Store exposing (Store)
@@ -34,7 +33,7 @@ type alias Model =
     , route : Route
     , initialUrl : Url
     , pageModel : PageModel
-    , httpError : Maybe Http.Error
+    , httpError : Maybe Ht2.Error
     }
 
 
@@ -96,21 +95,21 @@ view : Model -> Document Msg
 view model =
     { title = "sestavr"
     , body =
-        [ case model.httpError of
-            Just error ->
-                -- TODO make this into modal
-                Html.div []
-                    [ Html.text <| Debug.toString error
-                    , Html.button [ Html.Events.onClick ErrorAcked ] [ Html.text " Ok" ]
-                    ]
+        [ let
+            modal =
+                case model.httpError of
+                    Just error ->
+                        [ E.inFront <| Modal.viewError ErrorAcked error ]
 
-            Nothing ->
-                viewBody model
+                    Nothing ->
+                        []
+          in
+          E.layout modal (viewBody model)
         ]
     }
 
 
-viewBody : Model -> Html Msg
+viewBody : Model -> Element Msg
 viewBody model =
     viewLayout model.route <|
         case model.pageModel of
@@ -217,18 +216,17 @@ subscriptions _ =
     Sub.none
 
 
-viewLayout : Route -> Element Msg -> Html Msg
+viewLayout : Route -> Element Msg -> Element Msg
 viewLayout route content =
-    E.layout [] <|
-        E.row
-            [ E.width E.fill ]
-            [ navigationLeft route
-            , E.el
-                [ E.alignTop
-                , E.padding 50
-                ]
-                content
+    E.row
+        [ E.width E.fill ]
+        [ navigationLeft route
+        , E.el
+            [ E.alignTop
+            , E.padding 50
             ]
+            content
+        ]
 
 
 navigationLeft : Route -> Element Msg
