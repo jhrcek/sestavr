@@ -80,30 +80,29 @@ apiServer pool =
     getTargets :: Handler [Entity Target]
     getTargets = runPool $ selectList [] []
     --
+    handleConstraintError :: Handler x -> LBS.ByteString -> Handler x
+    handleConstraintError action err =
+      action `catch` handler
+      where
+        handler :: SqliteException -> Handler x
+        handler ex = case seError ex of
+          ErrorConstraint -> throw409 ex err
+          _ -> throwM ex
+    --
     createTarget :: Target -> Handler (Entity Target)
     createTarget target =
       runPool (insertEntity target)
-        `catch` ( \(e :: SqliteException) ->
-                    case seError e of
-                      ErrorConstraint -> throw409 e "Cílová partie s tímto jménem už existuje"
-                      _ -> throwM e
-                )
+        `handleConstraintError` "Target area with this name already exists"
+    --
     deleteTarget :: TargetId -> Handler ()
     deleteTarget targetId =
       runPool (delete targetId)
-        `catch` ( \(e :: SqliteException) ->
-                    case seError e of
-                      ErrorConstraint -> throw409 e "Tato cílová partie nemůže být odstraněna, protože je používána nějakými cviky"
-                      _ -> throwM e
-                )
+        `handleConstraintError` "Target area can't be deleted, it is used in some Exercises"
+    --
     updateTarget :: TargetId -> Target -> Handler ()
     updateTarget targetId target =
       runPool (replace targetId target)
-        `catch` ( \(e :: SqliteException) ->
-                    case seError e of
-                      ErrorConstraint -> throw409 e "Cílová partie s tímto jménem už existuje"
-                      _ -> throwM e
-                )
+        `handleConstraintError` "Target area with this name already exists"
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}
