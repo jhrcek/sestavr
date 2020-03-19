@@ -9,6 +9,7 @@ import Element.Events as Event
 import Element.Font as Font
 import Http.Extra as Ht2
 import Modal
+import Page.Exercise as Exercise
 import Page.Targets as Targets
 import Router exposing (Route)
 import Store exposing (Store)
@@ -85,9 +86,11 @@ init _ url key =
       , pageModel = initPage route
       , httpError = Nothing
       }
-    , Cmd.batch
-        [ Cmd.map StoreMsg Store.getTargets
-        ]
+    , Cmd.map StoreMsg <|
+        Cmd.batch
+            [ Store.getTargets
+            , Store.getExercises
+            ]
     )
 
 
@@ -117,7 +120,7 @@ viewBody model =
                 E.text "Home"
 
             ExercisesModel ->
-                E.text "Cviky"
+                Exercise.view model.store.exercises
 
             TargetsModel tmodel ->
                 E.map TargetsMsg <| Targets.view model.store.targets tmodel

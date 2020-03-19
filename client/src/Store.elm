@@ -3,6 +3,7 @@ module Store exposing
     , Store
     , createTarget
     , deleteTarget
+    , getExercises
     , getTargets
     , init
     , update
@@ -10,7 +11,14 @@ module Store exposing
     )
 
 import Dict.Any
-import Domain exposing (Target, TargetId, TargetIdTag)
+import Domain
+    exposing
+        ( Exercise
+        , ExerciseIdTag
+        , Target
+        , TargetId
+        , TargetIdTag
+        )
 import Http
 import Http.Extra as Ht2
 import Id exposing (IdDict)
@@ -22,16 +30,19 @@ type Msg
     | TargetCreated (Result Ht2.Error Target)
     | TargetDeleted (Result Ht2.Error TargetId)
     | TargetUpdated (Result Ht2.Error Target)
+    | GotExercises (Result Ht2.Error (List Exercise))
 
 
 type alias Store =
     { targets : IdDict TargetIdTag Target
+    , exercises : IdDict ExerciseIdTag Exercise
     }
 
 
 init : Store
 init =
     { targets = Id.emptyDict
+    , exercises = Id.emptyDict
     }
 
 
@@ -50,6 +61,9 @@ update msg store =
         TargetUpdated result ->
             updateOrError result store (\target s -> { s | targets = Dict.Any.insert target.id target store.targets })
 
+        GotExercises result ->
+            updateOrError result store (\exercises s -> { s | exercises = Id.buildDict exercises })
+
 
 updateOrError : Result Ht2.Error a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
 updateOrError result store f =
@@ -59,6 +73,10 @@ updateOrError result store f =
 
         Err e ->
             ( store, Just e )
+
+
+
+-- TARGET
 
 
 getTargets : Cmd Msg
@@ -100,4 +118,19 @@ updateTarget target =
         { url = "/target/" ++ Id.toString target.id
         , body = Http.jsonBody <| Domain.encodeTarget target
         , expect = Ht2.expectWhatever (TargetUpdated << Result.map (\() -> target))
+        }
+
+
+
+-- EXERCISE
+
+
+getExercises : Cmd Msg
+getExercises =
+    Http.get
+        { url = "/exercise"
+        , expect =
+            Ht2.expectJson
+                GotExercises
+                (Decode.list Domain.exerciseDecoder)
         }

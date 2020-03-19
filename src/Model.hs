@@ -74,22 +74,27 @@ createDemoData = runSqlite "sestavr.db" $ do
   _feetId <- insert $ Target "Chodidla"
   hipId <- insert $ Target "Kyčle"
   backId <- insert $ Target "Záda"
+  _headId <- insert $ Target "Hlava"
 
   sitId <- insert $ Position "sed"
   _standId <- insert $ Position "stoj"
   kneelId <- insert $ Position "klek"
   _lyingId <- insert $ Position "leh na břiše"
-  _lyingBackId <- insert $ Position "leh na zádech"
+  lyingBackId <- insert $ Position "leh na zádech"
   plankPositionId <- insert $ Position "vzpor na rukou"
 
-  plankId <- insert $ Exercise "prkno" Nothing "popis prkna ... dlouhý text" plankPositionId
-  boatId <- insert $ Exercise "loďka (navasana)" Nothing "..." sitId
-  childId <- insert $ Exercise "pozice dítě (balasana)" Nothing "nejaky textovy popis" kneelId
+  plankId <- insert $ Exercise "Prkno" Nothing "popis prkna ... dlouhý text" plankPositionId
+  boatId <- insert $ Exercise "Loďka" (Just "Navasana") "..." sitId
+  childId <- insert $ Exercise "Pozice dítěte" (Just "Balasana") "nejaky textovy popis" kneelId
+  _corpseId <- insert $ Exercise "Mrtvola" (Just "Shavasana") "Shavasana (Sanskrit: शवासन; IAST: śavāsana), Corpse Pose, or Mrtasana,\n\
+\is an asana in hatha yoga and modern yoga as exercise, often used for relaxation at the end of a session.\n\
+\It is the usual pose for the practice of yoga nidra meditation.\n\
+\![savasana](https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Shavasana.jpg/280px-Shavasana.jpg)" lyingBackId
 
   _ <- insert $ ExerciseTarget childId hipId
   _ <- insert $ ExerciseTarget childId backId
   _ <- insert $ ExerciseTarget childId breathId
-
+  
   routine1Id <- insert $ Routine "Moje první sestava"
 
   _ <- insert $ RoutineExercise routine1Id plankId 2 1

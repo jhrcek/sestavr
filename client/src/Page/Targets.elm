@@ -205,7 +205,7 @@ viewTargets targets maybeEdited =
                         case maybeEdited of
                             Just editedTarget ->
                                 if target.id == editedTarget.id then
-                                    Input.text [ E.width (E.px 100), E.height (E.px 30) ]
+                                    Input.text [ E.width (E.px 100), E.height (E.px 30), E.padding 5 ]
                                         { onChange = EditedNameChanged
                                         , text = editedTarget.name
                                         , placeholder = Nothing
