@@ -1,13 +1,15 @@
 module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest)
-import Browser.Navigation exposing (Key)
-import Domain exposing (Target, TargetId)
+import Browser.Navigation as Nav exposing (Key)
+import Dict.Any
+import Domain exposing (ExerciseId, Target, TargetId)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
 import Element.Font as Font
 import Http.Extra as Ht2
+import Id
 import Modal
 import Page.Exercise as Exercise
 import Page.Targets as Targets
@@ -38,8 +40,8 @@ type alias Model =
     }
 
 
-initPage : Route -> PageModel
-initPage route =
+initPage : Route -> Store -> PageModel
+initPage route store =
     case route of
         Router.Targets ->
             TargetsModel Targets.init
@@ -50,6 +52,18 @@ initPage route =
         Router.Exercises ->
             ExercisesModel
 
+        Router.Exercise exerciseId ->
+            ExerciseModel exerciseId
+
+        Router.ExerciseEditor exerciseId ->
+            ExerciseEditor <|
+                case Dict.Any.get exerciseId store.exercises of
+                    Just exercise ->
+                        Exercise.initEditor exercise
+
+                    Nothing ->
+                        Exercise.emptyEditor
+
         Router.NotFound what ->
             NotFoundModel what
 
@@ -58,6 +72,8 @@ type PageModel
     = TargetsModel Targets.Model
     | HomeModel
     | ExercisesModel
+    | ExerciseModel ExerciseId
+    | ExerciseEditor Exercise.Model
     | NotFoundModel String
 
 
@@ -83,7 +99,7 @@ init _ url key =
       , store = Store.init
       , route = route
       , initialUrl = url
-      , pageModel = initPage route
+      , pageModel = initPage route Store.init
       , httpError = Nothing
       }
     , Cmd.map StoreMsg <|
@@ -120,7 +136,18 @@ viewBody model =
                 E.text "Home"
 
             ExercisesModel ->
-                Exercise.view model.store.exercises
+                Exercise.viewList model.store.exercises
+
+            ExerciseModel exerciseId ->
+                case Dict.Any.get exerciseId model.store.exercises of
+                    Just exercise ->
+                        Exercise.view exercise
+
+                    Nothing ->
+                        E.text <| "Cvičení s ID " ++ Id.toString exerciseId ++ " neexistuje"
+
+            ExerciseEditor emodel ->
+                Exercise.viewEditor emodel
 
             TargetsModel tmodel ->
                 E.map TargetsMsg <| Targets.view model.store.targets tmodel
@@ -151,7 +178,7 @@ update msg model =
             in
             ( { model
                 | route = newRoute
-                , pageModel = initPage newRoute
+                , pageModel = initPage newRoute model.store
               }
             , Cmd.none
             )
@@ -161,8 +188,15 @@ update msg model =
             , navigateToRoute model.navKey model.initialUrl route
             )
 
-        UrlRequest _ ->
-            ( model, Cmd.none )
+        UrlRequest urlRequest ->
+            ( model
+            , case urlRequest of
+                Browser.Internal url ->
+                    Nav.pushUrl model.navKey (Url.toString url)
+
+                Browser.External url ->
+                    Nav.load url
+            )
 
         TargetsMsg targetsMsg ->
             let
@@ -210,7 +244,7 @@ targetConfig =
 
 navigateToRoute : Key -> Url -> Route -> Cmd msg
 navigateToRoute key initialUrl route =
-    Browser.Navigation.pushUrl key <|
+    Nav.pushUrl key <|
         Url.toString { initialUrl | fragment = Just <| Router.toHash route }
 
 

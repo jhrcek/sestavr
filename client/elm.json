@@ -14,7 +14,8 @@
             "elm/url": "1.0.0",
             "elm-explorations/markdown": "1.0.0",
             "mdgriffith/elm-ui": "1.1.5",
-            "turboMaCk/any-dict": "2.3.0"
+            "turboMaCk/any-dict": "2.3.0",
+            "turboMaCk/any-set": "1.4.0"
         },
         "indirect": {
             "elm/bytes": "1.0.8",

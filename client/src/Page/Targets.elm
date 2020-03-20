@@ -142,6 +142,10 @@ form model =
                     }
                 , E.row [ E.spacing 5, E.padding 5 ]
                     [ button
+                        { onPress = Just CancelClicked
+                        , label = E.text "Zrušit"
+                        }
+                    , button
                         { onPress =
                             if String.isEmpty fieldName then
                                 Nothing
@@ -149,10 +153,6 @@ form model =
                             else
                                 Just SaveNewNameClicked
                         , label = E.text "Uložit"
-                        }
-                    , button
-                        { onPress = Just CancelClicked
-                        , label = E.text "Zrušit"
                         }
                     ]
                 ]
@@ -246,8 +246,13 @@ viewTargets targets maybeEdited =
 
                                     Nothing ->
                                         { onPress = Just (EditClicked target), label = E.text "🖉" }
+
+                            -- TODO user confirmation before deletion
                             , iconButton { onPress = Just (DeleteClicked target.id), label = E.text "🗑" }
                             ]
               }
+
+            -- TODO show # of exercises for each target
+            -- TODO link to the search of exercises that have given target
             ]
         }

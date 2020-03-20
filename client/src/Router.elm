@@ -4,23 +4,29 @@ module Router exposing
     , toHash
     )
 
+import Domain exposing (ExerciseId)
+import Id
 import Url exposing (Protocol(..), Url)
-import Url.Parser as P exposing (Parser)
+import Url.Parser as P exposing ((</>), Parser, int, s, top)
 
 
 type Route
     = Home
     | Targets
     | Exercises
+    | Exercise ExerciseId
+    | ExerciseEditor ExerciseId
     | NotFound String
 
 
 route : Parser (Route -> a) a
 route =
     P.oneOf
-        [ P.map Home P.top
-        , P.map Targets (P.s "target")
-        , P.map Exercises (P.s "exercise")
+        [ P.map Home top
+        , P.map Targets (s "target")
+        , P.map Exercises (s "exercise")
+        , P.map (Exercise << Id.fromInt) (s "exercise" </> int)
+        , P.map (ExerciseEditor << Id.fromInt) (s "exercise" </> int </> s "edit")
         ]
 
 
@@ -45,6 +51,12 @@ toHash r =
 
         Exercises ->
             "exercise"
+
+        Exercise exerciseId ->
+            "exercise/" ++ Id.toString exerciseId
+
+        ExerciseEditor exerciseId ->
+            "exercise/" ++ Id.toString exerciseId ++ "/edit"
 
         NotFound bad ->
             bad
