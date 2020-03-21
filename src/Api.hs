@@ -22,14 +22,18 @@ import Servant.API
 type SestavrAPI =
   Get '[HTML] ByteString -- index.html
     :<|> "main.js" :> Get '[JS] ByteString
-    :<|> "position" :> Capture "positionId" PositionId :> Get '[JSON] Position
-    :<|> "position" :> Get '[JSON] [Entity Position]
     :<|> "lesson" :> Get '[JSON] [Entity Lesson]
     -- Target
     :<|> "target" :> Get '[JSON] [Entity Target]
     :<|> "target" :> ReqBody '[JSON] Target :> Post '[JSON] (Entity Target)
     :<|> "target" :> Capture "targetId" TargetId :> Delete '[JSON] ()
     :<|> "target" :> Capture "targetId" TargetId :> ReqBody '[JSON] Target :> Post '[JSON] ()
+    -- Position
+    :<|> "position" :> Get '[JSON] [Entity Position]
+    :<|> "position" :> ReqBody '[JSON] Position :> Post '[JSON] (Entity Position)
+    :<|> "position" :> Capture "positionId" PositionId :> Get '[JSON] Position
+    :<|> "position" :> Capture "positionId" PositionId :> Delete '[JSON] ()
+    :<|> "position" :> Capture "positionId" PositionId :> ReqBody '[JSON] Position :> Post '[JSON] ()
     -- Exercise
     :<|> "exercise" :> Get '[JSON] [Entity Exercise]
     :<|> "exercise" :> Capture "exerciseId" ExerciseId :> ReqBody '[JSON] Exercise :> Post '[JSON] ()

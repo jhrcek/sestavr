@@ -111,6 +111,7 @@ init _ url key =
         Cmd.batch
             [ Store.getTargets
             , Store.getExercises
+            , Store.getPositions
             ]
     )
 
@@ -146,13 +147,13 @@ viewBody model =
             ExerciseModel exerciseId ->
                 case Dict.Any.get exerciseId model.store.exercises of
                     Just exercise ->
-                        Exercise.view exercise
+                        Exercise.view model.store.positions exercise
 
                     Nothing ->
                         E.text <| "Cvičení s ID " ++ Id.toString exerciseId ++ " neexistuje"
 
             ExerciseEditor emodel ->
-                E.map ExerciseMsg <| Exercise.viewEditor emodel
+                E.map ExerciseMsg <| Exercise.viewEditor model.store.positions emodel
 
             TargetsModel tmodel ->
                 E.map TargetsMsg <| Targets.view model.store.targets tmodel

@@ -48,14 +48,18 @@ apiServer :: ConnectionPool -> Server SestavrAPI
 apiServer pool =
   getIndex
     :<|> getElmApp
-    :<|> getPosition
-    :<|> getPositions
     :<|> getLessons
-    :<|> getTargets
     -- Target
+    :<|> getTargets
     :<|> createTarget
     :<|> deleteTarget
     :<|> updateTarget
+    -- Position
+    :<|> getPositions
+    :<|> createPosition
+    :<|> getPosition
+    :<|> deletePosition
+    :<|> updatePosition
     -- Exercise
     :<|> getExercises
     :<|> updateExercise
@@ -63,24 +67,8 @@ apiServer pool =
     runPool :: MonadIO m => SqlPersistM a -> m a
     runPool action = liftIO $ runSqlPersistMPool action pool
     --
-    getPosition :: PositionId -> Handler Position
-    getPosition positionId = do
-      mPosition <- runPool $ get positionId
-      case mPosition of
-        Nothing -> throwError $ err404 {errBody = "Pozice neexistuje : " <> LBS.pack (show positionId)}
-        Just p -> pure p
-    --
-    getPositions :: Handler [Entity Position]
-    getPositions = runPool $ selectList [] []
-    --
-    getExercises :: Handler [Entity Exercise]
-    getExercises = runPool $ selectList [] []
-    --
     getLessons :: Handler [Entity Lesson]
     getLessons = runPool $ selectList [] []
-    --
-    getTargets :: Handler [Entity Target]
-    getTargets = runPool $ selectList [] []
     --
     handleConstraintError :: Handler x -> LBS.ByteString -> Handler x
     handleConstraintError action err =
@@ -90,6 +78,9 @@ apiServer pool =
         handler ex = case seError ex of
           ErrorConstraint -> throw409 ex err
           _ -> throwM ex
+    -- TARGET
+    getTargets :: Handler [Entity Target]
+    getTargets = runPool $ selectList [] []
     --
     createTarget :: Target -> Handler (Entity Target)
     createTarget target =
@@ -105,6 +96,34 @@ apiServer pool =
     updateTarget targetId target =
       runPool (replace targetId target)
         `handleConstraintError` "Target area with this name already exists"
+    -- POSITION
+    getPositions :: Handler [Entity Position]
+    getPositions = runPool $ selectList [] []
+    --
+    getPosition :: PositionId -> Handler Position
+    getPosition positionId = do
+      mPosition <- runPool $ get positionId
+      case mPosition of
+        Nothing -> throwError $ err404 {errBody = "Pozice neexistuje : " <> LBS.pack (show positionId)}
+        Just p -> pure p
+    --
+    createPosition :: Position -> Handler (Entity Position)
+    createPosition position =
+      runPool (insertEntity position)
+        `handleConstraintError` "Position with this name already exists"
+    --
+    deletePosition :: PositionId -> Handler ()
+    deletePosition positionId =
+      runPool (delete positionId)
+        `handleConstraintError` "Position can't be deleted, it is used in some Exercises"
+    --
+    updatePosition :: PositionId -> Position -> Handler ()
+    updatePosition positionId position =
+      runPool (replace positionId position)
+        `handleConstraintError` "Position with this name already exists"
+    -- EXERCISE
+    getExercises :: Handler [Entity Exercise]
+    getExercises = runPool $ selectList [] []
     --
     updateExercise :: ExerciseId -> Exercise -> Handler ()
     updateExercise exerciseId exercise =

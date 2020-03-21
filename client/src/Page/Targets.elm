@@ -116,8 +116,6 @@ view : IdDict TargetIdTag Target -> Model -> Element Msg
 view targets model =
     E.column [ E.width (E.maximum 500 <| E.px 300) ]
         [ viewTargets targets model.editedTarget
-
-        -- TODO make this into modal?
         , form model
         ]
 

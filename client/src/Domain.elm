@@ -2,19 +2,27 @@ module Domain exposing
     ( Exercise
     , ExerciseId
     , ExerciseIdTag
+    , Position
     , PositionId
+    , PositionIdTag
     , Target
     , TargetId
     , TargetIdTag
     , encodeExercise
+    , encodePosition
     , encodeTarget
     , exerciseDecoder
+    , positionDecoder
     , targetDecoder
     )
 
 import Id exposing (Id)
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
+
+
+
+-- TARGET
 
 
 type TargetIdTag
@@ -44,12 +52,39 @@ encodeTarget target =
         [ ( "name", Encode.string target.name ) ]
 
 
+
+-- POSITION
+
+
 type PositionIdTag
     = PositionIdTag
 
 
 type alias PositionId =
     Id PositionIdTag
+
+
+type alias Position =
+    { id : PositionId
+    , name : String
+    }
+
+
+positionDecoder : Decoder Position
+positionDecoder =
+    Decode.map2 Position
+        (Decode.field "id" Id.decode)
+        (Decode.field "name" Decode.string)
+
+
+encodePosition : Position -> Value
+encodePosition position =
+    Encode.object
+        [ ( "name", Encode.string position.name ) ]
+
+
+
+-- EXERCISE
 
 
 type ExerciseIdTag

@@ -4,6 +4,7 @@ module Store exposing
     , createTarget
     , deleteTarget
     , getExercises
+    , getPositions
     , getTargets
     , init
     , update
@@ -12,14 +13,7 @@ module Store exposing
     )
 
 import Dict.Any
-import Domain
-    exposing
-        ( Exercise
-        , ExerciseIdTag
-        , Target
-        , TargetId
-        , TargetIdTag
-        )
+import Domain exposing (Exercise, ExerciseIdTag, Position, PositionIdTag, Target, TargetId, TargetIdTag)
 import Http
 import Http.Extra as Ht2
 import Id exposing (IdDict)
@@ -32,6 +26,8 @@ type Msg
     | TargetCreated (Result Ht2.Error Target)
     | TargetDeleted (Result Ht2.Error TargetId)
     | TargetUpdated (Result Ht2.Error Target)
+      -- Position
+    | PositionsFetched (Result Ht2.Error (List Position))
       -- Exercise
     | ExercisesFetched (Result Ht2.Error (List Exercise))
     | ExerciseUpdate (Result Ht2.Error Exercise)
@@ -39,6 +35,7 @@ type Msg
 
 type alias Store =
     { targets : IdDict TargetIdTag Target
+    , positions : IdDict PositionIdTag Position
     , exercises : IdDict ExerciseIdTag Exercise
     }
 
@@ -46,6 +43,7 @@ type alias Store =
 init : Store
 init =
     { targets = Id.emptyDict
+    , positions = Id.emptyDict
     , exercises = Id.emptyDict
     }
 
@@ -64,6 +62,9 @@ update msg store =
 
         TargetUpdated result ->
             updateOrError result store (\target s -> { s | targets = Dict.Any.insert target.id target store.targets })
+
+        PositionsFetched result ->
+            updateOrError result store (\positions s -> { s | positions = Id.buildDict positions })
 
         ExercisesFetched result ->
             updateOrError result store (\exercises s -> { s | exercises = Id.buildDict exercises })
@@ -125,6 +126,21 @@ updateTarget target =
         { url = "/target/" ++ Id.toString target.id
         , body = Http.jsonBody <| Domain.encodeTarget target
         , expect = Ht2.expectWhatever (TargetUpdated << Result.map (\() -> target))
+        }
+
+
+
+-- POSITION
+
+
+getPositions : Cmd Msg
+getPositions =
+    Http.get
+        { url = "/position"
+        , expect =
+            Ht2.expectJson
+                PositionsFetched
+                (Decode.list Domain.positionDecoder)
         }
 
 

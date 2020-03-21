@@ -12,9 +12,20 @@ module Page.Exercise exposing
 
 import Command
 import Dict.Any
-import Domain exposing (Exercise, ExerciseId, ExerciseIdTag, PositionId, TargetId, TargetIdTag)
+import Domain
+    exposing
+        ( Exercise
+        , ExerciseId
+        , ExerciseIdTag
+        , Position
+        , PositionId
+        , PositionIdTag
+        , TargetId
+        , TargetIdTag
+        )
 import Element as E exposing (Element)
 import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Id exposing (IdDict, IdSet)
@@ -30,7 +41,13 @@ type alias Model =
     , description : String
     , positionId : Maybe PositionId
     , targetAreas : IdSet TargetIdTag
+    , positionDropdown : Dropdown
     }
+
+
+type Dropdown
+    = Closed
+    | Opened
 
 
 type Msg
@@ -38,6 +55,8 @@ type Msg
     | SetSanskritName String
     | SetDescription String
     | ToggleTargetId TargetId
+    | PositionSelected PositionId
+    | OpenPositionDropdown
     | SaveExercise
 
 
@@ -99,6 +118,7 @@ initEditor exercise =
     , description = exercise.description
     , positionId = Just exercise.positionId
     , targetAreas = Id.emptySet
+    , positionDropdown = Closed
     }
 
 
@@ -110,6 +130,7 @@ emptyEditor =
     , description = ""
     , positionId = Nothing
     , targetAreas = Id.emptySet
+    , positionDropdown = Closed
     }
 
 
@@ -128,6 +149,17 @@ update config msg model =
         ToggleTargetId targetId ->
             ( { model | targetAreas = Set.Any.toggle targetId model.targetAreas }, Cmd.none )
 
+        PositionSelected positionId ->
+            ( { model
+                | positionId = Just positionId
+                , positionDropdown = Closed
+              }
+            , Cmd.none
+            )
+
+        OpenPositionDropdown ->
+            ( { model | positionDropdown = Opened }, Cmd.none )
+
         SaveExercise ->
             let
                 command =
@@ -142,8 +174,8 @@ update config msg model =
             ( model, command )
 
 
-viewEditor : Model -> Element Msg
-viewEditor model =
+viewEditor : IdDict PositionIdTag Position -> Model -> Element Msg
+viewEditor positions model =
     let
         fieldWidth =
             E.width E.fill
@@ -185,8 +217,8 @@ viewEditor model =
             , label = Input.labelHidden "Popis"
             , spellcheck = False
             }
+        , positionDropdown positions model.positionId model.positionDropdown
 
-        --TODO positionId dropdown
         --TODO target areas multiselect
         , E.row [ E.alignRight, E.spacing 5 ]
             [ E.link buttonAttrs
@@ -203,6 +235,36 @@ viewEditor model =
                 { onPress = Just SaveExercise
                 , label = E.text "Uložit"
                 }
+            ]
+        ]
+
+
+positionDropdown : IdDict PositionIdTag Position -> Maybe PositionId -> Dropdown -> Element Msg
+positionDropdown positions currentPosition dropdown =
+    E.row
+        [ case dropdown of
+            Closed ->
+                Events.onClick OpenPositionDropdown
+
+            Opened ->
+                E.below <|
+                    E.column [ Border.solid, Border.width 1 ] <|
+                        List.map (\p -> E.el [ Events.onClick (PositionSelected p.id) ] (E.text p.name)) <|
+                            Dict.Any.values positions
+        ]
+        [ E.row []
+            [ E.text "Pozice: "
+            , case currentPosition of
+                Nothing ->
+                    E.text "- zvolit -"
+
+                Just selectedPositionId ->
+                    case Dict.Any.get selectedPositionId positions of
+                        Nothing ->
+                            E.text "BUG!!! Zvolana pozice, která neexistuje v DB"
+
+                        Just selectedPosition ->
+                            E.text selectedPosition.name
             ]
         ]
 
@@ -239,13 +301,16 @@ lightBlue =
     E.rgb255 18 147 216
 
 
-view : Exercise -> Element msg
-view exercise =
+view : IdDict PositionIdTag Position -> Exercise -> Element msg
+view positions exercise =
     E.column [ E.width E.fill ]
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , E.el [ Font.size 28, Font.bold ] (E.text exercise.name)
         , E.el [ Font.size 20, Font.bold, Font.italic ]
-            (E.text <| Maybe.withDefault "" exercise.sanskritName)
+            (E.text <| "Sanskrt : " ++ Maybe.withDefault "N/A" exercise.sanskritName)
+
+        -- TODO improve how we deal with the cases when position not in store
+        , E.el [] (E.text <| "Pozice : " ++ Maybe.withDefault "BUG!!!" (Maybe.map .name (Dict.Any.get exercise.positionId positions)))
         , E.paragraph []
             [ E.html <| Markdown.toHtml [] exercise.description ]
         , E.link
