@@ -21,7 +21,7 @@ viewError closeMsg error =
             , E.centerY
             , Background.color (E.rgb255 255 255 255)
             , Border.solid
-            , Border.width 2
+            , Border.width 1
             ]
             [ header closeMsg
             , body error

@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav exposing (Key)
 import Dict.Any
-import Domain exposing (ExerciseId, Target, TargetId)
+import Domain exposing (Exercise, ExerciseId, Target, TargetId)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
@@ -83,9 +83,14 @@ type Msg
     | StoreMsg Store.Msg
     | SetRoute Route
     | TargetsMsg Targets.Msg
+    | ExerciseMsg Exercise.Msg
+      -- Target
     | CreateTarget Target
     | DeleteTarget TargetId
     | UpdateTarget Target
+      -- Exercise
+    | UpdateExercise Exercise
+    | CreateExercise Exercise
     | ErrorAcked
 
 
@@ -147,7 +152,7 @@ viewBody model =
                         E.text <| "Cvičení s ID " ++ Id.toString exerciseId ++ " neexistuje"
 
             ExerciseEditor emodel ->
-                Exercise.viewEditor emodel
+                E.map ExerciseMsg <| Exercise.viewEditor emodel
 
             TargetsModel tmodel ->
                 E.map TargetsMsg <| Targets.view model.store.targets tmodel
@@ -213,6 +218,21 @@ update msg model =
             , targetCmd
             )
 
+        ExerciseMsg exerciseMsg ->
+            let
+                ( newPageModel, exerciseCmd ) =
+                    case model.pageModel of
+                        ExerciseEditor m ->
+                            Tuple.mapFirst ExerciseEditor <|
+                                Exercise.update exerciseConfig exerciseMsg m
+
+                        x ->
+                            ( x, Cmd.none )
+            in
+            ( { model | pageModel = newPageModel }
+            , exerciseCmd
+            )
+
         CreateTarget target ->
             ( model
             , Cmd.map StoreMsg <| Store.createTarget target
@@ -233,12 +253,33 @@ update msg model =
             , Cmd.map StoreMsg <| Store.updateTarget target
             )
 
+        UpdateExercise exercise ->
+            let
+                redirect =
+                    navigateToRoute model.navKey model.initialUrl (Router.Exercise exercise.id)
+
+                updateCmd =
+                    Cmd.map StoreMsg <| Store.updateExercise exercise
+            in
+            ( model, Cmd.batch [ redirect, updateCmd ] )
+
+        CreateExercise exercise ->
+            -- TODO backend command
+            ( model, Cmd.none )
+
 
 targetConfig : Targets.Config Msg
 targetConfig =
     { createTarget = CreateTarget
     , deleteTarget = DeleteTarget
     , updateTarget = UpdateTarget
+    }
+
+
+exerciseConfig : Exercise.Config Msg
+exerciseConfig =
+    { updateExercise = UpdateExercise
+    , createExercise = CreateExercise
     }
 
 
@@ -261,6 +302,7 @@ viewLayout route content =
         , E.el
             [ E.alignTop
             , E.padding 50
+            , E.width E.fill
             ]
             content
         ]

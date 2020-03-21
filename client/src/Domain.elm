@@ -6,6 +6,7 @@ module Domain exposing
     , Target
     , TargetId
     , TargetIdTag
+    , encodeExercise
     , encodeTarget
     , exerciseDecoder
     , targetDecoder
@@ -76,6 +77,16 @@ exerciseDecoder =
         (Decode.field "sanskritName" <| Decode.nullable Decode.string)
         (Decode.field "description" Decode.string)
         (Decode.field "positionId" Id.decode)
+
+
+encodeExercise : Exercise -> Value
+encodeExercise exercise =
+    Encode.object
+        [ ( "name", Encode.string exercise.name )
+        , ( "sanskritName", Maybe.withDefault Encode.null <| Maybe.map Encode.string exercise.sanskritName )
+        , ( "description", Encode.string exercise.description )
+        , ( "positionId", Id.encode exercise.positionId )
+        ]
 
 
 

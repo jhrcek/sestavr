@@ -7,12 +7,14 @@ module Id exposing
     , decode
     , emptyDict
     , emptySet
+    , encode
     , fromInt
     , toString
     )
 
 import Dict.Any exposing (AnyDict)
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode exposing (Value)
 import Set.Any exposing (AnySet)
 
 
@@ -55,6 +57,11 @@ toString (Id i) =
 decode : Decoder (Id tag)
 decode =
     Decode.map Id Decode.int
+
+
+encode : Id tag -> Value
+encode (Id i) =
+    Encode.int i
 
 
 emptyDict : IdDict tag a

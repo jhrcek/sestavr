@@ -162,7 +162,7 @@ button : { onPress : Maybe Msg, label : Element Msg } -> Element Msg
 button =
     Input.button
         [ Border.solid
-        , Border.width 2
+        , Border.width 1
         , E.padding 5
         , Border.rounded 4
         ]
@@ -182,8 +182,7 @@ viewTargets targets maybeEdited =
 
         colHeader label =
             E.el
-                [ Border.color (E.rgb255 0 0 0)
-                , Border.solid
+                [ Border.solid
                 , Border.width 1
                 , E.padding 5
                 , Background.color (E.rgb255 192 192 192)
@@ -214,8 +213,7 @@ viewTargets targets maybeEdited =
 
                                 else
                                     E.el
-                                        [ Border.color (E.rgb255 0 0 0)
-                                        , Border.solid
+                                        [ Border.solid
                                         , Border.width 1
                                         , E.padding 5
                                         ]
@@ -223,8 +221,7 @@ viewTargets targets maybeEdited =
 
                             Nothing ->
                                 E.el
-                                    [ Border.color (E.rgb255 0 0 0)
-                                    , Border.solid
+                                    [ Border.solid
                                     , Border.width 1
                                     , E.padding 5
                                     ]

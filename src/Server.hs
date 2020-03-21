@@ -25,7 +25,7 @@ import Database.Persist.Sql (SqlPersistM)
 import Database.Persist.Sqlite (ConnectionPool, createSqlitePool, runMigration, runSqlPersistMPool, runSqlPool)
 import Database.Persist.Types (Entity)
 import Database.Sqlite (Error (ErrorConstraint), SqliteException, seError)
-import Model (Exercise, Lesson, Position, PositionId, Target, TargetId, migrateAll)
+import Model (Exercise, ExerciseId, Lesson, Position, PositionId, Target, TargetId, migrateAll)
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
 
@@ -50,13 +50,15 @@ apiServer pool =
     :<|> getElmApp
     :<|> getPosition
     :<|> getPositions
-    :<|> getExercises
     :<|> getLessons
     :<|> getTargets
-    --
+    -- Target
     :<|> createTarget
     :<|> deleteTarget
     :<|> updateTarget
+    -- Exercise
+    :<|> getExercises
+    :<|> updateExercise
   where
     runPool :: MonadIO m => SqlPersistM a -> m a
     runPool action = liftIO $ runSqlPersistMPool action pool
@@ -103,6 +105,10 @@ apiServer pool =
     updateTarget targetId target =
       runPool (replace targetId target)
         `handleConstraintError` "Target area with this name already exists"
+    --
+    updateExercise :: ExerciseId -> Exercise -> Handler ()
+    updateExercise exerciseId exercise =
+      runPool (replace exerciseId exercise)
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

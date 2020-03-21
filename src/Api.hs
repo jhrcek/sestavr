@@ -24,13 +24,15 @@ type SestavrAPI =
     :<|> "main.js" :> Get '[JS] ByteString
     :<|> "position" :> Capture "positionId" PositionId :> Get '[JSON] Position
     :<|> "position" :> Get '[JSON] [Entity Position]
-    :<|> "exercise" :> Get '[JSON] [Entity Exercise]
     :<|> "lesson" :> Get '[JSON] [Entity Lesson]
+    -- Target
     :<|> "target" :> Get '[JSON] [Entity Target]
-    --
     :<|> "target" :> ReqBody '[JSON] Target :> Post '[JSON] (Entity Target)
     :<|> "target" :> Capture "targetId" TargetId :> Delete '[JSON] ()
     :<|> "target" :> Capture "targetId" TargetId :> ReqBody '[JSON] Target :> Post '[JSON] ()
+    -- Exercise
+    :<|> "exercise" :> Get '[JSON] [Entity Exercise]
+    :<|> "exercise" :> Capture "exerciseId" ExerciseId :> ReqBody '[JSON] Exercise :> Post '[JSON] ()
 
 sestavrApi :: Proxy SestavrAPI
 sestavrApi = Proxy

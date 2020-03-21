@@ -1,18 +1,26 @@
 module Page.Exercise exposing
-    ( Model
+    ( Config
+    , Model
+    , Msg
     , emptyEditor
     , initEditor
+    , update
     , view
     , viewEditor
     , viewList
     )
 
+import Command
 import Dict.Any
-import Domain exposing (Exercise, ExerciseId, ExerciseIdTag, TargetIdTag)
+import Domain exposing (Exercise, ExerciseId, ExerciseIdTag, PositionId, TargetId, TargetIdTag)
 import Element as E exposing (Element)
+import Element.Border as Border
 import Element.Font as Font
+import Element.Input as Input
 import Id exposing (IdDict, IdSet)
 import Markdown
+import Router exposing (Route(..))
+import Set.Any
 
 
 type alias Model =
@@ -20,8 +28,67 @@ type alias Model =
     , name : String
     , sanskritName : String
     , description : String
+    , positionId : Maybe PositionId
     , targetAreas : IdSet TargetIdTag
     }
+
+
+type Msg
+    = SetName String
+    | SetSanskritName String
+    | SetDescription String
+    | ToggleTargetId TargetId
+    | SaveExercise
+
+
+type alias Config msg =
+    { createExercise : Exercise -> msg
+    , updateExercise : Exercise -> msg
+
+    --, deleteExercise : ExerciseId -> msg
+    }
+
+
+type ValidationError
+    = PositionNotSet
+
+
+updateOrCreate : Config msg -> Model -> Result ValidationError msg
+updateOrCreate config model =
+    case model.positionId of
+        Nothing ->
+            Err PositionNotSet
+
+        Just positionId ->
+            Ok <|
+                case model.exerciseId of
+                    Nothing ->
+                        config.createExercise
+                            { id = Id.fromInt -1
+                            , name = model.name
+                            , sanskritName =
+                                if String.isEmpty model.sanskritName then
+                                    Nothing
+
+                                else
+                                    Just model.sanskritName
+                            , description = model.description
+                            , positionId = positionId
+                            }
+
+                    Just exerciseId ->
+                        config.updateExercise
+                            { id = exerciseId
+                            , name = model.name
+                            , sanskritName =
+                                if String.isEmpty model.sanskritName then
+                                    Nothing
+
+                                else
+                                    Just model.sanskritName
+                            , description = model.description
+                            , positionId = positionId
+                            }
 
 
 initEditor : Exercise -> Model
@@ -30,6 +97,7 @@ initEditor exercise =
     , name = exercise.name
     , sanskritName = Maybe.withDefault "" exercise.sanskritName
     , description = exercise.description
+    , positionId = Just exercise.positionId
     , targetAreas = Id.emptySet
     }
 
@@ -40,26 +108,102 @@ emptyEditor =
     , name = ""
     , sanskritName = ""
     , description = ""
+    , positionId = Nothing
     , targetAreas = Id.emptySet
     }
 
 
-viewEditor : Model -> Element msg
-viewEditor model =
-    E.column []
-        [ E.text <| Debug.toString model
-        , E.link []
-            { url =
-                "/#exercise"
-                    ++ (case model.exerciseId of
-                            Just exerciseId ->
-                                "/" ++ Id.toString exerciseId
+update : Config msg -> Msg -> Model -> ( Model, Cmd msg )
+update config msg model =
+    case msg of
+        SetName newName ->
+            ( { model | name = newName }, Cmd.none )
 
-                            Nothing ->
-                                ""
-                       )
-            , label = E.text "Zrušit"
+        SetSanskritName newSanskritName ->
+            ( { model | sanskritName = newSanskritName }, Cmd.none )
+
+        SetDescription newDescription ->
+            ( { model | description = newDescription }, Cmd.none )
+
+        ToggleTargetId targetId ->
+            ( { model | targetAreas = Set.Any.toggle targetId model.targetAreas }, Cmd.none )
+
+        SaveExercise ->
+            let
+                command =
+                    case updateOrCreate config model of
+                        Err validationError ->
+                            -- TODO open modal
+                            Cmd.none
+
+                        Ok saveOrUpdateCmd ->
+                            Command.perform saveOrUpdateCmd
+            in
+            ( model, command )
+
+
+viewEditor : Model -> Element Msg
+viewEditor model =
+    let
+        fieldWidth =
+            E.width E.fill
+
+        placeholder txt =
+            Just <| Input.placeholder [] (E.text txt)
+
+        buttonAttrs =
+            [ E.padding 5
+            , Border.solid
+            , Border.width 1
+            , Border.rounded 4
+            ]
+    in
+    E.column [ E.width E.fill ]
+        [ Input.text [ fieldWidth ]
+            { onChange = SetName
+            , text = model.name
+            , placeholder = placeholder "Název"
+            , label = Input.labelHidden "Název"
             }
+        , Input.text [ fieldWidth ]
+            { onChange = SetSanskritName
+            , text = model.sanskritName
+            , placeholder = placeholder "Sanskrt název"
+            , label = Input.labelHidden "Sanskrt název"
+            }
+        , Input.multiline
+            [ fieldWidth
+            , E.height
+                (E.fill
+                    |> E.minimum 200
+                    |> E.maximum 400
+                )
+            ]
+            { onChange = SetDescription
+            , text = model.description
+            , placeholder = placeholder "Popis (markdown)"
+            , label = Input.labelHidden "Popis"
+            , spellcheck = False
+            }
+
+        --TODO positionId dropdown
+        --TODO target areas multiselect
+        , E.row [ E.alignRight, E.spacing 5 ]
+            [ E.link buttonAttrs
+                { url =
+                    case model.exerciseId of
+                        Just exerciseId ->
+                            Router.href (Router.Exercise exerciseId)
+
+                        Nothing ->
+                            Router.href Router.Exercises
+                , label = E.text "Zrušit"
+                }
+            , Input.button buttonAttrs
+                { onPress = Just SaveExercise
+                , label = E.text "Uložit"
+                }
+            ]
         ]
 
 
@@ -77,8 +221,7 @@ exerciseLink exercise =
             [ E.mouseOver [ E.moveRight 2 ]
             , Font.color lightBlue
             ]
-            --TODO type-safe generation of exercise links
-            { url = "/#exercise/" ++ Id.toString exercise.id
+            { url = Router.href (Router.Exercise exercise.id)
             , label =
                 E.text
                     (exercise.name
@@ -97,15 +240,22 @@ lightBlue =
 
 
 view : Exercise -> Element msg
-view e =
-    E.column []
+view exercise =
+    E.column [ E.width E.fill ]
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
-        , E.el [ Font.size 28, Font.bold ] (E.text e.name)
+        , E.el [ Font.size 28, Font.bold ] (E.text exercise.name)
         , E.el [ Font.size 20, Font.bold, Font.italic ]
-            (E.text <| Maybe.withDefault "sanskrit name?" e.sanskritName)
-        , E.html <| Markdown.toHtml [] e.description
-        , E.link []
-            { url = "/#exercise/" ++ Id.toString e.id ++ "/edit"
+            (E.text <| Maybe.withDefault "" exercise.sanskritName)
+        , E.paragraph []
+            [ E.html <| Markdown.toHtml [] exercise.description ]
+        , E.link
+            [ E.padding 5
+            , Border.solid
+            , Border.width 1
+            , Border.rounded 4
+            , E.alignRight
+            ]
+            { url = Router.href (Router.ExerciseEditor exercise.id)
             , label = E.text "Upravit"
             }
         ]
@@ -115,6 +265,6 @@ backToList : Element msg
 backToList =
     E.link
         [ E.mouseOver [ E.moveLeft 2 ], Font.color lightBlue ]
-        { url = "/#exercise"
+        { url = Router.href Exercises
         , label = E.text "« Zpět na seznam cviků"
         }

@@ -7,6 +7,7 @@ module Store exposing
     , getTargets
     , init
     , update
+    , updateExercise
     , updateTarget
     )
 
@@ -26,11 +27,14 @@ import Json.Decode as Decode
 
 
 type Msg
-    = GotTargets (Result Ht2.Error (List Target))
+    = -- Target
+      TargetsFetched (Result Ht2.Error (List Target))
     | TargetCreated (Result Ht2.Error Target)
     | TargetDeleted (Result Ht2.Error TargetId)
     | TargetUpdated (Result Ht2.Error Target)
-    | GotExercises (Result Ht2.Error (List Exercise))
+      -- Exercise
+    | ExercisesFetched (Result Ht2.Error (List Exercise))
+    | ExerciseUpdate (Result Ht2.Error Exercise)
 
 
 type alias Store =
@@ -49,7 +53,7 @@ init =
 update : Msg -> Store -> ( Store, Maybe Ht2.Error )
 update msg store =
     case msg of
-        GotTargets result ->
+        TargetsFetched result ->
             updateOrError result store (\targets s -> { s | targets = Id.buildDict targets })
 
         TargetCreated result ->
@@ -61,8 +65,11 @@ update msg store =
         TargetUpdated result ->
             updateOrError result store (\target s -> { s | targets = Dict.Any.insert target.id target store.targets })
 
-        GotExercises result ->
+        ExercisesFetched result ->
             updateOrError result store (\exercises s -> { s | exercises = Id.buildDict exercises })
+
+        ExerciseUpdate result ->
+            updateOrError result store (\exercise s -> { s | exercises = Dict.Any.insert exercise.id exercise store.exercises })
 
 
 updateOrError : Result Ht2.Error a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
@@ -85,7 +92,7 @@ getTargets =
         { url = "/target"
         , expect =
             Ht2.expectJson
-                GotTargets
+                TargetsFetched
                 (Decode.list Domain.targetDecoder)
         }
 
@@ -131,6 +138,15 @@ getExercises =
         { url = "/exercise"
         , expect =
             Ht2.expectJson
-                GotExercises
+                ExercisesFetched
                 (Decode.list Domain.exerciseDecoder)
+        }
+
+
+updateExercise : Exercise -> Cmd Msg
+updateExercise exercise =
+    Http.post
+        { url = "/exercise/" ++ Id.toString exercise.id
+        , body = Http.jsonBody <| Domain.encodeExercise exercise
+        , expect = Ht2.expectWhatever (ExerciseUpdate << Result.map (\() -> exercise))
         }

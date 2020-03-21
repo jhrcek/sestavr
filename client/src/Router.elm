@@ -1,5 +1,6 @@
 module Router exposing
     ( Route(..)
+    , href
     , parseUrl
     , toHash
     )
@@ -44,19 +45,24 @@ toHash : Route -> String
 toHash r =
     case r of
         Home ->
-            ""
+            "/"
 
         Targets ->
-            "target"
+            "/target"
 
         Exercises ->
-            "exercise"
+            "/exercise"
 
         Exercise exerciseId ->
-            "exercise/" ++ Id.toString exerciseId
+            "/exercise/" ++ Id.toString exerciseId
 
         ExerciseEditor exerciseId ->
-            "exercise/" ++ Id.toString exerciseId ++ "/edit"
+            "/exercise/" ++ Id.toString exerciseId ++ "/edit"
 
         NotFound bad ->
             bad
+
+
+href : Route -> String
+href r =
+    "#" ++ toHash r
