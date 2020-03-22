@@ -25,7 +25,6 @@ import Domain
         )
 import Element as E exposing (Element)
 import Element.Border as Border
-import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Id exposing (IdDict, IdSet)
@@ -41,13 +40,7 @@ type alias Model =
     , description : String
     , positionId : Maybe PositionId
     , targetAreas : IdSet TargetIdTag
-    , positionDropdown : Dropdown
     }
-
-
-type Dropdown
-    = Closed
-    | Opened
 
 
 type Msg
@@ -56,7 +49,6 @@ type Msg
     | SetDescription String
     | ToggleTargetId TargetId
     | PositionSelected PositionId
-    | OpenPositionDropdown
     | SaveExercise
 
 
@@ -118,7 +110,6 @@ initEditor exercise =
     , description = exercise.description
     , positionId = Just exercise.positionId
     , targetAreas = Id.emptySet
-    , positionDropdown = Closed
     }
 
 
@@ -130,7 +121,6 @@ emptyEditor =
     , description = ""
     , positionId = Nothing
     , targetAreas = Id.emptySet
-    , positionDropdown = Closed
     }
 
 
@@ -150,15 +140,9 @@ update config msg model =
             ( { model | targetAreas = Set.Any.toggle targetId model.targetAreas }, Cmd.none )
 
         PositionSelected positionId ->
-            ( { model
-                | positionId = Just positionId
-                , positionDropdown = Closed
-              }
+            ( { model | positionId = Just positionId }
             , Cmd.none
             )
-
-        OpenPositionDropdown ->
-            ( { model | positionDropdown = Opened }, Cmd.none )
 
         SaveExercise ->
             let
@@ -217,7 +201,7 @@ viewEditor positions model =
             , label = Input.labelHidden "Popis"
             , spellcheck = False
             }
-        , positionDropdown positions model.positionId model.positionDropdown
+        , positionRadios positions model.positionId
 
         --TODO target areas multiselect
         , E.row [ E.alignRight, E.spacing 5 ]
@@ -239,59 +223,16 @@ viewEditor positions model =
         ]
 
 
-positionDropdown : IdDict PositionIdTag Position -> Maybe PositionId -> Dropdown -> Element Msg
-positionDropdown positions currentPosition dropdown =
-    let
-        selectedItem =
-            case currentPosition of
-                Nothing ->
-                    E.text "- zvolit -"
-
-                Just selectedPositionId ->
-                    case Dict.Any.get selectedPositionId positions of
-                        Nothing ->
-                            E.text "BUG!!! Zvolana pozice, která neexistuje v DB"
-
-                        Just selectedPosition ->
-                            E.text selectedPosition.name
-    in
-    E.row []
-        [ E.el [ E.alignTop, E.padding 3 ] (E.text "Pozice")
-        , case dropdown of
-            Closed ->
-                E.el
-                    [ Events.onClick OpenPositionDropdown
-                    , Border.solid
-                    , Border.rounded 5
-                    , Border.width 1
-                    , E.padding 3
-                    ]
-                    selectedItem
-
-            Opened ->
-                E.el
-                    [ E.below
-                        (Dict.Any.values positions
-                            |> List.map
-                                (\p ->
-                                    E.el
-                                        [ Events.onClick (PositionSelected p.id)
-                                        , E.width E.fill
-
-                                        -- TODO change color on mouse over, E.mouseOver []
-                                        ]
-                                        (E.text p.name)
-                                )
-                            |> E.column
-                                [ Border.roundEach { topLeft = 0, topRight = 0, bottomLeft = 5, bottomRight = 5 }
-                                , Border.solid
-                                , Border.width 1
-                                , E.padding 3
-                                ]
-                        )
-                    ]
-                    (E.text "- vyber pozici -")
-        ]
+positionRadios : IdDict PositionIdTag Position -> Maybe PositionId -> Element Msg
+positionRadios positions maybeCurrentPosition =
+    Input.radio []
+        { onChange = PositionSelected
+        , selected = maybeCurrentPosition
+        , label = Input.labelLeft [ E.padding 3 ] (E.text "Pozice")
+        , options =
+            Dict.Any.values positions
+                |> List.map (\p -> Input.option p.id (E.text p.name))
+        }
 
 
 viewList : IdDict ExerciseIdTag Exercise -> Element msg

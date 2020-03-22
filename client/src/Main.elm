@@ -310,7 +310,7 @@ update msg model =
             in
             ( model, Cmd.batch [ redirect, updateCmd ] )
 
-        CreateExercise exercise ->
+        CreateExercise _ ->
             -- TODO backend command
             ( model, Cmd.none )
 
