@@ -17,7 +17,7 @@ type Route
     | Positions
     | Exercises
     | Exercise ExerciseId
-    | ExerciseEditor ExerciseId
+    | ExerciseEditor (Maybe ExerciseId)
     | NotFound String
 
 
@@ -29,7 +29,8 @@ route =
         , P.map Positions (s "position")
         , P.map Exercises (s "exercise")
         , P.map (Exercise << Id.fromInt) (s "exercise" </> int)
-        , P.map (ExerciseEditor << Id.fromInt) (s "exercise" </> int </> s "edit")
+        , P.map (ExerciseEditor Nothing) (s "exercise" </> s "create")
+        , P.map (ExerciseEditor << Just << Id.fromInt) (s "exercise" </> int </> s "edit")
         ]
 
 
@@ -61,8 +62,13 @@ toHash r =
         Exercise exerciseId ->
             "/exercise/" ++ Id.toString exerciseId
 
-        ExerciseEditor exerciseId ->
-            "/exercise/" ++ Id.toString exerciseId ++ "/edit"
+        ExerciseEditor maybeExerciseId ->
+            case maybeExerciseId of
+                Nothing ->
+                    "/exercise/create"
+
+                Just exerciseId ->
+                    "/exercise/" ++ Id.toString exerciseId ++ "/edit"
 
         NotFound bad ->
             bad

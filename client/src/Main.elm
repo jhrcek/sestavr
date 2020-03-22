@@ -3,7 +3,15 @@ module Main exposing (main)
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav exposing (Key)
 import Dict.Any
-import Domain exposing (Exercise, ExerciseId, Position, PositionId, Target, TargetId)
+import Domain
+    exposing
+        ( Exercise
+        , ExerciseId
+        , Position
+        , PositionId
+        , Target
+        , TargetId
+        )
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
@@ -59,14 +67,12 @@ initPage route store =
         Router.Exercise exerciseId ->
             ExerciseModel exerciseId
 
-        Router.ExerciseEditor exerciseId ->
-            ExerciseEditor <|
-                case Dict.Any.get exerciseId store.exercises of
-                    Just exercise ->
-                        Exercise.initEditor exercise
-
-                    Nothing ->
-                        Exercise.emptyEditor
+        Router.ExerciseEditor maybeExerciseId ->
+            maybeExerciseId
+                |> Maybe.andThen (\exerciseId -> Dict.Any.get exerciseId store.exercises)
+                |> Maybe.map (\exercise -> Exercise.initEditor exercise)
+                |> Maybe.withDefault Exercise.emptyEditor
+                |> ExerciseEditor
 
         Router.NotFound what ->
             NotFoundModel what
@@ -102,8 +108,8 @@ type Msg
     | DeletePosition PositionId
     | UpdatePosition Position
       -- Exercise
-    | UpdateExercise Exercise
-    | CreateExercise Exercise
+    | UpdateExercise Exercise (List TargetId)
+    | CreateExercise Exercise (List TargetId)
     | ErrorAcked
 
 
@@ -160,13 +166,20 @@ viewBody model =
             ExerciseModel exerciseId ->
                 case Dict.Any.get exerciseId model.store.exercises of
                     Just exercise ->
-                        Exercise.view model.store.positions exercise
+                        Exercise.view
+                            model.store.positions
+                            model.store.targets
+                            exercise
 
                     Nothing ->
                         E.text <| "Cvičení s ID " ++ Id.toString exerciseId ++ " neexistuje"
 
             ExerciseEditor emodel ->
-                E.map ExerciseMsg <| Exercise.viewEditor model.store.positions emodel
+                E.map ExerciseMsg <|
+                    Exercise.viewEditor
+                        model.store.positions
+                        model.store.targets
+                        emodel
 
             TargetModel tmodel ->
                 E.map TargetMsg <| Target.view model.store.targets tmodel
@@ -300,7 +313,7 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateExercise exercise ->
+        UpdateExercise exercise targets ->
             let
                 redirect =
                     navigateToRoute model.navKey model.initialUrl (Router.Exercise exercise.id)
@@ -310,7 +323,7 @@ update msg model =
             in
             ( model, Cmd.batch [ redirect, updateCmd ] )
 
-        CreateExercise _ ->
+        CreateExercise _ _ ->
             -- TODO backend command
             ( model, Cmd.none )
 

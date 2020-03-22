@@ -16,7 +16,17 @@ module Store exposing
     )
 
 import Dict.Any
-import Domain exposing (Exercise, ExerciseIdTag, Position, PositionId, PositionIdTag, Target, TargetId, TargetIdTag)
+import Domain
+    exposing
+        ( Exercise
+        , ExerciseIdTag
+        , Position
+        , PositionId
+        , PositionIdTag
+        , Target
+        , TargetId
+        , TargetIdTag
+        )
 import Http
 import Http.Extra as Ht2 exposing (ApiCall)
 import Id exposing (IdDict)
