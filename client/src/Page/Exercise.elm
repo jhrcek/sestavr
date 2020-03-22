@@ -241,20 +241,9 @@ viewEditor positions model =
 
 positionDropdown : IdDict PositionIdTag Position -> Maybe PositionId -> Dropdown -> Element Msg
 positionDropdown positions currentPosition dropdown =
-    E.row
-        [ case dropdown of
-            Closed ->
-                Events.onClick OpenPositionDropdown
-
-            Opened ->
-                E.below <|
-                    E.column [ Border.solid, Border.width 1 ] <|
-                        List.map (\p -> E.el [ Events.onClick (PositionSelected p.id) ] (E.text p.name)) <|
-                            Dict.Any.values positions
-        ]
-        [ E.row []
-            [ E.text "Pozice: "
-            , case currentPosition of
+    let
+        selectedItem =
+            case currentPosition of
                 Nothing ->
                     E.text "- zvolit -"
 
@@ -265,7 +254,43 @@ positionDropdown positions currentPosition dropdown =
 
                         Just selectedPosition ->
                             E.text selectedPosition.name
-            ]
+    in
+    E.row []
+        [ E.el [ E.alignTop, E.padding 3 ] (E.text "Pozice")
+        , case dropdown of
+            Closed ->
+                E.el
+                    [ Events.onClick OpenPositionDropdown
+                    , Border.solid
+                    , Border.rounded 5
+                    , Border.width 1
+                    , E.padding 3
+                    ]
+                    selectedItem
+
+            Opened ->
+                E.el
+                    [ E.below
+                        (Dict.Any.values positions
+                            |> List.map
+                                (\p ->
+                                    E.el
+                                        [ Events.onClick (PositionSelected p.id)
+                                        , E.width E.fill
+
+                                        -- TODO change color on mouse over, E.mouseOver []
+                                        ]
+                                        (E.text p.name)
+                                )
+                            |> E.column
+                                [ Border.roundEach { topLeft = 0, topRight = 0, bottomLeft = 5, bottomRight = 5 }
+                                , Border.solid
+                                , Border.width 1
+                                , E.padding 3
+                                ]
+                        )
+                    ]
+                    (E.text "- vyber pozici -")
         ]
 
 
@@ -310,7 +335,7 @@ view positions exercise =
             (E.text <| "Sanskrt : " ++ Maybe.withDefault "N/A" exercise.sanskritName)
 
         -- TODO improve how we deal with the cases when position not in store
-        , E.el [] (E.text <| "Pozice : " ++ Maybe.withDefault "BUG!!!" (Maybe.map .name (Dict.Any.get exercise.positionId positions)))
+        , E.el [] (E.text <| "Pozice: " ++ Maybe.withDefault "BUG!!!" (Maybe.map .name (Dict.Any.get exercise.positionId positions)))
         , E.paragraph []
             [ E.html <| Markdown.toHtml [] exercise.description ]
         , E.link
