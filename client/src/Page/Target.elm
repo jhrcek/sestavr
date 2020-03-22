@@ -1,4 +1,4 @@
-module Page.Targets exposing
+module Page.Target exposing
     ( Config
     , Model
     , Msg

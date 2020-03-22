@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav exposing (Key)
 import Dict.Any
-import Domain exposing (Exercise, ExerciseId, Target, TargetId)
+import Domain exposing (Exercise, ExerciseId, Position, PositionId, Target, TargetId)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
@@ -12,7 +12,8 @@ import Http.Extra as Ht2
 import Id
 import Modal
 import Page.Exercise as Exercise
-import Page.Targets as Targets
+import Page.Position as Position
+import Page.Target as Target
 import Router exposing (Route)
 import Store exposing (Store)
 import Url exposing (Url)
@@ -43,11 +44,14 @@ type alias Model =
 initPage : Route -> Store -> PageModel
 initPage route store =
     case route of
-        Router.Targets ->
-            TargetsModel Targets.init
-
         Router.Home ->
             HomeModel
+
+        Router.Positions ->
+            PositionModel Position.init
+
+        Router.Targets ->
+            TargetModel Target.init
 
         Router.Exercises ->
             ExercisesModel
@@ -69,11 +73,15 @@ initPage route store =
 
 
 type PageModel
-    = TargetsModel Targets.Model
-    | HomeModel
+    = HomeModel
+      -- Exercise
     | ExercisesModel
     | ExerciseModel ExerciseId
     | ExerciseEditor Exercise.Model
+      -- Target
+    | TargetModel Target.Model
+      -- Position
+    | PositionModel Position.Model
     | NotFoundModel String
 
 
@@ -82,12 +90,17 @@ type Msg
     | UrlChange Url
     | StoreMsg Store.Msg
     | SetRoute Route
-    | TargetsMsg Targets.Msg
     | ExerciseMsg Exercise.Msg
       -- Target
+    | TargetMsg Target.Msg
     | CreateTarget Target
     | DeleteTarget TargetId
     | UpdateTarget Target
+      -- Position
+    | PositionMsg Position.Msg
+    | CreatePosition Position
+    | DeletePosition PositionId
+    | UpdatePosition Position
       -- Exercise
     | UpdateExercise Exercise
     | CreateExercise Exercise
@@ -155,8 +168,11 @@ viewBody model =
             ExerciseEditor emodel ->
                 E.map ExerciseMsg <| Exercise.viewEditor model.store.positions emodel
 
-            TargetsModel tmodel ->
-                E.map TargetsMsg <| Targets.view model.store.targets tmodel
+            TargetModel tmodel ->
+                E.map TargetMsg <| Target.view model.store.targets tmodel
+
+            PositionModel pmodel ->
+                E.map PositionMsg <| Position.view model.store.positions pmodel
 
             NotFoundModel what ->
                 E.text <| "Tady nic není : " ++ what
@@ -204,19 +220,34 @@ update msg model =
                     Nav.load url
             )
 
-        TargetsMsg targetsMsg ->
+        TargetMsg targetMsg ->
             let
                 ( newPageModel, targetCmd ) =
                     case model.pageModel of
-                        TargetsModel tm ->
-                            Tuple.mapFirst TargetsModel <|
-                                Targets.update targetConfig targetsMsg tm
+                        TargetModel m ->
+                            Tuple.mapFirst TargetModel <|
+                                Target.update targetConfig targetMsg m
 
-                        x ->
-                            ( x, Cmd.none )
+                        other ->
+                            ( other, Cmd.none )
             in
             ( { model | pageModel = newPageModel }
             , targetCmd
+            )
+
+        PositionMsg positionMsg ->
+            let
+                ( newPageModel, positionCmd ) =
+                    case model.pageModel of
+                        PositionModel m ->
+                            Tuple.mapFirst PositionModel <|
+                                Position.update positionConfig positionMsg m
+
+                        other ->
+                            ( other, Cmd.none )
+            in
+            ( { model | pageModel = newPageModel }
+            , positionCmd
             )
 
         ExerciseMsg exerciseMsg ->
@@ -244,14 +275,29 @@ update msg model =
             , Cmd.map StoreMsg <| Store.deleteTarget targetId
             )
 
-        ErrorAcked ->
-            ( { model | httpError = Nothing }
-            , Cmd.none
-            )
-
         UpdateTarget target ->
             ( model
             , Cmd.map StoreMsg <| Store.updateTarget target
+            )
+
+        CreatePosition position ->
+            ( model
+            , Cmd.map StoreMsg <| Store.createPosition position
+            )
+
+        DeletePosition positionId ->
+            ( model
+            , Cmd.map StoreMsg <| Store.deletePosition positionId
+            )
+
+        UpdatePosition position ->
+            ( model
+            , Cmd.map StoreMsg <| Store.updatePosition position
+            )
+
+        ErrorAcked ->
+            ( { model | httpError = Nothing }
+            , Cmd.none
             )
 
         UpdateExercise exercise ->
@@ -269,11 +315,19 @@ update msg model =
             ( model, Cmd.none )
 
 
-targetConfig : Targets.Config Msg
+targetConfig : Target.Config Msg
 targetConfig =
     { createTarget = CreateTarget
     , deleteTarget = DeleteTarget
     , updateTarget = UpdateTarget
+    }
+
+
+positionConfig : Position.Config Msg
+positionConfig =
+    { createPosition = CreatePosition
+    , deletePosition = DeletePosition
+    , updatePosition = UpdatePosition
     }
 
 
@@ -313,8 +367,9 @@ navigationLeft : Route -> Element Msg
 navigationLeft currentRoute =
     E.column [ E.height E.fill, E.width (E.px 180) ]
         [ menuItem currentRoute Router.Home "Domů"
-        , menuItem currentRoute Router.Targets "Cílové partie"
         , menuItem currentRoute Router.Exercises "Cviky"
+        , menuItem currentRoute Router.Targets "Cílové partie"
+        , menuItem currentRoute Router.Positions "Pozice"
         ]
 
 

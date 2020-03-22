@@ -1,7 +1,9 @@
 module Store exposing
     ( Msg
     , Store
+    , createPosition
     , createTarget
+    , deletePosition
     , deleteTarget
     , getExercises
     , getPositions
@@ -9,28 +11,32 @@ module Store exposing
     , init
     , update
     , updateExercise
+    , updatePosition
     , updateTarget
     )
 
 import Dict.Any
-import Domain exposing (Exercise, ExerciseIdTag, Position, PositionIdTag, Target, TargetId, TargetIdTag)
+import Domain exposing (Exercise, ExerciseIdTag, Position, PositionId, PositionIdTag, Target, TargetId, TargetIdTag)
 import Http
-import Http.Extra as Ht2
+import Http.Extra as Ht2 exposing (ApiCall)
 import Id exposing (IdDict)
 import Json.Decode as Decode
 
 
 type Msg
     = -- Target
-      TargetsFetched (Result Ht2.Error (List Target))
-    | TargetCreated (Result Ht2.Error Target)
-    | TargetDeleted (Result Ht2.Error TargetId)
-    | TargetUpdated (Result Ht2.Error Target)
+      TargetsFetched (ApiCall (List Target))
+    | TargetCreated (ApiCall Target)
+    | TargetDeleted (ApiCall TargetId)
+    | TargetUpdated (ApiCall Target)
       -- Position
-    | PositionsFetched (Result Ht2.Error (List Position))
+    | PositionsFetched (ApiCall (List Position))
+    | PositionCreated (ApiCall Position)
+    | PositionDeleted (ApiCall PositionId)
+    | PositionUpdated (ApiCall Position)
       -- Exercise
-    | ExercisesFetched (Result Ht2.Error (List Exercise))
-    | ExerciseUpdate (Result Ht2.Error Exercise)
+    | ExercisesFetched (ApiCall (List Exercise))
+    | ExerciseUpdate (ApiCall Exercise)
 
 
 type alias Store =
@@ -66,6 +72,15 @@ update msg store =
         PositionsFetched result ->
             updateOrError result store (\positions s -> { s | positions = Id.buildDict positions })
 
+        PositionCreated result ->
+            updateOrError result store (\position s -> { s | positions = Dict.Any.insert position.id position store.positions })
+
+        PositionDeleted result ->
+            updateOrError result store (\positionId s -> { s | positions = Dict.Any.remove positionId store.positions })
+
+        PositionUpdated result ->
+            updateOrError result store (\position s -> { s | positions = Dict.Any.insert position.id position store.positions })
+
         ExercisesFetched result ->
             updateOrError result store (\exercises s -> { s | exercises = Id.buildDict exercises })
 
@@ -73,7 +88,7 @@ update msg store =
             updateOrError result store (\exercise s -> { s | exercises = Dict.Any.insert exercise.id exercise store.exercises })
 
 
-updateOrError : Result Ht2.Error a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
+updateOrError : ApiCall a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
 updateOrError result store f =
     case result of
         Ok a ->
@@ -109,14 +124,10 @@ createTarget target =
 
 deleteTarget : TargetId -> Cmd Msg
 deleteTarget targetId =
-    Http.request
-        { method = "DELETE"
-        , headers = []
-        , url = "/target/" ++ Id.toString targetId
-        , expect = Ht2.expectWhatever (TargetDeleted << Result.map (\() -> targetId))
-        , body = Http.emptyBody
-        , timeout = Nothing
-        , tracker = Nothing
+    Ht2.delete
+        { baseUrl = "/target/"
+        , resourceId = targetId
+        , onResponse = TargetDeleted
         }
 
 
@@ -137,10 +148,34 @@ getPositions : Cmd Msg
 getPositions =
     Http.get
         { url = "/position"
-        , expect =
-            Ht2.expectJson
-                PositionsFetched
-                (Decode.list Domain.positionDecoder)
+        , expect = Ht2.expectJson PositionsFetched (Decode.list Domain.positionDecoder)
+        }
+
+
+createPosition : Position -> Cmd Msg
+createPosition position =
+    Http.post
+        { url = "/position"
+        , body = Http.jsonBody <| Domain.encodePosition position
+        , expect = Ht2.expectJson PositionCreated Domain.positionDecoder
+        }
+
+
+deletePosition : PositionId -> Cmd Msg
+deletePosition positionId =
+    Ht2.delete
+        { baseUrl = "/position/"
+        , resourceId = positionId
+        , onResponse = PositionDeleted
+        }
+
+
+updatePosition : Position -> Cmd Msg
+updatePosition position =
+    Http.post
+        { url = "/position/" ++ Id.toString position.id
+        , body = Http.jsonBody <| Domain.encodePosition position
+        , expect = Ht2.expectWhatever (PositionUpdated << Result.map (\() -> position))
         }
 
 
@@ -152,10 +187,7 @@ getExercises : Cmd Msg
 getExercises =
     Http.get
         { url = "/exercise"
-        , expect =
-            Ht2.expectJson
-                ExercisesFetched
-                (Decode.list Domain.exerciseDecoder)
+        , expect = Ht2.expectJson ExercisesFetched (Decode.list Domain.exerciseDecoder)
         }
 
 

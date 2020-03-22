@@ -14,6 +14,7 @@ import Url.Parser as P exposing ((</>), Parser, int, s, top)
 type Route
     = Home
     | Targets
+    | Positions
     | Exercises
     | Exercise ExerciseId
     | ExerciseEditor ExerciseId
@@ -25,6 +26,7 @@ route =
     P.oneOf
         [ P.map Home top
         , P.map Targets (s "target")
+        , P.map Positions (s "position")
         , P.map Exercises (s "exercise")
         , P.map (Exercise << Id.fromInt) (s "exercise" </> int)
         , P.map (ExerciseEditor << Id.fromInt) (s "exercise" </> int </> s "edit")
@@ -49,6 +51,9 @@ toHash r =
 
         Targets ->
             "/target"
+
+        Positions ->
+            "/position"
 
         Exercises ->
             "/exercise"

@@ -1,11 +1,14 @@
 module Http.Extra exposing
-    ( Error(..)
+    ( ApiCall
+    , Error(..)
+    , delete
     , errorToString
     , expectJson
     , expectWhatever
     )
 
 import Http exposing (Metadata, Response(..))
+import Id exposing (Id)
 import Json.Decode as Decode exposing (Decoder)
 
 
@@ -17,6 +20,10 @@ type Error
     | NetworkError
     | BadStatus Metadata String
     | BadBody String
+
+
+type alias ApiCall a =
+    Result Error a
 
 
 expectJson : (Result Error a -> msg) -> Decoder a -> Http.Expect msg
@@ -70,3 +77,21 @@ errorToString error =
 
         BadBody body ->
             body
+
+
+delete :
+    { baseUrl : String
+    , resourceId : Id tag
+    , onResponse : ApiCall (Id tag) -> msg
+    }
+    -> Cmd msg
+delete rec =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = rec.baseUrl ++ Id.toString rec.resourceId
+        , expect = expectWhatever (rec.onResponse << Result.map (\() -> rec.resourceId))
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
