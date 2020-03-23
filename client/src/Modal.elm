@@ -1,15 +1,21 @@
-module Modal exposing (viewError)
+module Modal exposing (Config, viewError)
 
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
-import Http.Extra as Ht2
 
 
-viewError : msg -> Ht2.Error -> Element msg
-viewError closeMsg error =
+type alias Config msg =
+    { title : String
+    , bodyText : String
+    , closeMsg : msg
+    }
+
+
+viewError : Config msg -> Element msg
+viewError { title, bodyText, closeMsg } =
     E.el
         [ Background.color dialogMask
         , E.width E.fill
@@ -23,19 +29,19 @@ viewError closeMsg error =
             , Border.solid
             , Border.width 1
             ]
-            [ header closeMsg
-            , body error
+            [ header closeMsg title
+            , body bodyText
             ]
         )
 
 
-header : msg -> Element msg
-header closeMsg =
+header : msg -> String -> Element msg
+header closeMsg title =
     E.row
         [ E.width E.fill
         , Background.color (E.rgb255 150 150 150)
         ]
-        [ E.el [ E.centerX, E.padding 5 ] (E.text "Něco se podělalo ☹")
+        [ E.el [ E.centerX, E.padding 5 ] (E.text title)
         , Input.button [ E.alignRight, E.padding 1, Font.size 20, E.padding 5 ]
             { onPress = Just closeMsg
             , label = E.text "×"
@@ -43,10 +49,11 @@ header closeMsg =
         ]
 
 
-body : Ht2.Error -> Element msg
-body error =
-    E.paragraph [ E.padding 20 ]
-        [ E.text (Ht2.errorToString error) ]
+body : String -> Element msg
+body bodyText =
+    E.paragraph
+        [ E.padding 20 ]
+        [ E.text bodyText ]
 
 
 dialogMask : E.Color

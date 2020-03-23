@@ -2,9 +2,11 @@ module Page.Exercise exposing
     ( Config
     , Model
     , Msg
+    , ValidationError(..)
     , emptyEditor
     , initEditor
     , update
+    , validationErrorToString
     , view
     , viewEditor
     , viewList
@@ -60,51 +62,70 @@ type alias Config msg =
     , updateExercise : Exercise -> List TargetId -> msg
 
     --, deleteExercise : ExerciseId -> msg
+    , validationError : ValidationError -> msg
     }
 
 
 type ValidationError
     = PositionNotSet
+    | NameEmpty
+
+
+validationErrorToString : ValidationError -> String
+validationErrorToString ve =
+    case ve of
+        PositionNotSet ->
+            "Musíš zvolit pozici"
+
+        NameEmpty ->
+            "Musíš nastavit jméno"
 
 
 updateOrCreate : Config msg -> Model -> Result ValidationError msg
 updateOrCreate config model =
-    case model.positionId of
-        Nothing ->
-            Err PositionNotSet
+    let
+        _ =
+            Debug.log "" model
+    in
+    (case String.isEmpty model.name of
+        True ->
+            Err NameEmpty
 
-        Just positionId ->
-            Ok <|
-                case model.exerciseId of
+        False ->
+            Ok model.name
+    )
+        |> Result.andThen
+            (\validName ->
+                case model.positionId of
                     Nothing ->
-                        config.createExercise
-                            { id = Id.fromInt -1
-                            , name = model.name
-                            , sanskritName =
-                                if String.isEmpty model.sanskritName then
-                                    Nothing
+                        Err PositionNotSet
 
-                                else
-                                    Just model.sanskritName
-                            , description = model.description
-                            , positionId = positionId
-                            }
-                            (Set.Any.toList model.targetAreas)
+                    Just positionId ->
+                        let
+                            ( request, id ) =
+                                case model.exerciseId of
+                                    Nothing ->
+                                        ( config.createExercise, Id.fromInt -1 )
 
-                    Just exerciseId ->
-                        config.updateExercise
-                            { id = exerciseId
-                            , name = model.name
-                            , sanskritName =
-                                if String.isEmpty model.sanskritName then
-                                    Nothing
+                                    Just exerciseId ->
+                                        ( config.updateExercise, exerciseId )
+                        in
+                        Ok <|
+                            request
+                                { id = id
+                                , name = validName
+                                , sanskritName =
+                                    if String.isEmpty model.sanskritName then
+                                        Nothing
 
-                                else
-                                    Just model.sanskritName
-                            , description = model.description
-                            , positionId = positionId
-                            }
-                            (Set.Any.toList model.targetAreas)
+                                    else
+                                        Just model.sanskritName
+                                , description = model.description
+                                , positionId = positionId
+                                }
+                            <|
+                                Set.Any.toList model.targetAreas
+            )
 
 
 initEditor : Exercise -> Model
@@ -154,8 +175,7 @@ update config msg model =
                 command =
                     case updateOrCreate config model of
                         Err validationError ->
-                            -- TODO open modal
-                            Cmd.none
+                            Command.perform (config.validationError validationError)
 
                         Ok saveOrUpdateCmd ->
                             Command.perform saveOrUpdateCmd

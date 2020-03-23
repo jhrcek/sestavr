@@ -45,8 +45,13 @@ type alias Model =
     , route : Route
     , initialUrl : Url
     , pageModel : PageModel
-    , httpError : Maybe Ht2.Error
+    , problem : Maybe Problem
     }
+
+
+type Problem
+    = HttpError Ht2.Error
+    | ExerciseValidationError Exercise.ValidationError
 
 
 initPage : Route -> Store -> PageModel
@@ -110,6 +115,7 @@ type Msg
       -- Exercise
     | UpdateExercise Exercise (List TargetId)
     | CreateExercise Exercise (List TargetId)
+    | GotExerciseValidationError Exercise.ValidationError
     | ErrorAcked
 
 
@@ -124,7 +130,7 @@ init _ url key =
       , route = route
       , initialUrl = url
       , pageModel = initPage route Store.init
-      , httpError = Nothing
+      , problem = Nothing
       }
     , Cmd.map StoreMsg <|
         Cmd.batch
@@ -141,9 +147,24 @@ view model =
     , body =
         [ let
             modal =
-                case model.httpError of
+                case model.problem of
                     Just error ->
-                        [ E.inFront <| Modal.viewError ErrorAcked error ]
+                        [ E.inFront <|
+                            case error of
+                                HttpError httpError ->
+                                    Modal.viewError
+                                        { closeMsg = ErrorAcked
+                                        , title = "Něco se podělalo ☹"
+                                        , bodyText = Ht2.errorToString httpError
+                                        }
+
+                                ExerciseValidationError validationError ->
+                                    Modal.viewError
+                                        { closeMsg = ErrorAcked
+                                        , title = "Toto cvičení není možno uložit"
+                                        , bodyText = Exercise.validationErrorToString validationError
+                                        }
+                        ]
 
                     Nothing ->
                         []
@@ -201,7 +222,7 @@ update msg model =
             in
             ( { model
                 | store = newStore
-                , httpError = maybeError
+                , problem = Maybe.map HttpError maybeError
               }
             , Cmd.none
             )
@@ -309,7 +330,7 @@ update msg model =
             )
 
         ErrorAcked ->
-            ( { model | httpError = Nothing }
+            ( { model | problem = Nothing }
             , Cmd.none
             )
 
@@ -326,6 +347,11 @@ update msg model =
         CreateExercise _ _ ->
             -- TODO backend command
             ( model, Cmd.none )
+
+        GotExerciseValidationError validationError ->
+            ( { model | problem = Just (ExerciseValidationError validationError) }
+            , Cmd.none
+            )
 
 
 targetConfig : Target.Config Msg
@@ -348,6 +374,7 @@ exerciseConfig : Exercise.Config Msg
 exerciseConfig =
     { updateExercise = UpdateExercise
     , createExercise = CreateExercise
+    , validationError = GotExerciseValidationError
     }
 
 
