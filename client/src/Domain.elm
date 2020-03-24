@@ -101,17 +101,19 @@ type alias Exercise =
     , sanskritName : Maybe String
     , description : String
     , positionId : PositionId
+    , targetIds : List TargetId
     }
 
 
 exerciseDecoder : Decoder Exercise
 exerciseDecoder =
-    Decode.map5 Exercise
-        (Decode.field "id" Id.decode)
+    Decode.map6 Exercise
+        (Decode.field "exerciseId" Id.decode)
         (Decode.field "name" Decode.string)
         (Decode.field "sanskritName" <| Decode.nullable Decode.string)
         (Decode.field "description" Decode.string)
         (Decode.field "positionId" Id.decode)
+        (Decode.field "targetIds" <| Decode.list Id.decode)
 
 
 encodeExercise : Exercise -> Value

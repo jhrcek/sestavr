@@ -1,38 +1,51 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 module Model
-    ( Exercise
-    , ExerciseId
-    , ExerciseTargetId
-    , Lesson
-    , LessonId
-    , Position 
-    , PositionId
-    , RoutineId
-    , RoutineExerciseId
-    , Target
-    , TargetId
-    , createDemoData
-    , migrateAll
-    ) where
+  ( Exercise,
+    ExerciseId,
+    ExerciseTargetId,
+    ExerciseTarget,
+    Lesson,
+    LessonId,
+    Position,
+    PositionId,
+    RoutineId,
+    RoutineExerciseId,
+    Target,
+    TargetId,
+    ExerciseWithTargets,
+    createDemoData,
+    migrateAll,
+    fromExercise,
+    exerciseTargetExerciseId,
+    exerciseTargetTargetId,
+  )
+where
 
 import Control.Monad.IO.Class (liftIO)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Database.Persist.Sqlite
 import Database.Persist.TH
+import Database.Persist.Types (entityKey, entityVal)
+import GHC.Generics (Generic)
 
 share
   [mkPersist sqlSettings, mkMigrate "migrateAll"]
@@ -66,10 +79,39 @@ Lesson json
     datetime UTCTime
 |]
 
+-- This is to alleviate frontend from having to join TargetIds from join table
+data ExerciseWithTargets
+  = ExerciseWithTargets
+      { exerciseId :: ExerciseId,
+        name :: Text,
+        sanskritName :: Maybe Text,
+        description :: Text,
+        positionId :: PositionId,
+        targetIds :: [TargetId]
+      }
+  deriving (Generic)
+
+instance ToJSON ExerciseWithTargets
+
+instance FromJSON ExerciseWithTargets
+
+fromExercise :: Entity Exercise -> [TargetId] -> ExerciseWithTargets
+fromExercise entity targetIds =
+  let exercise = entityVal entity
+      exerciseId = entityKey entity
+   in ExerciseWithTargets
+        { exerciseId = exerciseId,
+          name = exerciseName exercise,
+          sanskritName = exerciseSanskritName exercise,
+          description = exerciseDescription exercise,
+          positionId = exercisePositionId exercise,
+          targetIds = targetIds
+        }
+
 createDemoData :: IO ()
 createDemoData = runSqlite "sestavr.db" $ do
   runMigration migrateAll
-  
+
   breathId <- insert $ Target "Dech"
   _feetId <- insert $ Target "Chodidla"
   hipId <- insert $ Target "Kyčle"
@@ -94,13 +136,13 @@ createDemoData = runSqlite "sestavr.db" $ do
   _ <- insert $ ExerciseTarget childId hipId
   _ <- insert $ ExerciseTarget childId backId
   _ <- insert $ ExerciseTarget childId breathId
-  
+
   routine1Id <- insert $ Routine "Moje první sestava"
 
   _ <- insert $ RoutineExercise routine1Id plankId 2 1
   _ <- insert $ RoutineExercise routine1Id childId 5 2
   _ <- insert $ RoutineExercise routine1Id boatId 1 3
-  
+
   currentTime <- liftIO getCurrentTime
   _ <- insert $ Lesson routine1Id currentTime
 

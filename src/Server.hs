@@ -19,13 +19,45 @@ import Control.Monad.Logger (runStderrLoggingT)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.FileEmbed (embedFile)
+import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
-import Database.Persist.Class (delete, get, insertEntity, replace, selectList)
+import Database.Persist.Class
+  ( delete,
+    get,
+    insertEntity,
+    replace,
+    selectList,
+  )
 import Database.Persist.Sql (SqlPersistM)
-import Database.Persist.Sqlite (ConnectionPool, createSqlitePool, runMigration, runSqlPersistMPool, runSqlPool)
+import Database.Persist.Sqlite
+  ( ConnectionPool,
+    createSqlitePool,
+    runMigration,
+    runSqlPersistMPool,
+    runSqlPool,
+  )
+import Database.Persist.Types (entityKey, entityVal)
 import Database.Persist.Types (Entity)
-import Database.Sqlite (Error (ErrorConstraint), SqliteException, seError)
-import Model (Exercise, ExerciseId, Lesson, Position, PositionId, Target, TargetId, migrateAll)
+import Database.Sqlite
+  ( Error (ErrorConstraint),
+    SqliteException,
+    seError,
+  )
+import Model
+  ( Exercise,
+    ExerciseId,
+    ExerciseTarget,
+    ExerciseWithTargets,
+    Lesson,
+    Position,
+    PositionId,
+    Target,
+    TargetId,
+    exerciseTargetExerciseId,
+    exerciseTargetTargetId,
+    fromExercise,
+    migrateAll,
+  )
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
 
@@ -122,8 +154,28 @@ apiServer pool =
       runPool (replace positionId position)
         `handleConstraintError` "Position with this name already exists"
     -- EXERCISE
-    getExercises :: Handler [Entity Exercise]
-    getExercises = runPool $ selectList [] []
+    getExercises :: Handler [ExerciseWithTargets]
+    getExercises = runPool $ do
+      exerciseToTargets <- selectList [] [] :: SqlPersistM [Entity ExerciseTarget]
+      exerciseEntities <- selectList [] [] :: SqlPersistM [Entity Exercise]
+      let eidToTargets :: Map.Map ExerciseId [TargetId]
+          eidToTargets =
+            Map.fromListWith (<>) $
+              fmap
+                ( \entity ->
+                    let val = entityVal entity
+                     in ( exerciseTargetExerciseId val,
+                          [exerciseTargetTargetId val]
+                        )
+                )
+                exerciseToTargets
+      pure $
+        fmap
+          ( \exEntity ->
+              let targets = Map.findWithDefault [] (entityKey exEntity) eidToTargets
+               in fromExercise exEntity targets
+          )
+          exerciseEntities
     --
     updateExercise :: ExerciseId -> Exercise -> Handler ()
     updateExercise exerciseId exercise =

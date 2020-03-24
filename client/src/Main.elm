@@ -113,8 +113,8 @@ type Msg
     | DeletePosition PositionId
     | UpdatePosition Position
       -- Exercise
-    | UpdateExercise Exercise (List TargetId)
-    | CreateExercise Exercise (List TargetId)
+    | UpdateExercise Exercise
+    | CreateExercise Exercise
     | GotExerciseValidationError Exercise.ValidationError
     | ErrorAcked
 
@@ -334,7 +334,7 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateExercise exercise targets ->
+        UpdateExercise exercise ->
             let
                 redirect =
                     navigateToRoute model.navKey model.initialUrl (Router.Exercise exercise.id)
@@ -344,7 +344,7 @@ update msg model =
             in
             ( model, Cmd.batch [ redirect, updateCmd ] )
 
-        CreateExercise _ _ ->
+        CreateExercise _ ->
             -- TODO backend command
             ( model, Cmd.none )
 

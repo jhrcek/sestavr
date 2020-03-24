@@ -58,8 +58,8 @@ type Msg
 
 
 type alias Config msg =
-    { createExercise : Exercise -> List TargetId -> msg
-    , updateExercise : Exercise -> List TargetId -> msg
+    { createExercise : Exercise -> msg
+    , updateExercise : Exercise -> msg
 
     --, deleteExercise : ExerciseId -> msg
     , validationError : ValidationError -> msg
@@ -83,16 +83,11 @@ validationErrorToString ve =
 
 updateOrCreate : Config msg -> Model -> Result ValidationError msg
 updateOrCreate config model =
-    let
-        _ =
-            Debug.log "" model
-    in
-    (case String.isEmpty model.name of
-        True ->
-            Err NameEmpty
+    (if String.isEmpty model.name then
+        Err NameEmpty
 
-        False ->
-            Ok model.name
+     else
+        Ok model.name
     )
         |> Result.andThen
             (\validName ->
@@ -122,9 +117,8 @@ updateOrCreate config model =
                                         Just model.sanskritName
                                 , description = model.description
                                 , positionId = positionId
+                                , targetIds = Set.Any.toList model.targetAreas
                                 }
-                            <|
-                                Set.Any.toList model.targetAreas
             )
 
 
