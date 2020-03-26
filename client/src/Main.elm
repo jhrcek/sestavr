@@ -115,6 +115,7 @@ type Msg
       -- Exercise
     | UpdateExercise Exercise
     | CreateExercise Exercise
+    | DeleteExercise ExerciseId
     | GotExerciseValidationError Exercise.ValidationError
     | ErrorAcked
 
@@ -187,7 +188,7 @@ viewBody model =
             ExerciseModel exerciseId ->
                 case Dict.Any.get exerciseId model.store.exercises of
                     Just exercise ->
-                        Exercise.view
+                        Exercise.view exerciseConfig
                             model.store.positions
                             model.store.targets
                             exercise
@@ -292,8 +293,8 @@ update msg model =
                             Tuple.mapFirst ExerciseEditor <|
                                 Exercise.update exerciseConfig exerciseMsg m
 
-                        x ->
-                            ( x, Cmd.none )
+                        other ->
+                            ( other, Cmd.none )
             in
             ( { model | pageModel = newPageModel }
             , exerciseCmd
@@ -334,28 +335,28 @@ update msg model =
             , Cmd.none
             )
 
-        UpdateExercise exercise ->
-            let
-                updateCmd =
-                    Cmd.map StoreMsg <| Store.updateExercise exercise
-
-                redirect =
-                    navigateToRoute model.navKey model.initialUrl (Router.Exercise exercise.id)
-            in
+        CreateExercise exercise ->
             ( model
-            , Cmd.batch [ updateCmd, redirect ]
+            , Cmd.batch
+                [ Cmd.map StoreMsg <| Store.createExercise exercise
+                , navigateToRoute model.navKey model.initialUrl Router.Exercises
+                ]
             )
 
-        CreateExercise exercise ->
-            let
-                createCmd =
-                    Cmd.map StoreMsg <| Store.createExercise exercise
-
-                redirect =
-                    navigateToRoute model.navKey model.initialUrl Router.Exercises
-            in
+        UpdateExercise exercise ->
             ( model
-            , Cmd.batch [ createCmd, redirect ]
+            , Cmd.batch
+                [ Cmd.map StoreMsg <| Store.updateExercise exercise
+                , navigateToRoute model.navKey model.initialUrl (Router.Exercise exercise.id)
+                ]
+            )
+
+        DeleteExercise exerciseId ->
+            ( model
+            , Cmd.batch
+                [ Cmd.map StoreMsg <| Store.deleteExercise exerciseId
+                , navigateToRoute model.navKey model.initialUrl Router.Exercises
+                ]
             )
 
         GotExerciseValidationError validationError ->
@@ -384,6 +385,7 @@ exerciseConfig : Exercise.Config Msg
 exerciseConfig =
     { updateExercise = UpdateExercise
     , createExercise = CreateExercise
+    , deleteExercise = DeleteExercise
     , validationError = GotExerciseValidationError
     }
 

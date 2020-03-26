@@ -21,8 +21,10 @@ import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.FileEmbed (embedFile)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
+import Database.Persist ((==.))
 import Database.Persist.Class
   ( delete,
+    deleteWhere,
     get,
     insert,
     insertEntity,
@@ -45,7 +47,8 @@ import Database.Sqlite
     seError,
   )
 import Model
-  ( Exercise,
+  ( EntityField (ExerciseTargetExerciseId),
+    Exercise,
     ExerciseId,
     ExerciseTarget (..),
     ExerciseWithTargets,
@@ -100,6 +103,7 @@ apiServer pool =
     :<|> getExercises
     :<|> createExercise
     :<|> updateExercise
+    :<|> deleteExercise
   where
     runPool :: MonadIO m => SqlPersistM a -> m a
     runPool action = liftIO $ runSqlPersistMPool action pool
@@ -194,8 +198,12 @@ apiServer pool =
         `handleConstraintError` "Exercise with this name already exists"
     --
     updateExercise :: ExerciseId -> Exercise -> Handler ()
-    updateExercise eid exercise =
-      runPool (replace eid exercise)
+    updateExercise eid exercise = runPool (replace eid exercise)
+    --
+    deleteExercise :: ExerciseId -> Handler ()
+    deleteExercise eid = runPool $ do
+      deleteWhere [ExerciseTargetExerciseId ==. eid]
+      delete eid
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

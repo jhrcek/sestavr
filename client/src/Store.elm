@@ -4,6 +4,7 @@ module Store exposing
     , createExercise
     , createPosition
     , createTarget
+    , deleteExercise
     , deletePosition
     , deleteTarget
     , getExercises
@@ -20,6 +21,7 @@ import Dict.Any
 import Domain
     exposing
         ( Exercise
+        , ExerciseId
         , ExerciseIdTag
         , Position
         , PositionId
@@ -49,6 +51,7 @@ type Msg
     | ExercisesFetched (ApiCall (List Exercise))
     | ExerciseCreated (ApiCall Exercise)
     | ExerciseUpdated (ApiCall Exercise)
+    | ExerciseDeleted (ApiCall ExerciseId)
 
 
 type alias Store =
@@ -101,6 +104,9 @@ update msg store =
 
         ExerciseUpdated result ->
             updateOrError result store (\exercise s -> { s | exercises = Dict.Any.insert exercise.id exercise store.exercises })
+
+        ExerciseDeleted result ->
+            updateOrError result store (\exerciseId s -> { s | exercises = Dict.Any.remove exerciseId store.exercises })
 
 
 updateOrError : ApiCall a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
@@ -221,4 +227,13 @@ updateExercise exercise =
         { url = "/exercise/" ++ Id.toString exercise.id
         , body = Http.jsonBody <| Domain.encodeExercise exercise
         , expect = Ht2.expectWhatever (ExerciseUpdated << Result.map (\() -> exercise))
+        }
+
+
+deleteExercise : ExerciseId -> Cmd Msg
+deleteExercise exerciseId =
+    Ht2.delete
+        { baseUrl = "/exercise/"
+        , resourceId = exerciseId
+        , onResponse = ExerciseDeleted
         }

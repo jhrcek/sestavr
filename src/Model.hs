@@ -21,6 +21,7 @@ module Model
     ExerciseId,
     ExerciseTargetId,
     ExerciseTarget (..),
+    EntityField ( ExerciseTargetExerciseId),
     Lesson,
     LessonId,
     Position,
@@ -157,3 +158,4 @@ createDemoData = runSqlite "sestavr.db" $ do
   _ <- insert $ Lesson routine1Id currentTime
 
   pure ()
+

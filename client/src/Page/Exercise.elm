@@ -60,8 +60,7 @@ type Msg
 type alias Config msg =
     { createExercise : Exercise -> msg
     , updateExercise : Exercise -> msg
-
-    --, deleteExercise : ExerciseId -> msg
+    , deleteExercise : ExerciseId -> msg
     , validationError : ValidationError -> msg
     }
 
@@ -290,7 +289,7 @@ viewList exercises =
 exerciseLink : Exercise -> Element msg
 exerciseLink exercise =
     E.link
-        [ E.mouseOver [ E.moveRight 2 ]
+        [ E.mouseOver [ Font.color darkBlue ]
         , Font.color lightBlue
         ]
         { url = Router.href (Router.Exercise exercise.id)
@@ -318,12 +317,18 @@ lightBlue =
     E.rgb255 18 147 216
 
 
+darkBlue : E.Color
+darkBlue =
+    E.rgb255 17 95 135
+
+
 view :
-    IdDict PositionIdTag Position
+    Config msg
+    -> IdDict PositionIdTag Position
     -> IdDict TargetIdTag Target
     -> Exercise
     -> Element msg
-view positions targets exercise =
+view config positions targets exercise =
     E.column [ E.width E.fill ]
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , E.el [ Font.size 28, Font.bold ] (E.text exercise.name)
@@ -343,16 +348,28 @@ view positions targets exercise =
             ]
         , E.paragraph []
             [ E.html <| Markdown.toHtml [] exercise.description ]
-        , E.link
-            [ E.padding 5
-            , Border.solid
-            , Border.width 1
-            , Border.rounded 4
-            , E.alignRight
+        , E.row [ E.alignRight, E.spacing 5 ]
+            [ E.link
+                [ E.padding 5
+                , Border.solid
+                , Border.width 1
+                , Border.rounded 4
+                ]
+                { url = Router.href <| Router.ExerciseEditor <| Just exercise.id
+                , label = E.text "Upravit"
+                }
+            , Input.button
+                [ E.padding 5
+                , Border.solid
+                , Border.width 1
+                , Border.rounded 4
+                ]
+                { onPress = Just (config.deleteExercise exercise.id)
+
+                -- TODO confirm deletion
+                , label = E.text "Odstranit"
+                }
             ]
-            { url = Router.href <| Router.ExerciseEditor <| Just exercise.id
-            , label = E.text "Upravit"
-            }
         ]
 
 
@@ -362,7 +379,7 @@ viewTargetArea target =
         [ Border.rounded 10
         , Border.solid
         , Border.color (E.rgb255 0 0 0)
-        , Background.color (E.rgb255 225 134 184)
+        , Background.color (E.rgb255 255 192 203)
         , E.padding 3
         ]
         (E.text target.name)
@@ -371,7 +388,9 @@ viewTargetArea target =
 backToList : Element msg
 backToList =
     E.link
-        [ E.mouseOver [ E.moveLeft 2 ], Font.color lightBlue ]
+        [ E.mouseOver [ Font.color darkBlue ]
+        , Font.color lightBlue
+        ]
         { url = Router.href Exercises
         , label = E.text "« Zpět na seznam cviků"
         }

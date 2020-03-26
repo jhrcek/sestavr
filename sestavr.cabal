@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9914dbe65765a2b60f3162b6c9899c3129958c6feb671d97ddc9fb7a7383e849
+-- hash: 1fe146e7a711861fc923ff9abf149427552bd69871d88e80c034e749d8aa92dc
 
 name:           sestavr
 version:        0.1.0.0
@@ -68,6 +68,7 @@ executable sestavr-exe
     , base >=4.7 && <5
     , bytestring
     , conduit
+    , containers
     , file-embed
     , http-media
     , monad-logger
@@ -97,6 +98,7 @@ test-suite sestavr-test
     , base >=4.7 && <5
     , bytestring
     , conduit
+    , containers
     , file-embed
     , http-media
     , monad-logger

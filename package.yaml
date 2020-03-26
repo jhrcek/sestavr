@@ -17,6 +17,7 @@ dependencies:
   - aeson
   - bytestring
   - conduit
+  - containers
   - file-embed
   - http-media
   - monad-logger
