@@ -36,6 +36,7 @@ type SestavrAPI =
     :<|> "position" :> Capture "positionId" PositionId :> ReqBody '[JSON] Position :> Post '[JSON] ()
     -- Exercise
     :<|> "exercise" :> Get '[JSON] [ExerciseWithTargets]
+    :<|> "exercise" :> ReqBody '[JSON] ExerciseWithTargets :> Post '[JSON] ExerciseWithTargets
     :<|> "exercise" :> Capture "exerciseId" ExerciseId :> ReqBody '[JSON] Exercise :> Post '[JSON] ()
 
 sestavrApi :: Proxy SestavrAPI

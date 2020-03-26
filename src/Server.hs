@@ -24,6 +24,7 @@ import qualified Data.Text as Text
 import Database.Persist.Class
   ( delete,
     get,
+    insert,
     insertEntity,
     replace,
     selectList,
@@ -46,17 +47,20 @@ import Database.Sqlite
 import Model
   ( Exercise,
     ExerciseId,
-    ExerciseTarget,
+    ExerciseTarget (..),
     ExerciseWithTargets,
     Lesson,
     Position,
     PositionId,
     Target,
     TargetId,
+    exerciseId,
     exerciseTargetExerciseId,
     exerciseTargetTargetId,
     fromExercise,
     migrateAll,
+    targetIds,
+    toExercise,
   )
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
@@ -94,6 +98,7 @@ apiServer pool =
     :<|> updatePosition
     -- Exercise
     :<|> getExercises
+    :<|> createExercise
     :<|> updateExercise
   where
     runPool :: MonadIO m => SqlPersistM a -> m a
@@ -177,9 +182,20 @@ apiServer pool =
           )
           exerciseEntities
     --
+    createExercise :: ExerciseWithTargets -> Handler ExerciseWithTargets
+    createExercise exerciseWithTargets =
+      do
+        let exercise = toExercise exerciseWithTargets
+            tids = targetIds exerciseWithTargets
+        runPool $ do
+          eid <- insert exercise
+          mapM_ (\tid -> insert $ ExerciseTarget eid tid) tids
+          pure $ exerciseWithTargets {exerciseId = eid}
+        `handleConstraintError` "Exercise with this name already exists"
+    --
     updateExercise :: ExerciseId -> Exercise -> Handler ()
-    updateExercise exerciseId exercise =
-      runPool (replace exerciseId exercise)
+    updateExercise eid exercise =
+      runPool (replace eid exercise)
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

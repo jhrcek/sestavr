@@ -1,6 +1,7 @@
 module Store exposing
     ( Msg
     , Store
+    , createExercise
     , createPosition
     , createTarget
     , deletePosition
@@ -46,7 +47,8 @@ type Msg
     | PositionUpdated (ApiCall Position)
       -- Exercise
     | ExercisesFetched (ApiCall (List Exercise))
-    | ExerciseUpdate (ApiCall Exercise)
+    | ExerciseCreated (ApiCall Exercise)
+    | ExerciseUpdated (ApiCall Exercise)
 
 
 type alias Store =
@@ -94,7 +96,10 @@ update msg store =
         ExercisesFetched result ->
             updateOrError result store (\exercises s -> { s | exercises = Id.buildDict exercises })
 
-        ExerciseUpdate result ->
+        ExerciseCreated result ->
+            updateOrError result store (\exercise s -> { s | exercises = Dict.Any.insert exercise.id exercise store.exercises })
+
+        ExerciseUpdated result ->
             updateOrError result store (\exercise s -> { s | exercises = Dict.Any.insert exercise.id exercise store.exercises })
 
 
@@ -201,10 +206,19 @@ getExercises =
         }
 
 
+createExercise : Exercise -> Cmd Msg
+createExercise exercise =
+    Http.post
+        { url = "/exercise"
+        , body = Http.jsonBody <| Domain.encodeExercise exercise
+        , expect = Ht2.expectJson ExerciseCreated Domain.exerciseDecoder
+        }
+
+
 updateExercise : Exercise -> Cmd Msg
 updateExercise exercise =
     Http.post
         { url = "/exercise/" ++ Id.toString exercise.id
         , body = Http.jsonBody <| Domain.encodeExercise exercise
-        , expect = Ht2.expectWhatever (ExerciseUpdate << Result.map (\() -> exercise))
+        , expect = Ht2.expectWhatever (ExerciseUpdated << Result.map (\() -> exercise))
         }

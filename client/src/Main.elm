@@ -336,17 +336,27 @@ update msg model =
 
         UpdateExercise exercise ->
             let
-                redirect =
-                    navigateToRoute model.navKey model.initialUrl (Router.Exercise exercise.id)
-
                 updateCmd =
                     Cmd.map StoreMsg <| Store.updateExercise exercise
-            in
-            ( model, Cmd.batch [ redirect, updateCmd ] )
 
-        CreateExercise _ ->
-            -- TODO backend command
-            ( model, Cmd.none )
+                redirect =
+                    navigateToRoute model.navKey model.initialUrl (Router.Exercise exercise.id)
+            in
+            ( model
+            , Cmd.batch [ updateCmd, redirect ]
+            )
+
+        CreateExercise exercise ->
+            let
+                createCmd =
+                    Cmd.map StoreMsg <| Store.createExercise exercise
+
+                redirect =
+                    navigateToRoute model.navKey model.initialUrl Router.Exercises
+            in
+            ( model
+            , Cmd.batch [ createCmd, redirect ]
+            )
 
         GotExerciseValidationError validationError ->
             ( { model | problem = Just (ExerciseValidationError validationError) }

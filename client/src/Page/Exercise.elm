@@ -129,7 +129,7 @@ initEditor exercise =
     , sanskritName = Maybe.withDefault "" exercise.sanskritName
     , description = exercise.description
     , positionId = Just exercise.positionId
-    , targetAreas = Id.emptySet
+    , targetAreas = Id.buildSet exercise.targetIds
     }
 
 
@@ -337,9 +337,9 @@ view positions targets exercise =
             ]
         , E.row []
             [ E.text "Cílové oblasti: "
-            , E.row [] <|
-                List.map targetAreaBadge
-                    [{- TODO display selected target areas here -}]
+            , E.row [ E.spacing 5 ] <|
+                List.map viewTargetArea <|
+                    List.filterMap (\targetId -> Dict.Any.get targetId targets) exercise.targetIds
             ]
         , E.paragraph []
             [ E.html <| Markdown.toHtml [] exercise.description ]
@@ -356,12 +356,14 @@ view positions targets exercise =
         ]
 
 
-targetAreaBadge : Target -> Element msg
-targetAreaBadge target =
+viewTargetArea : Target -> Element msg
+viewTargetArea target =
     E.el
-        [ Border.rounded 8
+        [ Border.rounded 10
         , Border.solid
-        , Background.color (E.rgb255 192 109 152)
+        , Border.color (E.rgb255 0 0 0)
+        , Background.color (E.rgb255 225 134 184)
+        , E.padding 3
         ]
         (E.text target.name)
 

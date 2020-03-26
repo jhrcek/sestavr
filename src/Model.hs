@@ -20,7 +20,7 @@ module Model
   ( Exercise,
     ExerciseId,
     ExerciseTargetId,
-    ExerciseTarget,
+    ExerciseTarget (..),
     Lesson,
     LessonId,
     Position,
@@ -33,8 +33,9 @@ module Model
     createDemoData,
     migrateAll,
     fromExercise,
-    exerciseTargetExerciseId,
-    exerciseTargetTargetId,
+    toExercise,
+    targetIds,
+    exerciseId,
   )
 where
 
@@ -107,6 +108,15 @@ fromExercise entity targetIds =
           positionId = exercisePositionId exercise,
           targetIds = targetIds
         }
+
+toExercise :: ExerciseWithTargets -> Exercise
+toExercise ewt =
+  Exercise
+    { exerciseName = name ewt,
+      exerciseSanskritName = sanskritName ewt,
+      exerciseDescription = description ewt,
+      exercisePositionId = positionId ewt
+    }
 
 createDemoData :: IO ()
 createDemoData = runSqlite "sestavr.db" $ do

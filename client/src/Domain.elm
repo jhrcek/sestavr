@@ -119,10 +119,12 @@ exerciseDecoder =
 encodeExercise : Exercise -> Value
 encodeExercise exercise =
     Encode.object
-        [ ( "name", Encode.string exercise.name )
+        [ ( "exerciseId", Id.encode exercise.id )
+        , ( "name", Encode.string exercise.name )
         , ( "sanskritName", Maybe.withDefault Encode.null <| Maybe.map Encode.string exercise.sanskritName )
         , ( "description", Encode.string exercise.description )
         , ( "positionId", Id.encode exercise.positionId )
+        , ( "targetIds", Encode.list Id.encode exercise.targetIds )
         ]
 
 
