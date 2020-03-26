@@ -1,4 +1,4 @@
-module Modal exposing (Config, viewError)
+module Modal exposing (Config, confirmDeletion, viewError)
 
 import Element as E exposing (Element)
 import Element.Background as Background
@@ -12,6 +12,54 @@ type alias Config msg =
     , bodyText : String
     , closeMsg : msg
     }
+
+
+confirmDeletion :
+    { cancelMsg : msg
+    , confirmMsg : msg
+    , title : String
+    , bodyText : String
+    }
+    -> Element msg
+confirmDeletion { cancelMsg, confirmMsg, title, bodyText } =
+    E.el
+        [ Background.color dialogMask
+        , E.width E.fill
+        , E.height E.fill
+        ]
+        (E.column
+            [ E.width (E.px 600)
+            , E.centerX
+            , E.centerY
+            , Background.color (E.rgb255 255 255 255)
+            , Border.solid
+            , Border.width 1
+            ]
+            [ header cancelMsg title
+            , E.paragraph
+                [ E.padding 20 ]
+                [ E.text bodyText ]
+            , E.row [ E.spacing 5, E.alignRight, E.padding 5 ]
+                [ Input.button buttonAttrs
+                    { onPress = Just confirmMsg
+                    , label = E.text "Ano"
+                    }
+                , Input.button buttonAttrs
+                    { onPress = Just cancelMsg
+                    , label = E.text "Ne"
+                    }
+                ]
+            ]
+        )
+
+
+buttonAttrs : List (E.Attribute msg)
+buttonAttrs =
+    [ E.padding 5
+    , Border.solid
+    , Border.width 1
+    , Border.rounded 4
+    ]
 
 
 viewError : Config msg -> Element msg
@@ -30,7 +78,9 @@ viewError { title, bodyText, closeMsg } =
             , Border.width 1
             ]
             [ header closeMsg title
-            , body bodyText
+            , E.paragraph
+                [ E.padding 20 ]
+                [ E.text bodyText ]
             ]
         )
 
@@ -47,13 +97,6 @@ header closeMsg title =
             , label = E.text "×"
             }
         ]
-
-
-body : String -> Element msg
-body bodyText =
-    E.paragraph
-        [ E.padding 20 ]
-        [ E.text bodyText ]
 
 
 dialogMask : E.Color

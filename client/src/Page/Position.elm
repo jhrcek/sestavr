@@ -241,8 +241,6 @@ viewPositions targets maybeEdited =
 
                                     Nothing ->
                                         { onPress = Just (EditClicked target), label = E.text "🖉" }
-
-                            -- TODO user confirmation before deletion
                             , iconButton { onPress = Just (DeleteClicked target.id), label = E.text "🗑" }
                             ]
               }

@@ -45,13 +45,14 @@ type alias Model =
     , route : Route
     , initialUrl : Url
     , pageModel : PageModel
-    , problem : Maybe Problem
+    , modal : Maybe Modal
     }
 
 
-type Problem
+type Modal
     = HttpError Ht2.Error
     | ExerciseValidationError Exercise.ValidationError
+    | ConfirmDeletionModal String Msg
 
 
 initPage : Route -> Store -> PageModel
@@ -118,6 +119,7 @@ type Msg
     | DeleteExercise ExerciseId
     | GotExerciseValidationError Exercise.ValidationError
     | ErrorAcked
+    | ConfirmDeletion String Msg
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
@@ -131,7 +133,7 @@ init _ url key =
       , route = route
       , initialUrl = url
       , pageModel = initPage route Store.init
-      , problem = Nothing
+      , modal = Nothing
       }
     , Cmd.map StoreMsg <|
         Cmd.batch
@@ -147,32 +149,43 @@ view model =
     { title = "sestavr"
     , body =
         [ let
-            modal =
-                case model.problem of
-                    Just error ->
-                        [ E.inFront <|
-                            case error of
-                                HttpError httpError ->
-                                    Modal.viewError
-                                        { closeMsg = ErrorAcked
-                                        , title = "Něco se podělalo ☹"
-                                        , bodyText = Ht2.errorToString httpError
-                                        }
-
-                                ExerciseValidationError validationError ->
-                                    Modal.viewError
-                                        { closeMsg = ErrorAcked
-                                        , title = "Toto cvičení není možno uložit"
-                                        , bodyText = Exercise.validationErrorToString validationError
-                                        }
-                        ]
+            attrsWithModal =
+                case model.modal of
+                    Just modal ->
+                        [ E.inFront <| viewModal modal ]
 
                     Nothing ->
                         []
           in
-          E.layout modal (viewBody model)
+          E.layout attrsWithModal (viewBody model)
         ]
     }
+
+
+viewModal : Modal -> Element Msg
+viewModal modal =
+    case modal of
+        HttpError httpError ->
+            Modal.viewError
+                { closeMsg = ErrorAcked
+                , title = "Něco se podělalo ☹"
+                , bodyText = Ht2.errorToString httpError
+                }
+
+        ExerciseValidationError validationError ->
+            Modal.viewError
+                { closeMsg = ErrorAcked
+                , title = "Toto cvičení není možno uložit"
+                , bodyText = Exercise.validationErrorToString validationError
+                }
+
+        ConfirmDeletionModal message onConfirm ->
+            Modal.confirmDeletion
+                { cancelMsg = ErrorAcked
+                , confirmMsg = onConfirm
+                , title = "Opravdu?"
+                , bodyText = message
+                }
 
 
 viewBody : Model -> Element Msg
@@ -223,7 +236,7 @@ update msg model =
             in
             ( { model
                 | store = newStore
-                , problem = Maybe.map HttpError maybeError
+                , modal = Maybe.map HttpError maybeError
               }
             , Cmd.none
             )
@@ -331,7 +344,7 @@ update msg model =
             )
 
         ErrorAcked ->
-            ( { model | problem = Nothing }
+            ( { model | modal = Nothing }
             , Cmd.none
             )
 
@@ -360,7 +373,12 @@ update msg model =
             )
 
         GotExerciseValidationError validationError ->
-            ( { model | problem = Just (ExerciseValidationError validationError) }
+            ( { model | modal = Just (ExerciseValidationError validationError) }
+            , Cmd.none
+            )
+
+        ConfirmDeletion message onConfirm ->
+            ( { model | modal = Just (ConfirmDeletionModal message onConfirm) }
             , Cmd.none
             )
 
@@ -368,7 +386,7 @@ update msg model =
 targetConfig : Target.Config Msg
 targetConfig =
     { createTarget = CreateTarget
-    , deleteTarget = DeleteTarget
+    , deleteTarget = ConfirmDeletion "Opravdu chceš odstranit tuto cílovou oblast?" << DeleteTarget
     , updateTarget = UpdateTarget
     }
 
@@ -376,7 +394,7 @@ targetConfig =
 positionConfig : Position.Config Msg
 positionConfig =
     { createPosition = CreatePosition
-    , deletePosition = DeletePosition
+    , deletePosition = ConfirmDeletion "Opravdu chceš odstranit tuto pozici?" << DeletePosition
     , updatePosition = UpdatePosition
     }
 
@@ -385,7 +403,7 @@ exerciseConfig : Exercise.Config Msg
 exerciseConfig =
     { updateExercise = UpdateExercise
     , createExercise = CreateExercise
-    , deleteExercise = DeleteExercise
+    , deleteExercise = ConfirmDeletion "Opravdu chceš odstranit toto cvičení?" << DeleteExercise
     , validationError = GotExerciseValidationError
     }
 

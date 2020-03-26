@@ -365,8 +365,6 @@ view config positions targets exercise =
                 , Border.rounded 4
                 ]
                 { onPress = Just (config.deleteExercise exercise.id)
-
-                -- TODO confirm deletion
                 , label = E.text "Odstranit"
                 }
             ]
