@@ -241,8 +241,6 @@ viewTargets targets maybeEdited =
 
                                     Nothing ->
                                         { onPress = Just (EditClicked target), label = E.text "🖉" }
-
-                            -- TODO don't allow deletion if used in some exercise
                             , iconButton { onPress = Just (DeleteClicked target.id), label = E.text "🗑" }
                             ]
               }

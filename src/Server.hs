@@ -40,8 +40,7 @@ import Database.Persist.Sqlite
     runSqlPersistMPool,
     runSqlPool,
   )
-import Database.Persist.Types (entityKey, entityVal)
-import Database.Persist.Types (Entity)
+import Database.Persist.Types (Entity, entityKey, entityVal)
 import Database.Sqlite
   ( Error (ErrorConstraint),
     SqliteException,

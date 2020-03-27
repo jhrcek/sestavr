@@ -67,7 +67,7 @@ Exercise json
 ExerciseTarget json
     exerciseId ExerciseId
     targetId TargetId
-    UniqueExerciseTarget exerciseId targetId
+    Primary exerciseId targetId
 Routine json
     topic Text
 RoutineExercise json
