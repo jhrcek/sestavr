@@ -226,7 +226,7 @@ updateExercise exercise =
     Http.post
         { url = "/exercise/" ++ Id.toString exercise.id
         , body = Http.jsonBody <| Domain.encodeExercise exercise
-        , expect = Ht2.expectWhatever (ExerciseUpdated << Result.map (\() -> exercise))
+        , expect = Ht2.expectJson ExerciseUpdated Domain.exerciseDecoder
         }
 
 

@@ -28,6 +28,7 @@ import Database.Persist.Class
     get,
     insert,
     insertEntity,
+    insertMany_,
     replace,
     selectList,
   )
@@ -193,12 +194,21 @@ apiServer pool =
             tids = targetIds exerciseWithTargets
         runPool $ do
           eid <- insert exercise
-          mapM_ (\tid -> insert $ ExerciseTarget eid tid) tids
+          insertMany_ $ fmap (ExerciseTarget eid) tids
           pure $ exerciseWithTargets {exerciseId = eid}
         `handleConstraintError` "Exercise with this name already exists"
     --
-    updateExercise :: ExerciseId -> Exercise -> Handler ()
-    updateExercise eid exercise = runPool (replace eid exercise)
+    updateExercise :: ExerciseId -> ExerciseWithTargets -> Handler ExerciseWithTargets
+    updateExercise eid exerciseWithTargets =
+      do
+        let exercise = toExercise exerciseWithTargets
+            tids = targetIds exerciseWithTargets
+        runPool $ do
+          replace eid exercise
+          deleteWhere [ExerciseTargetExerciseId ==. eid]
+          insertMany_ $ fmap (ExerciseTarget eid) tids
+          pure exerciseWithTargets
+        `handleConstraintError` "Exercise with this name already exists"
     --
     deleteExercise :: ExerciseId -> Handler ()
     deleteExercise eid = runPool $ do
