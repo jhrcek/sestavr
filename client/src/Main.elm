@@ -21,6 +21,7 @@ import Id
 import Modal
 import Page.Exercise as Exercise
 import Page.Position as Position
+import Page.Routine as Routine
 import Page.Target as Target
 import Router exposing (Route)
 import Store exposing (Store)
@@ -68,7 +69,7 @@ initPage route store =
             TargetModel Target.init
 
         Router.Exercises ->
-            ExercisesModel
+            ExerciseList
 
         Router.Exercise exerciseId ->
             ExerciseModel exerciseId
@@ -83,17 +84,23 @@ initPage route store =
         Router.NotFound what ->
             NotFoundModel what
 
+        Router.RoutineEditor ->
+            RoutineEditor Routine.init
+
 
 type PageModel
     = HomeModel
       -- Exercise
-    | ExercisesModel
+    | ExerciseList
     | ExerciseModel ExerciseId
     | ExerciseEditor Exercise.Model
       -- Target
     | TargetModel Target.Model
       -- Position
     | PositionModel Position.Model
+      -- Routine
+    | RoutineEditor Routine.Model
+    | RoutineList
     | NotFoundModel String
 
 
@@ -118,6 +125,8 @@ type Msg
     | CreateExercise Exercise
     | DeleteExercise ExerciseId
     | GotExerciseValidationError Exercise.ValidationError
+      -- Routine
+    | RoutineMsg Routine.Msg
     | ErrorAcked
     | ConfirmDeletion String Msg
 
@@ -195,7 +204,7 @@ viewBody model =
             HomeModel ->
                 E.text "Home"
 
-            ExercisesModel ->
+            ExerciseList ->
                 Exercise.viewList model.store.exercises
 
             ExerciseModel exerciseId ->
@@ -224,6 +233,12 @@ viewBody model =
 
             NotFoundModel what ->
                 E.text <| "Tady nic není : " ++ what
+
+            RoutineEditor rmodel ->
+                E.map RoutineMsg <| Routine.editor model.store.exercises rmodel
+
+            RoutineList ->
+                E.text "Seznam sestav"
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -312,6 +327,18 @@ update msg model =
             ( { model | pageModel = newPageModel }
             , exerciseCmd
             )
+
+        RoutineMsg routineMsg ->
+            let
+                newPageModel =
+                    case model.pageModel of
+                        RoutineEditor m ->
+                            RoutineEditor <| Routine.update routineMsg m
+
+                        other ->
+                            other
+            in
+            ( { model | pageModel = newPageModel }, Cmd.none )
 
         CreateTarget target ->
             ( model
@@ -440,6 +467,7 @@ navigationLeft currentRoute =
         , menuItem currentRoute Router.Exercises "Cviky"
         , menuItem currentRoute Router.Targets "Cílové partie"
         , menuItem currentRoute Router.Positions "Pozice"
+        , menuItem currentRoute Router.RoutineEditor "Sestavy"
         ]
 
 
