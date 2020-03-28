@@ -28,7 +28,6 @@ type Msg
     = AddClicked
     | CancelClicked
     | EditClicked Position
-    | CancelEditClicked
     | EditedNameChanged String
     | SaveEditedNameClicked
     | SaveNewNameClicked
@@ -71,9 +70,6 @@ update config msg model =
             ( { model | editedPosition = Just target }
             , Cmd.none
             )
-
-        CancelEditClicked ->
-            ( { model | editedPosition = Nothing }, Cmd.none )
 
         EditedNameChanged newName ->
             ( { model | editedPosition = Maybe.map (\t -> { t | name = newName }) model.editedPosition }

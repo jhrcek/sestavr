@@ -81,11 +81,14 @@ initPage route store =
                 |> Maybe.withDefault Exercise.emptyEditor
                 |> ExerciseEditor
 
-        Router.NotFound what ->
-            NotFoundModel what
+        Router.Routines ->
+            RoutineList
 
         Router.RoutineEditor ->
             RoutineEditor Routine.init
+
+        Router.NotFound what ->
+            NotFoundModel what
 
 
 type PageModel
@@ -330,15 +333,18 @@ update msg model =
 
         RoutineMsg routineMsg ->
             let
-                newPageModel =
+                ( newPageModel, routineCmd ) =
                     case model.pageModel of
                         RoutineEditor m ->
-                            RoutineEditor <| Routine.update routineMsg m
+                            Tuple.mapFirst RoutineEditor <|
+                                Routine.update routineConfig routineMsg m
 
                         other ->
-                            other
+                            ( other, Cmd.none )
             in
-            ( { model | pageModel = newPageModel }, Cmd.none )
+            ( { model | pageModel = newPageModel }
+            , routineCmd
+            )
 
         CreateTarget target ->
             ( model
@@ -435,6 +441,12 @@ exerciseConfig =
     }
 
 
+routineConfig : Routine.Config Msg
+routineConfig =
+    { msg = RoutineMsg
+    }
+
+
 navigateToRoute : Key -> Url -> Route -> Cmd msg
 navigateToRoute key initialUrl route =
     Nav.pushUrl key <|
@@ -442,8 +454,13 @@ navigateToRoute key initialUrl route =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.none
+subscriptions model =
+    case model.pageModel of
+        RoutineEditor rmodel ->
+            Sub.map RoutineMsg <| Routine.subscriptions rmodel
+
+        _ ->
+            Sub.none
 
 
 viewLayout : Route -> Element Msg -> Element Msg

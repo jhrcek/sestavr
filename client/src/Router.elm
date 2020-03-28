@@ -18,6 +18,7 @@ type Route
     | Exercises
     | Exercise ExerciseId
     | ExerciseEditor (Maybe ExerciseId)
+    | Routines
     | RoutineEditor
     | NotFound String
 
@@ -32,7 +33,8 @@ route =
         , P.map (Exercise << Id.fromInt) (s "exercise" </> int)
         , P.map (ExerciseEditor Nothing) (s "exercise" </> s "create")
         , P.map (ExerciseEditor << Just << Id.fromInt) (s "exercise" </> int </> s "edit")
-        , P.map RoutineEditor (s "routine")
+        , P.map Routines (s "routine")
+        , P.map RoutineEditor (s "routine" </> s "edit")
         ]
 
 
@@ -72,8 +74,11 @@ toHash r =
                 Just exerciseId ->
                     "/exercise/" ++ Id.toString exerciseId ++ "/edit"
 
-        RoutineEditor ->
+        Routines ->
             "/routine"
+
+        RoutineEditor ->
+            "/routine/edit"
 
         NotFound bad ->
             bad
