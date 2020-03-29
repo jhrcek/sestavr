@@ -15,19 +15,32 @@ import Domain
         ( Exercise
         , ExerciseId
         , ExerciseIdTag
+        , Target
+        , TargetId
+        , TargetIdTag
         )
 import Element as E exposing (Element)
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes as Attr
-import Id exposing (IdDict)
+import Id exposing (IdDict, IdSet)
 import List.Extra as List
+import Page.Exercise as Exercise
+import Set.Any
 
 
 type alias Model =
-    { routineExercises : List ExerciseId
+    { routineExercises : List ExerciseInRoutine
     , dnd : DnDList.Model
+    , targetFilter : IdSet TargetIdTag
+    }
+
+
+type alias ExerciseInRoutine =
+    { draggableItemId : String
+    , exercise : Exercise
+    , duration : Int
     }
 
 
@@ -40,6 +53,7 @@ init : Model
 init =
     { routineExercises = []
     , dnd = dndSystem.model
+    , targetFilter = Id.emptySet
     }
 
 
@@ -50,24 +64,43 @@ subscriptions model =
 
 type Msg
     = AddToRoutine ExerciseId
-    | RemoveFromRoutine ExerciseId
+    | RemoveFromRoutine ExerciseInRoutine
+    | ToggleTargetId TargetId
+    | ClearTargets
     | DnD DnDList.Msg
 
 
-update : Config msg -> Msg -> Model -> ( Model, Cmd msg )
-update config msg model =
+update : Config msg -> IdDict ExerciseIdTag Exercise -> Msg -> Model -> ( Model, Cmd msg )
+update config exercises msg model =
     case msg of
         AddToRoutine exerciseId ->
-            ( { model | routineExercises = model.routineExercises ++ [ exerciseId ] }
+            ( { model
+                | routineExercises =
+                    (Dict.Any.get exerciseId exercises
+                        |> Maybe.map addExercise
+                        |> Maybe.withDefault identity
+                    )
+                        model.routineExercises
+              }
             , Cmd.none
             )
 
-        RemoveFromRoutine exerciseId ->
+        RemoveFromRoutine exerciseInRoutine ->
             ( { model
                 | routineExercises =
-                    List.filter (\eid -> eid /= exerciseId)
+                    List.filter (\eir -> eir /= exerciseInRoutine)
                         model.routineExercises
               }
+            , Cmd.none
+            )
+
+        ToggleTargetId targetId ->
+            ( { model | targetFilter = Set.Any.toggle targetId model.targetFilter }
+            , Cmd.none
+            )
+
+        ClearTargets ->
+            ( { model | targetFilter = Id.emptySet }
             , Cmd.none
             )
 
@@ -84,25 +117,54 @@ update config msg model =
             )
 
 
-editor : IdDict ExerciseIdTag Exercise -> Model -> Element Msg
-editor exercises model =
-    E.row
-        [ Border.solid
-        , Border.width 1
-        ]
-        [ E.column
+addExercise : Exercise -> List ExerciseInRoutine -> List ExerciseInRoutine
+addExercise exercise list =
+    List.indexedMap
+        (\idx eir -> { eir | draggableItemId = String.fromInt idx })
+        (list ++ [ { draggableItemId = "", exercise = exercise, duration = 0 } ])
+
+
+editor :
+    IdDict ExerciseIdTag Exercise
+    -> IdDict TargetIdTag Target
+    -> Model
+    -> Element Msg
+editor exercises targets model =
+    let
+        colAttrs =
             [ E.alignTop
             , E.width <| E.minimum 200 E.fill
             , E.height E.fill
             , Border.solid
             , Border.width 1
             ]
+    in
+    E.row
+        [ Border.solid
+        , Border.width 1
+        ]
+        [ E.column colAttrs
+            [ Exercise.targetCheckboxes ToggleTargetId targets model.targetFilter
+            , if Set.Any.isEmpty model.targetFilter then
+                E.none
+
+              else
+                Input.button buttonAttrs
+                    { onPress = Just ClearTargets, label = E.text "Zrušit výběr" }
+            ]
+        , E.column colAttrs
             (E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
                 :: (Dict.Any.values exercises
-                        |> List.filter (\e -> not <| List.member e.id model.routineExercises)
+                        |> (if Set.Any.isEmpty model.targetFilter then
+                                identity
+
+                            else
+                                -- Keep only exercises that target at least one area selected in targetFilter
+                                List.filter (\exercise -> setAny (\targetId -> List.member targetId exercise.targetIds) model.targetFilter)
+                           )
                         |> List.map
                             (\e ->
-                                E.row [ E.alignRight ]
+                                E.row [ E.alignRight, E.paddingXY 5 0 ]
                                     [ E.el [ E.padding 5 ] (E.text e.name)
                                     , Input.button buttonAttrs
                                         { onPress = Just (AddToRoutine e.id)
@@ -113,29 +175,25 @@ editor exercises model =
                    )
             )
         , E.column
-            [ E.alignTop
-            , E.width <| E.minimum 200 E.fill
-            , E.height E.fill
-            , Border.solid
-            , Border.width 1
-            , E.inFront (ghostView model.dnd model.routineExercises exercises)
-            ]
+            (E.inFront (ghostView model.dnd model.routineExercises) :: colAttrs)
             (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
-                :: (model.routineExercises
-                        |> List.filterMap (\eid -> Dict.Any.get eid exercises)
-                        |> List.indexedMap (draggableExercise model.dnd)
-                   )
+                :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
             )
         ]
 
 
-draggableExercise : DnDList.Model -> Int -> Exercise -> Element Msg
-draggableExercise dndModel index exercise =
+setAny : (a -> Bool) -> Set.Any.AnySet Int a -> Bool
+setAny p set =
+    Set.Any.foldl (\a acc -> p a || acc) False set
+
+
+draggableExercise : DnDList.Model -> Int -> ExerciseInRoutine -> Element Msg
+draggableExercise dndModel index exerciseInRoutine =
     let
         exId =
-            Id.toString exercise.id
+            exerciseInRoutine.draggableItemId
     in
-    draggableExerciseElement exercise <|
+    draggableExerciseElement exerciseInRoutine <|
         case dndSystem.info dndModel of
             Just { dragIndex } ->
                 if dragIndex /= index then
@@ -148,25 +206,24 @@ draggableExercise dndModel index exercise =
                 List.map E.htmlAttribute <| Attr.id exId :: dndSystem.dragEvents index exId
 
 
-draggableExerciseElement : Exercise -> List (E.Attribute Msg) -> Element Msg
-draggableExerciseElement exercise attrs =
-    E.row attrs
+draggableExerciseElement : ExerciseInRoutine -> List (E.Attribute Msg) -> Element Msg
+draggableExerciseElement eir attrs =
+    E.row (E.paddingXY 5 0 :: attrs)
         [ Input.button buttonAttrs
-            { onPress = Just (RemoveFromRoutine exercise.id)
+            { onPress = Just (RemoveFromRoutine eir)
             , label = E.text "«"
             }
-        , E.el [ E.padding 5 ] (E.text exercise.name)
+        , E.el [ E.padding 5 ] (E.text eir.exercise.name)
         ]
 
 
-ghostView : DnDList.Model -> List ExerciseId -> IdDict ExerciseIdTag Exercise -> Element Msg
-ghostView dndModel routineExercises exercises =
+ghostView : DnDList.Model -> List ExerciseInRoutine -> Element Msg
+ghostView dndModel routineExercises =
     dndSystem.info dndModel
         |> Maybe.andThen (\{ dragIndex } -> List.getAt dragIndex routineExercises)
-        |> Maybe.andThen (\exerciseId -> Dict.Any.get exerciseId exercises)
         |> Maybe.map
-            (\exercise ->
-                draggableExerciseElement exercise <|
+            (\exerciseInRoutine ->
+                draggableExerciseElement exerciseInRoutine <|
                     List.map E.htmlAttribute <|
                         dndSystem.ghostStyles dndModel
             )
@@ -182,7 +239,7 @@ buttonAttrs =
     ]
 
 
-dndConfig : DnDList.Config ExerciseId
+dndConfig : DnDList.Config ExerciseInRoutine
 dndConfig =
     { beforeUpdate = \_ _ list -> list
     , movement = DnDList.Vertical
@@ -191,6 +248,6 @@ dndConfig =
     }
 
 
-dndSystem : DnDList.System ExerciseId Msg
+dndSystem : DnDList.System ExerciseInRoutine Msg
 dndSystem =
     DnDList.create dndConfig DnD

@@ -5,6 +5,7 @@ module Page.Exercise exposing
     , ValidationError(..)
     , emptyEditor
     , initEditor
+    , targetCheckboxes
     , update
     , validationErrorToString
     , view
@@ -225,7 +226,7 @@ viewEditor positions targets model =
             }
         , E.row [ E.spacing 30 ]
             [ positionRadios positions model.positionId
-            , targetCheckboxes targets model.targetAreas
+            , targetCheckboxes ToggleTargetId targets model.targetAreas
             ]
         , E.row [ E.alignRight, E.spacing 5 ]
             [ E.link buttonAttrs
@@ -248,29 +249,35 @@ viewEditor positions targets model =
 
 positionRadios : IdDict PositionIdTag Position -> Maybe PositionId -> Element Msg
 positionRadios positions maybeCurrentPosition =
-    Input.radio [ E.alignTop ]
-        { onChange = PositionSelected
-        , selected = maybeCurrentPosition
-        , label = Input.labelLeft [ E.padding 3 ] (E.text "Pozice")
-        , options =
-            Dict.Any.values positions
-                |> List.map (\p -> Input.option p.id (E.text p.name))
-        }
+    E.el
+        [ {- Workarkound - putting alignTop in radio's attributes doesn't align it -} E.alignTop ]
+        (Input.radio []
+            { onChange = PositionSelected
+            , selected = maybeCurrentPosition
+            , label =
+                Input.labelAbove [ E.padding 3 ] <|
+                    E.el [ Font.bold ] (E.text "Pozice")
+            , options =
+                List.map (\p -> Input.option p.id (E.text p.name)) <|
+                    Dict.Any.values positions
+            }
+        )
 
 
-targetCheckboxes : IdDict TargetIdTag Target -> IdSet TargetIdTag -> Element Msg
-targetCheckboxes targets selectedTargets =
+targetCheckboxes : (TargetId -> msg) -> IdDict TargetIdTag Target -> IdSet TargetIdTag -> Element msg
+targetCheckboxes onTargetToggle targets selectedTargets =
     let
         targetCheckbox target =
             Input.checkbox []
-                { onChange = \_ -> ToggleTargetId target.id
+                { onChange = \_ -> onTargetToggle target.id
                 , icon = Input.defaultCheckbox
                 , checked = Set.Any.member target.id selectedTargets
                 , label = Input.labelRight [] (E.text target.name)
                 }
     in
-    E.row [ E.padding 8 ]
-        [ E.el [ E.padding 3, E.alignTop ] (E.text "Cílové oblasti")
+    E.column []
+        [ E.el [ E.padding 3, E.alignLeft, E.alignTop ] <|
+            E.el [ Font.bold ] (E.text "Cílové oblasti")
         , Dict.Any.values targets
             |> List.greedyGroupsOf 10
             |> List.map (\group -> E.column [ E.alignTop ] (List.map targetCheckbox group))

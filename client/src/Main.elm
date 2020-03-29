@@ -238,7 +238,10 @@ viewBody model =
                 E.text <| "Tady nic není : " ++ what
 
             RoutineEditor rmodel ->
-                E.map RoutineMsg <| Routine.editor model.store.exercises rmodel
+                E.map RoutineMsg <|
+                    Routine.editor model.store.exercises
+                        model.store.targets
+                        rmodel
 
             RoutineList ->
                 E.text "Seznam sestav"
@@ -337,7 +340,7 @@ update msg model =
                     case model.pageModel of
                         RoutineEditor m ->
                             Tuple.mapFirst RoutineEditor <|
-                                Routine.update routineConfig routineMsg m
+                                Routine.update routineConfig model.store.exercises routineMsg m
 
                         other ->
                             ( other, Cmd.none )
