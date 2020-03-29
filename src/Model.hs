@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -21,12 +21,15 @@ module Model
     ExerciseId,
     ExerciseTargetId,
     ExerciseTarget (..),
-    EntityField ( ExerciseTargetExerciseId),
+    EntityField (ExerciseTargetExerciseId),
     Lesson,
     LessonId,
     Position,
     PositionId,
+    RoutineWithExercises,
     RoutineId,
+    RoutineExercise (..),
+    Routine,
     RoutineExerciseId,
     Target,
     TargetId,
@@ -36,12 +39,14 @@ module Model
     fromExercise,
     toExercise,
     targetIds,
+    fromRoutine,
     exerciseId,
   )
 where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON)
+import qualified Data.List as List
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Database.Persist.Sqlite
@@ -118,6 +123,49 @@ toExercise ewt =
       exerciseDescription = description ewt,
       exercisePositionId = positionId ewt
     }
+
+-- This is to alleviate frontend from having to join Exercises from RoutineExercises join table
+data RoutineWithExercises
+  = RoutineWithExercises
+      { routineId :: RoutineId,
+        topic :: Text,
+        exercises :: [ExerciseInRoutine]
+      }
+  deriving (Generic)
+
+instance ToJSON RoutineWithExercises
+
+instance FromJSON RoutineWithExercises
+
+data ExerciseInRoutine
+  = ExerciseInRoutine
+      { eirExerciseId :: ExerciseId,
+        eirDuration :: DurationMinutes
+      }
+  deriving (Generic)
+
+instance ToJSON ExerciseInRoutine
+
+instance FromJSON ExerciseInRoutine
+
+newtype DurationMinutes = DurationMinutes Int
+  deriving (ToJSON, FromJSON) via Int
+
+fromRoutine :: Entity Routine -> [RoutineExercise] -> RoutineWithExercises
+fromRoutine entity res =
+  let routine = entityVal entity
+      routineId = entityKey entity
+   in RoutineWithExercises
+        { routineId = routineId,
+          topic = routineTopic routine,
+          exercises =
+              ( \re ->
+                  ExerciseInRoutine
+                    (routineExerciseExerciseId re)
+                    (DurationMinutes $ routineExerciseDurationMin re)
+              )
+              <$> List.sortOn routineExerciseOrder res
+        }
 
 createDemoData :: IO ()
 createDemoData = runSqlite "sestavr.db" $ do

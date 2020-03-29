@@ -152,6 +152,7 @@ init _ url key =
             [ Store.getTargets
             , Store.getExercises
             , Store.getPositions
+            , Store.getRoutines
             ]
     )
 

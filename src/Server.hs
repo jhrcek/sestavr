@@ -55,13 +55,19 @@ import Model
     Lesson,
     Position,
     PositionId,
+    Routine,
+    RoutineExercise,
+    RoutineId,
+    RoutineWithExercises,
     Target,
     TargetId,
     exerciseId,
     exerciseTargetExerciseId,
     exerciseTargetTargetId,
     fromExercise,
+    fromRoutine,
     migrateAll,
+    routineExerciseRoutineId,
     targetIds,
     toExercise,
   )
@@ -104,6 +110,8 @@ apiServer pool =
     :<|> createExercise
     :<|> updateExercise
     :<|> deleteExercise
+    -- Routine
+    :<|> getRoutines
   where
     runPool :: MonadIO m => SqlPersistM a -> m a
     runPool action = liftIO $ runSqlPersistMPool action pool
@@ -213,6 +221,29 @@ apiServer pool =
     deleteExercise eid = runPool $ do
       deleteWhere [ExerciseTargetExerciseId ==. eid]
       delete eid
+    -- ROUTINE
+    getRoutines :: Handler [RoutineWithExercises]
+    getRoutines = runPool $ do
+      routinesToExercises <- selectList [] [] :: SqlPersistM [Entity RoutineExercise]
+      routineEntities <- selectList [] [] :: SqlPersistM [Entity Routine]
+      let ridToRooutineExercises :: Map.Map RoutineId [RoutineExercise]
+          ridToRooutineExercises =
+            Map.fromListWith (<>) $
+              fmap
+                ( \entity ->
+                    let val = entityVal entity
+                     in ( routineExerciseRoutineId val,
+                          [val]
+                        )
+                )
+                routinesToExercises
+      pure $
+        fmap
+          ( \routineEntity ->
+              let res = Map.findWithDefault [] (entityKey routineEntity) ridToRooutineExercises
+               in fromRoutine routineEntity res
+          )
+          routineEntities
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

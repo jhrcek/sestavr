@@ -5,6 +5,9 @@ module Domain exposing
     , Position
     , PositionId
     , PositionIdTag
+    , Routine
+    , RoutineId
+    , RoutineIdTag
     , Target
     , TargetId
     , TargetIdTag
@@ -13,6 +16,7 @@ module Domain exposing
     , encodeTarget
     , exerciseDecoder
     , positionDecoder
+    , routineDecoder
     , targetDecoder
     )
 
@@ -129,6 +133,46 @@ encodeExercise exercise =
 
 
 
+-- ROUTINE
+
+
+type RoutineIdTag
+    = RoutineIdTag
+
+
+type alias RoutineId =
+    Id RoutineIdTag
+
+
+type alias Routine =
+    { id : RoutineId
+    , topic : String
+    , exercises : List RoutineExercise
+    }
+
+
+type alias RoutineExercise =
+    { exerciseId : ExerciseId
+    , duration : Int
+    }
+
+
+routineDecoder : Decoder Routine
+routineDecoder =
+    Decode.map3 Routine
+        (Decode.field "routineId" Id.decode)
+        (Decode.field "topic" Decode.string)
+        (Decode.field "exercises" (Decode.list routineExerciseDecoder))
+
+
+routineExerciseDecoder : Decoder RoutineExercise
+routineExerciseDecoder =
+    Decode.map2 RoutineExercise
+        (Decode.field "eirExerciseId" Id.decode)
+        (Decode.field "eirDuration" Decode.int)
+
+
+
 -- The code below is to reduce the number of "unused" warnings
 
 
@@ -136,6 +180,7 @@ type Tags
     = PositionIdTag_ PositionIdTag
     | ExerciseIdTag_ ExerciseIdTag
     | TargetIdTag_ TargetIdTag
+    | RoutineIdTag_ RoutineIdTag
 
 
 tags : List Tags
@@ -143,4 +188,5 @@ tags =
     [ PositionIdTag_ PositionIdTag
     , ExerciseIdTag_ ExerciseIdTag
     , TargetIdTag_ TargetIdTag
+    , RoutineIdTag_ RoutineIdTag
     ]
