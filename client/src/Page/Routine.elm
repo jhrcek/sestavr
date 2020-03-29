@@ -38,10 +38,14 @@ type alias Model =
 
 
 type alias ExerciseInRoutine =
-    { draggableItemId : String
+    { draggableItemId : DraggableItemId
     , exercise : Exercise
-    , duration : Int
+    , duration : Duration
     }
+
+
+type alias DraggableItemId =
+    Int
 
 
 type alias Config msg =
@@ -66,6 +70,7 @@ type Msg
     = AddToRoutine ExerciseId
     | RemoveFromRoutine ExerciseInRoutine
     | ToggleTargetId TargetId
+    | ChangeDuration DraggableItemId String
     | ClearTargets
     | DnD DnDList.Msg
 
@@ -99,6 +104,22 @@ update config exercises msg model =
             , Cmd.none
             )
 
+        ChangeDuration draggableItemId durationString ->
+            ( { model
+                | routineExercises =
+                    case parseDuration durationString of
+                        Nothing ->
+                            model.routineExercises
+
+                        Just newDuration ->
+                            List.updateIf
+                                (\exerciseInRoutine -> exerciseInRoutine.draggableItemId == draggableItemId)
+                                (\exerciseIntRoutine -> { exerciseIntRoutine | duration = newDuration })
+                                model.routineExercises
+              }
+            , Cmd.none
+            )
+
         ClearTargets ->
             ( { model | targetFilter = Id.emptySet }
             , Cmd.none
@@ -117,11 +138,42 @@ update config exercises msg model =
             )
 
 
+{-| This is to allow numbers only input the value of which can be deleted (corresponding to 0)
+-}
+type Duration
+    = Empty
+    | Duration Int
+
+
+parseDuration : String -> Maybe Duration
+parseDuration str =
+    if String.isEmpty str then
+        Just Empty
+
+    else
+        Maybe.map Duration <| String.toInt str
+
+
+durationToInt : Duration -> Int
+durationToInt duration =
+    case duration of
+        Empty ->
+            0
+
+        Duration x ->
+            x
+
+
 addExercise : Exercise -> List ExerciseInRoutine -> List ExerciseInRoutine
 addExercise exercise list =
     List.indexedMap
-        (\idx eir -> { eir | draggableItemId = String.fromInt idx })
-        (list ++ [ { draggableItemId = "", exercise = exercise, duration = 0 } ])
+        (\idx eir -> { eir | draggableItemId = idx })
+        (list ++ [ { draggableItemId = 0, exercise = exercise, duration = Duration 3 } ])
+
+
+routineDurationMinutes : List ExerciseInRoutine -> Int
+routineDurationMinutes =
+    List.map (.duration >> durationToInt) >> List.sum
 
 
 editor :
@@ -133,7 +185,7 @@ editor exercises targets model =
     let
         colAttrs =
             [ E.alignTop
-            , E.width <| E.minimum 200 E.fill
+            , E.width <| E.minimum 250 <| E.maximum 400 E.fill
             , E.height E.fill
             , Border.solid
             , Border.width 1
@@ -178,6 +230,12 @@ editor exercises targets model =
             (E.inFront (ghostView model.dnd model.routineExercises) :: colAttrs)
             (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
                 :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
+                ++ [ E.el [ E.alignBottom, E.padding 5 ] <|
+                        E.text <|
+                            "Celková délka "
+                                ++ String.fromInt (routineDurationMinutes model.routineExercises)
+                                ++ " min"
+                   ]
             )
         ]
 
@@ -191,19 +249,39 @@ draggableExercise : DnDList.Model -> Int -> ExerciseInRoutine -> Element Msg
 draggableExercise dndModel index exerciseInRoutine =
     let
         exId =
-            exerciseInRoutine.draggableItemId
+            String.fromInt exerciseInRoutine.draggableItemId
     in
-    draggableExerciseElement exerciseInRoutine <|
-        case dndSystem.info dndModel of
-            Just { dragIndex } ->
-                if dragIndex /= index then
-                    List.map E.htmlAttribute <| Attr.id exId :: dndSystem.dropEvents index exId
+    E.row [ E.width E.fill ]
+        [ draggableExerciseElement exerciseInRoutine <|
+            case dndSystem.info dndModel of
+                Just { dragIndex } ->
+                    if dragIndex /= index then
+                        List.map E.htmlAttribute <| Attr.id exId :: dndSystem.dropEvents index exId
 
-                else
-                    [ Font.color (E.rgb255 156 156 156) ]
+                    else
+                        [ Font.color (E.rgb255 156 156 156) ]
 
-            Nothing ->
-                List.map E.htmlAttribute <| Attr.id exId :: dndSystem.dragEvents index exId
+                Nothing ->
+                    List.map E.htmlAttribute <| Attr.id exId :: dndSystem.dragEvents index exId
+        , Input.text
+            [ E.alignRight
+            , E.width (E.px 50)
+            , E.height (E.px 30)
+            , E.padding 4
+            , E.htmlAttribute (Attr.type_ "number")
+            ]
+            { onChange = ChangeDuration exerciseInRoutine.draggableItemId
+            , text =
+                case exerciseInRoutine.duration of
+                    Empty ->
+                        ""
+
+                    Duration minutes ->
+                        String.fromInt minutes
+            , placeholder = Nothing
+            , label = Input.labelHidden "duration"
+            }
+        ]
 
 
 draggableExerciseElement : ExerciseInRoutine -> List (E.Attribute Msg) -> Element Msg
