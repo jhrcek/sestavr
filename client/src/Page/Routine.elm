@@ -185,7 +185,7 @@ editor exercises targets model =
     let
         colAttrs =
             [ E.alignTop
-            , E.width <| E.minimum 250 <| E.maximum 400 E.fill
+            , E.width <| E.minimum 250 <| E.maximum 600 E.fill
             , E.height E.fill
             , Border.solid
             , Border.width 1
@@ -207,6 +207,7 @@ editor exercises targets model =
         , E.column colAttrs
             (E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
                 :: (Dict.Any.values exercises
+                        |> List.sortBy .name
                         |> (if Set.Any.isEmpty model.targetFilter then
                                 identity
 

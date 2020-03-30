@@ -41,6 +41,8 @@ type SestavrAPI =
     :<|> "exercise" :> Capture "exerciseId" ExerciseId :> Delete '[JSON] ()
     -- Routine
     :<|> "routine" :> Get '[JSON] [RoutineWithExercises]
+    -- Static files
+    :<|> Raw
 
 sestavrApi :: Proxy SestavrAPI
 sestavrApi = Proxy

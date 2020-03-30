@@ -13,6 +13,7 @@ module Server
 where
 
 import Api (SestavrAPI, sestavrApi)
+import Servant.Server.StaticFiles (serveDirectoryWebApp)
 import Control.Exception.Safe (catch, throwM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
@@ -112,6 +113,8 @@ apiServer pool =
     :<|> deleteExercise
     -- Routine
     :<|> getRoutines
+    -- Static files
+    :<|> serveImages
   where
     runPool :: MonadIO m => SqlPersistM a -> m a
     runPool action = liftIO $ runSqlPersistMPool action pool
@@ -244,6 +247,8 @@ apiServer pool =
                in fromRoutine routineEntity res
           )
           routineEntities
+    -- TODO make this configurable on startup
+    serveImages = serveDirectoryWebApp "/home/janhrcek/Tmp/joga_images"
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

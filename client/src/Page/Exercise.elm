@@ -288,6 +288,7 @@ targetCheckboxes onTargetToggle targets selectedTargets =
 viewList : IdDict ExerciseIdTag Exercise -> Element msg
 viewList exercises =
     Dict.Any.values exercises
+        |> List.sortBy .name
         |> List.map exerciseLink
         |> (\exerciseLinks -> exerciseLinks ++ [ createExercisebutton ])
         |> E.column []
