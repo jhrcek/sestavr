@@ -15,6 +15,9 @@ import Domain
         ( Exercise
         , ExerciseId
         , ExerciseIdTag
+        , Position
+        , PositionId
+        , PositionIdTag
         , Target
         , TargetId
         , TargetIdTag
@@ -34,6 +37,7 @@ type alias Model =
     { routineExercises : List ExerciseInRoutine
     , dnd : DnDList.Model
     , targetFilter : IdSet TargetIdTag
+    , positionFilter : IdSet PositionIdTag
     }
 
 
@@ -58,6 +62,7 @@ init =
     { routineExercises = []
     , dnd = dndSystem.model
     , targetFilter = Id.emptySet
+    , positionFilter = Id.emptySet
     }
 
 
@@ -70,8 +75,10 @@ type Msg
     = AddToRoutine ExerciseId
     | RemoveFromRoutine ExerciseInRoutine
     | ToggleTargetId TargetId
+    | TogglePositionId PositionId
     | ChangeDuration DraggableItemId String
     | ClearTargets
+    | ClearPositions
     | DnD DnDList.Msg
 
 
@@ -104,6 +111,11 @@ update config exercises msg model =
             , Cmd.none
             )
 
+        TogglePositionId positionId ->
+            ( { model | positionFilter = Set.Any.toggle positionId model.positionFilter }
+            , Cmd.none
+            )
+
         ChangeDuration draggableItemId durationString ->
             ( { model
                 | routineExercises =
@@ -122,6 +134,11 @@ update config exercises msg model =
 
         ClearTargets ->
             ( { model | targetFilter = Id.emptySet }
+            , Cmd.none
+            )
+
+        ClearPositions ->
+            ( { model | positionFilter = Id.emptySet }
             , Cmd.none
             )
 
@@ -179,23 +196,45 @@ routineDurationMinutes =
 editor :
     IdDict ExerciseIdTag Exercise
     -> IdDict TargetIdTag Target
+    -> IdDict PositionIdTag Position
     -> Model
     -> Element Msg
-editor exercises targets model =
+editor exercises targets positions model =
     let
-        colAttrs =
+        colAttrs maxWidth =
             [ E.alignTop
-            , E.width <| E.minimum 250 <| E.maximum 600 E.fill
+            , E.width <| E.maximum maxWidth E.fill
             , E.height E.fill
             , Border.solid
             , Border.width 1
             ]
+
+        exerciseColumnWidth =
+            460
+
+        filteredExercises =
+            Dict.Any.values exercises
+                |> List.sortBy .name
+                |> (if Set.Any.isEmpty model.targetFilter then
+                        identity
+
+                    else
+                        -- Keep only exercises that target at least one area selected in targetFilter
+                        List.filter (\exercise -> setAny (\targetId -> List.member targetId exercise.targetIds) model.targetFilter)
+                   )
+                |> (if Set.Any.isEmpty model.positionFilter then
+                        identity
+
+                    else
+                        List.filter (\exercise -> Set.Any.member exercise.positionId model.positionFilter)
+                   )
     in
     E.row
         [ Border.solid
         , Border.width 1
+        , E.width <| E.maximum (200 + 2 * exerciseColumnWidth) E.fill
         ]
-        [ E.column colAttrs
+        [ E.column (E.paddingXY 5 0 :: colAttrs 200)
             [ Exercise.targetCheckboxes ToggleTargetId targets model.targetFilter
             , if Set.Any.isEmpty model.targetFilter then
                 E.none
@@ -203,41 +242,78 @@ editor exercises targets model =
               else
                 Input.button buttonAttrs
                     { onPress = Just ClearTargets, label = E.text "Zrušit výběr" }
-            ]
-        , E.column colAttrs
-            (E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
-                :: (Dict.Any.values exercises
-                        |> List.sortBy .name
-                        |> (if Set.Any.isEmpty model.targetFilter then
-                                identity
+            , positionCheckboxes positions model.positionFilter
+            , if Set.Any.isEmpty model.positionFilter then
+                E.none
 
-                            else
-                                -- Keep only exercises that target at least one area selected in targetFilter
-                                List.filter (\exercise -> setAny (\targetId -> List.member targetId exercise.targetIds) model.targetFilter)
-                           )
-                        |> List.map
-                            (\e ->
-                                E.row [ E.alignRight, E.paddingXY 5 0 ]
-                                    [ E.el [ E.padding 5 ] (E.text e.name)
-                                    , Input.button buttonAttrs
-                                        { onPress = Just (AddToRoutine e.id)
-                                        , label = E.text "»"
-                                        }
-                                    ]
-                            )
-                   )
+              else
+                Input.button buttonAttrs
+                    { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
+            , let
+                filteredCount =
+                    List.length filteredExercises
+
+                totalCount =
+                    Dict.Any.size exercises
+              in
+              if totalCount > List.length filteredExercises then
+                E.paragraph []
+                    [ E.text <|
+                        String.fromInt filteredCount
+                            ++ " / "
+                            ++ String.fromInt totalCount
+                            ++ " cviků odpovídá kriteriím"
+                    ]
+
+              else
+                E.none
+            ]
+        , E.column (colAttrs exerciseColumnWidth)
+            (E.el [ Font.bold, E.padding 5 ]
+                (E.text "Dostupné cviky")
+                :: List.map
+                    (\exercise ->
+                        E.row [ E.paddingXY 5 0, E.width E.fill ]
+                            [ E.el [ E.padding 5 ] (E.text exercise.name)
+                            , Input.button (E.alignRight :: buttonAttrs)
+                                { onPress = Just (AddToRoutine exercise.id)
+                                , label = E.text "»"
+                                }
+                            ]
+                    )
+                    filteredExercises
             )
         , E.column
-            (E.inFront (ghostView model.dnd model.routineExercises) :: colAttrs)
+            (E.inFront (ghostView model.dnd model.routineExercises) :: colAttrs exerciseColumnWidth)
             (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
                 :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
-                ++ [ E.el [ E.alignBottom, E.padding 5 ] <|
+                ++ [ E.el [ E.padding 5 ] <|
                         E.text <|
                             "Celková délka "
                                 ++ String.fromInt (routineDurationMinutes model.routineExercises)
                                 ++ " min"
                    ]
             )
+        ]
+
+
+positionCheckboxes : IdDict PositionIdTag Position -> IdSet PositionIdTag -> Element Msg
+positionCheckboxes targets selectedPositions =
+    let
+        positionCheckbox position =
+            Input.checkbox []
+                { onChange = \_ -> TogglePositionId position.id
+                , icon = Input.defaultCheckbox
+                , checked = Set.Any.member position.id selectedPositions
+                , label = Input.labelRight [] (E.text position.name)
+                }
+    in
+    E.column []
+        [ E.el [ E.padding 3, E.alignLeft, E.alignTop ] <|
+            E.el [ Font.bold ] (E.text "Typ pozice")
+        , Dict.Any.values targets
+            |> List.map positionCheckbox
+            |> E.column [ E.alignTop ]
         ]
 
 

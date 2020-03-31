@@ -242,6 +242,7 @@ viewBody model =
                 E.map RoutineMsg <|
                     Routine.editor model.store.exercises
                         model.store.targets
+                        model.store.positions
                         rmodel
 
             RoutineList ->
@@ -440,7 +441,7 @@ exerciseConfig : Exercise.Config Msg
 exerciseConfig =
     { updateExercise = UpdateExercise
     , createExercise = CreateExercise
-    , deleteExercise = ConfirmDeletion "Opravdu chceš odstranit toto cvičení?" << DeleteExercise
+    , deleteExercise = ConfirmDeletion "Opravdu chceš odstranit tento cvik?" << DeleteExercise
     , validationError = GotExerciseValidationError
     }
 
