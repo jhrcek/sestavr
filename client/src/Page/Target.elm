@@ -7,7 +7,9 @@ module Page.Target exposing
     , view
     )
 
+import Color
 import Command
+import Common
 import Dict.Any
 import Domain exposing (Target, TargetId, TargetIdTag)
 import Element as E exposing (Element)
@@ -120,7 +122,7 @@ form : Model -> Element Msg
 form model =
     case model.newField of
         Nothing ->
-            button
+            Input.button Common.buttonAttrs
                 { onPress = Just AddClicked
                 , label = E.text "Přidat partii"
                 }
@@ -135,11 +137,11 @@ form model =
                     , label = Input.labelLeft [ E.centerY ] (E.text "Název")
                     }
                 , E.row [ E.spacing 5, E.padding 5 ]
-                    [ button
+                    [ Input.button Common.buttonAttrs
                         { onPress = Just CancelClicked
                         , label = E.text "Zrušit"
                         }
-                    , button
+                    , Input.button Common.buttonAttrs
                         { onPress =
                             if String.isEmpty fieldName then
                                 Nothing
@@ -152,16 +154,6 @@ form model =
                 ]
 
 
-button : { onPress : Maybe Msg, label : Element Msg } -> Element Msg
-button =
-    Input.button
-        [ Border.solid
-        , Border.width 1
-        , E.padding 5
-        , Border.rounded 4
-        ]
-
-
 viewTargets : IdDict TargetIdTag Target -> Maybe Target -> Element Msg
 viewTargets targets maybeEdited =
     let
@@ -171,7 +163,7 @@ viewTargets targets maybeEdited =
                 , Border.width 1
                 , E.padding 5
                 , Border.rounded 4
-                , E.mouseOver [ Background.color (E.rgb255 192 192 192) ]
+                , E.mouseOver [ Background.color Color.lightGrey ]
                 ]
 
         colHeader label =
@@ -179,7 +171,7 @@ viewTargets targets maybeEdited =
                 [ Border.solid
                 , Border.width 1
                 , E.padding 5
-                , Background.color (E.rgb255 192 192 192)
+                , Background.color Color.lightGrey
                 ]
                 (E.text label)
     in

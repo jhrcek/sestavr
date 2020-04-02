@@ -5,15 +5,17 @@ module Page.Exercise exposing
     , ValidationError(..)
     , emptyEditor
     , initEditor
+    , listView
     , targetCheckboxes
     , update
     , validationErrorToString
     , view
     , viewEditor
-    , viewList
     )
 
+import Color
 import Command
+import Common
 import Dict.Any
 import Domain
     exposing
@@ -189,13 +191,6 @@ viewEditor positions targets model =
 
         placeholder txt =
             Just <| Input.placeholder [] (E.text txt)
-
-        buttonAttrs =
-            [ E.padding 5
-            , Border.solid
-            , Border.width 1
-            , Border.rounded 4
-            ]
     in
     E.column [ E.width E.fill ]
         [ Input.text [ fieldWidth ]
@@ -229,7 +224,7 @@ viewEditor positions targets model =
             , targetCheckboxes ToggleTargetId targets model.targetAreas
             ]
         , E.row [ E.alignRight, E.spacing 5 ]
-            [ E.link buttonAttrs
+            [ E.link Common.buttonAttrs
                 { url =
                     case model.exerciseId of
                         Just exerciseId ->
@@ -239,7 +234,7 @@ viewEditor positions targets model =
                             Router.href Router.Exercises
                 , label = E.text "Zrušit"
                 }
-            , Input.button buttonAttrs
+            , Input.button Common.buttonAttrs
                 { onPress = Just SaveExercise
                 , label = E.text "Uložit"
                 }
@@ -285,8 +280,8 @@ targetCheckboxes onTargetToggle targets selectedTargets =
         ]
 
 
-viewList : IdDict ExerciseIdTag Exercise -> Element msg
-viewList exercises =
+listView : IdDict ExerciseIdTag Exercise -> Element msg
+listView exercises =
     Dict.Any.values exercises
         |> List.sortBy .name
         |> List.map exerciseLink
@@ -297,37 +292,26 @@ viewList exercises =
 exerciseLink : Exercise -> Element msg
 exerciseLink exercise =
     E.link
-        [ E.mouseOver [ Font.color darkBlue ]
-        , Font.color lightBlue
+        [ E.mouseOver [ Font.color Color.darkBlue ]
+        , Font.color Color.lightBlue
         ]
         { url = Router.href (Router.Exercise exercise.id)
         , label =
-            E.text
-                (exercise.name
+            E.text <|
+                exercise.name
                     ++ Maybe.withDefault ""
                         (Maybe.map (\s -> " (" ++ s ++ ")")
                             exercise.sanskritName
                         )
-                )
         }
 
 
 createExercisebutton : Element msg
 createExercisebutton =
-    E.link [ Border.solid, Border.width 1, Border.rounded 4, E.padding 5 ]
+    E.link Common.buttonAttrs
         { url = Router.href (Router.ExerciseEditor Nothing)
         , label = E.text "Nový cvik"
         }
-
-
-lightBlue : E.Color
-lightBlue =
-    E.rgb255 18 147 216
-
-
-darkBlue : E.Color
-darkBlue =
-    E.rgb255 17 95 135
 
 
 view :
@@ -357,21 +341,11 @@ view config positions targets exercise =
         , E.paragraph []
             [ E.html <| Markdown.toHtml [] exercise.description ]
         , E.row [ E.alignRight, E.spacing 5 ]
-            [ E.link
-                [ E.padding 5
-                , Border.solid
-                , Border.width 1
-                , Border.rounded 4
-                ]
+            [ E.link Common.buttonAttrs
                 { url = Router.href <| Router.ExerciseEditor <| Just exercise.id
                 , label = E.text "Upravit"
                 }
-            , Input.button
-                [ E.padding 5
-                , Border.solid
-                , Border.width 1
-                , Border.rounded 4
-                ]
+            , Input.button Common.buttonAttrs
                 { onPress = Just (config.deleteExercise exercise.id)
                 , label = E.text "Odstranit"
                 }
@@ -384,7 +358,7 @@ viewTargetArea target =
     E.el
         [ Border.rounded 10
         , Border.solid
-        , Border.color (E.rgb255 0 0 0)
+        , Border.color Color.black
         , Background.color (E.rgb255 255 192 203)
         , E.padding 3
         ]
@@ -394,8 +368,8 @@ viewTargetArea target =
 backToList : Element msg
 backToList =
     E.link
-        [ E.mouseOver [ Font.color darkBlue ]
-        , Font.color lightBlue
+        [ E.mouseOver [ Font.color Color.darkBlue ]
+        , Font.color Color.lightBlue
         ]
         { url = Router.href Exercises
         , label = E.text "« Zpět na seznam cviků"

@@ -1,5 +1,7 @@
 module Modal exposing (Config, confirmDeletion, viewError)
 
+import Color
+import Common
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -23,7 +25,7 @@ confirmDeletion :
     -> Element msg
 confirmDeletion { cancelMsg, confirmMsg, title, bodyText } =
     E.el
-        [ Background.color dialogMask
+        [ Background.color Color.dialogMask
         , E.width E.fill
         , E.height E.fill
         ]
@@ -40,11 +42,11 @@ confirmDeletion { cancelMsg, confirmMsg, title, bodyText } =
                 [ E.padding 20 ]
                 [ E.text bodyText ]
             , E.row [ E.spacing 5, E.alignRight, E.padding 5 ]
-                [ Input.button buttonAttrs
+                [ Input.button Common.buttonAttrs
                     { onPress = Just confirmMsg
                     , label = E.text "Ano"
                     }
-                , Input.button buttonAttrs
+                , Input.button Common.buttonAttrs
                     { onPress = Just cancelMsg
                     , label = E.text "Ne"
                     }
@@ -53,19 +55,10 @@ confirmDeletion { cancelMsg, confirmMsg, title, bodyText } =
         )
 
 
-buttonAttrs : List (E.Attribute msg)
-buttonAttrs =
-    [ E.padding 5
-    , Border.solid
-    , Border.width 1
-    , Border.rounded 4
-    ]
-
-
 viewError : Config msg -> Element msg
 viewError { title, bodyText, closeMsg } =
     E.el
-        [ Background.color dialogMask
+        [ Background.color Color.dialogMask
         , E.width E.fill
         , E.height E.fill
         ]
@@ -97,8 +90,3 @@ header closeMsg title =
             , label = E.text "×"
             }
         ]
-
-
-dialogMask : E.Color
-dialogMask =
-    E.rgba 0 0 0 0.3

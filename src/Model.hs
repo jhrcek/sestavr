@@ -184,7 +184,6 @@ createDemoData = runSqlite "sestavr.db" $ do
   lyingBackId <- insert $ Position "Na zádech"
   handSupportedId <- insert $ Position "S oporou paží"
 
-  plankId <- insert $ Exercise "Prkno" Nothing "popis prkna ... dlouhý text" handSupportedId
   boatId <- insert $ Exercise "Pozice loďky" (Just "Navasana")  "![Navasana](Navasana.png)" sitId
   childId <- insert $ Exercise "Pozice dítěte" (Just "Balasana")  "![Balasana](Balasana.png)" kneelId
   
@@ -275,7 +274,6 @@ createDemoData = runSqlite "sestavr.db" $ do
 
   routine1Id <- insert $ Routine "Moje první sestava"
 
-  _ <- insert $ RoutineExercise routine1Id plankId 2 1
   _ <- insert $ RoutineExercise routine1Id childId 5 2
   _ <- insert $ RoutineExercise routine1Id boatId 1 3
 

@@ -3,11 +3,16 @@ module Page.Routine exposing
     , Model
     , Msg
     , editor
-    , init
+    , emptyEditor
+    , initEditor
+    , listView
     , subscriptions
     , update
+    , view
     )
 
+import Color
+import Common
 import Dict.Any
 import DnDList
 import Domain
@@ -18,6 +23,8 @@ import Domain
         , Position
         , PositionId
         , PositionIdTag
+        , Routine
+        , RoutineIdTag
         , Target
         , TargetId
         , TargetIdTag
@@ -30,6 +37,7 @@ import Html.Attributes as Attr
 import Id exposing (IdDict, IdSet)
 import List.Extra as List
 import Page.Exercise as Exercise
+import Router
 import Set.Any
 
 
@@ -57,8 +65,29 @@ type alias Config msg =
     }
 
 
-init : Model
-init =
+initEditor : IdDict ExerciseIdTag Exercise -> Routine -> Model
+initEditor exercises routine =
+    let
+        routineExercises =
+            routine.exercises
+                |> List.filterMap (\re -> Dict.Any.get re.exerciseId exercises |> Maybe.map (Tuple.pair re))
+                |> List.indexedMap
+                    (\index ( re, exercise ) ->
+                        { draggableItemId = index
+                        , exercise = exercise
+                        , duration = Duration re.duration
+                        }
+                    )
+    in
+    { routineExercises = routineExercises
+    , dnd = dndSystem.model
+    , targetFilter = Id.emptySet
+    , positionFilter = Id.emptySet
+    }
+
+
+emptyEditor : Model
+emptyEditor =
     { routineExercises = []
     , dnd = dndSystem.model
     , targetFilter = Id.emptySet
@@ -193,6 +222,53 @@ routineDurationMinutes =
     List.map (.duration >> durationToInt) >> List.sum
 
 
+view : Routine -> Element msg
+view routine =
+    E.column []
+        [ E.el [ Font.size 28, Font.bold ] (E.text routine.topic)
+        , E.text "TODO more details"
+        , editRoutineButton routine
+        , E.text "TODO copy button"
+        , E.text "TODO delete button"
+        ]
+
+
+listView : IdDict RoutineIdTag Routine -> Element Msg
+listView routines =
+    Dict.Any.values routines
+        |> List.sortBy .topic
+        |> List.map routineLink
+        |> (\routineLinks -> routineLinks ++ [ createRoutineButton ])
+        |> E.column []
+
+
+routineLink : Routine -> Element msg
+routineLink routine =
+    E.link
+        [ E.mouseOver [ Font.color Color.darkBlue ]
+        , Font.color Color.lightBlue
+        ]
+        { url = Router.href (Router.Routine routine.id)
+        , label = E.text routine.topic
+        }
+
+
+editRoutineButton : Routine -> Element msg
+editRoutineButton routine =
+    E.link Common.buttonAttrs
+        { url = Router.href <| Router.RoutineEditor <| Just routine.id
+        , label = E.text "Upravit"
+        }
+
+
+createRoutineButton : Element msg
+createRoutineButton =
+    E.link Common.buttonAttrs
+        { url = Router.href (Router.RoutineEditor Nothing)
+        , label = E.text "Nová sestava"
+        }
+
+
 editor :
     IdDict ExerciseIdTag Exercise
     -> IdDict TargetIdTag Target
@@ -240,14 +316,14 @@ editor exercises targets positions model =
                 E.none
 
               else
-                Input.button buttonAttrs
+                Input.button Common.buttonAttrs
                     { onPress = Just ClearTargets, label = E.text "Zrušit výběr" }
             , positionCheckboxes positions model.positionFilter
             , if Set.Any.isEmpty model.positionFilter then
                 E.none
 
               else
-                Input.button buttonAttrs
+                Input.button Common.buttonAttrs
                     { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
             , let
                 filteredCount =
@@ -275,7 +351,7 @@ editor exercises targets positions model =
                     (\exercise ->
                         E.row [ E.paddingXY 5 0, E.width E.fill ]
                             [ E.el [ E.padding 5 ] (E.text exercise.name)
-                            , Input.button (E.alignRight :: buttonAttrs)
+                            , Input.button (E.alignRight :: Common.buttonAttrs)
                                 { onPress = Just (AddToRoutine exercise.id)
                                 , label = E.text "»"
                                 }
@@ -364,7 +440,7 @@ draggableExercise dndModel index exerciseInRoutine =
 draggableExerciseElement : ExerciseInRoutine -> List (E.Attribute Msg) -> Element Msg
 draggableExerciseElement eir attrs =
     E.row (E.paddingXY 5 0 :: attrs)
-        [ Input.button buttonAttrs
+        [ Input.button Common.buttonAttrs
             { onPress = Just (RemoveFromRoutine eir)
             , label = E.text "«"
             }
@@ -383,15 +459,6 @@ ghostView dndModel routineExercises =
                         dndSystem.ghostStyles dndModel
             )
         |> Maybe.withDefault E.none
-
-
-buttonAttrs : List (E.Attribute msg)
-buttonAttrs =
-    [ E.padding 5
-    , Border.solid
-    , Border.width 1
-    , Border.rounded 4
-    ]
 
 
 dndConfig : DnDList.Config ExerciseInRoutine

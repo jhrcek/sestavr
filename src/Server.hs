@@ -13,7 +13,6 @@ module Server
 where
 
 import Api (SestavrAPI, sestavrApi)
-import Servant.Server.StaticFiles (serveDirectoryWebApp)
 import Control.Exception.Safe (catch, throwM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
@@ -74,6 +73,7 @@ import Model
   )
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
+import Servant.Server.StaticFiles (serveDirectoryWebApp)
 
 run :: IO ()
 run = do

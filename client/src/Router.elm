@@ -5,7 +5,7 @@ module Router exposing
     , toHash
     )
 
-import Domain exposing (ExerciseId)
+import Domain exposing (ExerciseId, RoutineId)
 import Id
 import Url exposing (Protocol(..), Url)
 import Url.Parser as P exposing ((</>), Parser, int, s, top)
@@ -19,7 +19,8 @@ type Route
     | Exercise ExerciseId
     | ExerciseEditor (Maybe ExerciseId)
     | Routines
-    | RoutineEditor
+    | Routine RoutineId
+    | RoutineEditor (Maybe RoutineId)
     | NotFound String
 
 
@@ -29,12 +30,18 @@ route =
         [ P.map Home top
         , P.map Targets (s "target")
         , P.map Positions (s "position")
+
+        -- Exercises
         , P.map Exercises (s "exercise")
         , P.map (Exercise << Id.fromInt) (s "exercise" </> int)
         , P.map (ExerciseEditor Nothing) (s "exercise" </> s "create")
         , P.map (ExerciseEditor << Just << Id.fromInt) (s "exercise" </> int </> s "edit")
+
+        -- Routines
         , P.map Routines (s "routine")
-        , P.map RoutineEditor (s "routine" </> s "edit")
+        , P.map (Routine << Id.fromInt) (s "routine" </> int)
+        , P.map (RoutineEditor Nothing) (s "routine" </> s "create")
+        , P.map (RoutineEditor << Just << Id.fromInt) (s "routine" </> int </> s "edit")
         ]
 
 
@@ -77,8 +84,16 @@ toHash r =
         Routines ->
             "/routine"
 
-        RoutineEditor ->
-            "/routine/edit"
+        Routine routineId ->
+            "/routine/" ++ Id.toString routineId
+
+        RoutineEditor maybeRoutineId ->
+            case maybeRoutineId of
+                Nothing ->
+                    "/routine/create"
+
+                Just routineId ->
+                    "/routine/" ++ Id.toString routineId ++ "/edit"
 
         NotFound bad ->
             bad

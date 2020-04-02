@@ -9,6 +9,7 @@ import Domain
         , ExerciseId
         , Position
         , PositionId
+        , RoutineId
         , Target
         , TargetId
         )
@@ -84,8 +85,15 @@ initPage route store =
         Router.Routines ->
             RoutineList
 
-        Router.RoutineEditor ->
-            RoutineEditor Routine.init
+        Router.Routine routineId ->
+            RoutineModel routineId
+
+        Router.RoutineEditor maybeRoutineId ->
+            maybeRoutineId
+                |> Maybe.andThen (\routineId -> Dict.Any.get routineId store.routines)
+                |> Maybe.map (\routine -> Routine.initEditor store.exercises routine)
+                |> Maybe.withDefault Routine.emptyEditor
+                |> RoutineEditor
 
         Router.NotFound what ->
             NotFoundModel what
@@ -102,8 +110,9 @@ type PageModel
       -- Position
     | PositionModel Position.Model
       -- Routine
-    | RoutineEditor Routine.Model
     | RoutineList
+    | RoutineModel RoutineId
+    | RoutineEditor Routine.Model
     | NotFoundModel String
 
 
@@ -209,7 +218,7 @@ viewBody model =
                 E.text "Home"
 
             ExerciseList ->
-                Exercise.viewList model.store.exercises
+                Exercise.listView model.store.exercises
 
             ExerciseModel exerciseId ->
                 case Dict.Any.get exerciseId model.store.exercises of
@@ -235,8 +244,16 @@ viewBody model =
             PositionModel pmodel ->
                 E.map PositionMsg <| Position.view model.store.positions pmodel
 
-            NotFoundModel what ->
-                E.text <| "Tady nic není : " ++ what
+            RoutineList ->
+                E.map RoutineMsg <| Routine.listView model.store.routines
+
+            RoutineModel routineId ->
+                case Dict.Any.get routineId model.store.routines of
+                    Just routine ->
+                        Routine.view routine
+
+                    Nothing ->
+                        E.text <| "Sestava s ID " ++ Id.toString routineId ++ " neexistuje"
 
             RoutineEditor rmodel ->
                 E.map RoutineMsg <|
@@ -245,8 +262,8 @@ viewBody model =
                         model.store.positions
                         rmodel
 
-            RoutineList ->
-                E.text "Seznam sestav"
+            NotFoundModel what ->
+                E.text <| "Tady nic není : " ++ what
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -489,7 +506,7 @@ navigationLeft currentRoute =
         , menuItem currentRoute Router.Exercises "Cviky"
         , menuItem currentRoute Router.Targets "Cílové partie"
         , menuItem currentRoute Router.Positions "Pozice"
-        , menuItem currentRoute Router.RoutineEditor "Sestavy"
+        , menuItem currentRoute Router.Routines "Sestavy"
         ]
 
 
