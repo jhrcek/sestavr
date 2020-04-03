@@ -150,16 +150,24 @@ update : Config msg -> Msg -> Model -> ( Model, Cmd msg )
 update config msg model =
     case msg of
         SetName newName ->
-            ( { model | name = newName }, Cmd.none )
+            ( { model | name = newName }
+            , Cmd.none
+            )
 
         SetSanskritName newSanskritName ->
-            ( { model | sanskritName = newSanskritName }, Cmd.none )
+            ( { model | sanskritName = newSanskritName }
+            , Cmd.none
+            )
 
         SetDescription newDescription ->
-            ( { model | description = newDescription }, Cmd.none )
+            ( { model | description = newDescription }
+            , Cmd.none
+            )
 
         ToggleTargetId targetId ->
-            ( { model | targetAreas = Set.Any.toggle targetId model.targetAreas }, Cmd.none )
+            ( { model | targetAreas = Set.Any.toggle targetId model.targetAreas }
+            , Cmd.none
+            )
 
         PositionSelected positionId ->
             ( { model | positionId = Just positionId }
@@ -171,12 +179,14 @@ update config msg model =
                 command =
                     case updateOrCreate config model of
                         Err validationError ->
-                            Command.perform (config.validationError validationError)
+                            config.validationError validationError
 
                         Ok saveOrUpdateCmd ->
-                            Command.perform saveOrUpdateCmd
+                            saveOrUpdateCmd
             in
-            ( model, command )
+            ( model
+            , Command.perform command
+            )
 
 
 viewEditor :

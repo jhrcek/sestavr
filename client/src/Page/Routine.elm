@@ -2,16 +2,19 @@ module Page.Routine exposing
     ( Config
     , Model
     , Msg
+    , ValidationError(..)
     , editor
     , emptyEditor
     , initEditor
     , listView
     , subscriptions
     , update
+    , validationErrorToString
     , view
     )
 
 import Color
+import Command
 import Common
 import Dict.Any
 import DnDList
@@ -24,6 +27,7 @@ import Domain
         , PositionId
         , PositionIdTag
         , Routine
+        , RoutineId
         , RoutineIdTag
         , Target
         , TargetId
@@ -42,7 +46,9 @@ import Set.Any
 
 
 type alias Model =
-    { routineExercises : List ExerciseInRoutine
+    { routineId : Maybe RoutineId
+    , topic : String
+    , routineExercises : List ExerciseInRoutine
     , dnd : DnDList.Model
     , targetFilter : IdSet TargetIdTag
     , positionFilter : IdSet PositionIdTag
@@ -62,6 +68,10 @@ type alias DraggableItemId =
 
 type alias Config msg =
     { msg : Msg -> msg
+    , createRoutine : Routine -> msg
+    , updateRoutine : Routine -> msg
+    , deleteRoutine : RoutineId -> msg
+    , validationError : ValidationError -> msg
     }
 
 
@@ -79,7 +89,9 @@ initEditor exercises routine =
                         }
                     )
     in
-    { routineExercises = routineExercises
+    { routineId = Just routine.id
+    , routineExercises = routineExercises
+    , topic = routine.topic
     , dnd = dndSystem.model
     , targetFilter = Id.emptySet
     , positionFilter = Id.emptySet
@@ -88,7 +100,9 @@ initEditor exercises routine =
 
 emptyEditor : Model
 emptyEditor =
-    { routineExercises = []
+    { routineId = Nothing
+    , routineExercises = []
+    , topic = ""
     , dnd = dndSystem.model
     , targetFilter = Id.emptySet
     , positionFilter = Id.emptySet
@@ -106,8 +120,10 @@ type Msg
     | ToggleTargetId TargetId
     | TogglePositionId PositionId
     | ChangeDuration DraggableItemId String
+    | ChangeTopic String
     | ClearTargets
     | ClearPositions
+    | SaveRoutine
     | DnD DnDList.Msg
 
 
@@ -183,6 +199,25 @@ update config exercises msg model =
             , Cmd.map config.msg <| dndSystem.commands model.dnd
             )
 
+        SaveRoutine ->
+            let
+                command =
+                    case updateOrCreate config model of
+                        Err validationError ->
+                            config.validationError validationError
+
+                        Ok saveOrUpdateCmd ->
+                            saveOrUpdateCmd
+            in
+            ( model
+            , Command.perform command
+            )
+
+        ChangeTopic newTopic ->
+            ( { model | topic = newTopic }
+            , Cmd.none
+            )
+
 
 {-| This is to allow numbers only input the value of which can be deleted (corresponding to 0)
 -}
@@ -197,7 +232,7 @@ parseDuration str =
         Just Empty
 
     else
-        Maybe.map Duration <| String.toInt str
+        Maybe.map (Duration << max 0) <| String.toInt str
 
 
 durationToInt : Duration -> Int
@@ -217,16 +252,25 @@ addExercise exercise list =
         (list ++ [ { draggableItemId = 0, exercise = exercise, duration = Duration 3 } ])
 
 
-routineDurationMinutes : List ExerciseInRoutine -> Int
-routineDurationMinutes =
+exercisesDurationMinutes : List ExerciseInRoutine -> Int
+exercisesDurationMinutes =
     List.map (.duration >> durationToInt) >> List.sum
+
+
+routineDurationMinutes : Routine -> Int
+routineDurationMinutes routine =
+    routine.exercises |> List.map .duration |> List.sum
 
 
 view : Routine -> Element msg
 view routine =
     E.column []
         [ E.el [ Font.size 28, Font.bold ] (E.text routine.topic)
-        , E.text "TODO more details"
+        , E.text <|
+            String.fromInt (List.length routine.exercises)
+                ++ " cvičení, celková délka "
+                ++ String.fromInt (routineDurationMinutes routine)
+                ++ " minut."
         , editRoutineButton routine
         , E.text "TODO copy button"
         , E.text "TODO delete button"
@@ -266,6 +310,22 @@ createRoutineButton =
     E.link Common.buttonAttrs
         { url = Router.href (Router.RoutineEditor Nothing)
         , label = E.text "Nová sestava"
+        }
+
+
+cancelEditButton : Element msg
+cancelEditButton =
+    E.link Common.buttonAttrs
+        { url = Router.href Router.Routines
+        , label = E.text "Zrušit"
+        }
+
+
+saveButton : Element Msg
+saveButton =
+    Input.button Common.buttonAttrs
+        { onPress = Just SaveRoutine
+        , label = E.text "Uložit"
         }
 
 
@@ -362,12 +422,26 @@ editor exercises targets positions model =
         , E.column
             (E.inFront (ghostView model.dnd model.routineExercises) :: colAttrs exerciseColumnWidth)
             (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
+                :: Input.text
+                    [ E.width (E.px 200)
+                    , E.height (E.px 30)
+                    , E.padding 4
+                    ]
+                    { onChange = ChangeTopic
+                    , text = model.topic
+                    , placeholder = Nothing
+                    , label = Input.labelLeft [] (E.text "Téma")
+                    }
                 :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
                 ++ [ E.el [ E.padding 5 ] <|
                         E.text <|
                             "Celková délka "
-                                ++ String.fromInt (routineDurationMinutes model.routineExercises)
+                                ++ String.fromInt (exercisesDurationMinutes model.routineExercises)
                                 ++ " min"
+                   , E.row []
+                        [ cancelEditButton
+                        , saveButton
+                        ]
                    ]
             )
         ]
@@ -473,3 +547,58 @@ dndConfig =
 dndSystem : DnDList.System ExerciseInRoutine Msg
 dndSystem =
     DnDList.create dndConfig DnD
+
+
+type ValidationError
+    = EmptyListOfExercises
+    | TopicEmpty
+
+
+validationErrorToString : ValidationError -> String
+validationErrorToString ve =
+    case ve of
+        EmptyListOfExercises ->
+            "Seznam cvičení nesmí být prázdný"
+
+        TopicEmpty ->
+            "Musíš nastavit téma sestavy"
+
+
+updateOrCreate : Config msg -> Model -> Result ValidationError msg
+updateOrCreate config model =
+    (if String.isEmpty model.topic then
+        Err TopicEmpty
+
+     else
+        Ok model.topic
+    )
+        |> Result.andThen
+            (\validTopic ->
+                case model.routineExercises of
+                    [] ->
+                        Err EmptyListOfExercises
+
+                    nonemptyListOfExercises ->
+                        let
+                            ( request, id ) =
+                                case model.routineId of
+                                    Nothing ->
+                                        ( config.createRoutine, Id.fromInt -1 )
+
+                                    Just routineId ->
+                                        ( config.updateRoutine, routineId )
+                        in
+                        Ok <|
+                            request
+                                { id = id
+                                , topic = validTopic
+                                , exercises =
+                                    List.map
+                                        (\exerciseInRoutine ->
+                                            { exerciseId = exerciseInRoutine.exercise.id
+                                            , duration = durationToInt exerciseInRoutine.duration
+                                            }
+                                        )
+                                        nonemptyListOfExercises
+                                }
+            )

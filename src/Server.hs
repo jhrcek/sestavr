@@ -118,6 +118,8 @@ apiServer pool =
   where
     runPool :: MonadIO m => SqlPersistM a -> m a
     runPool action = liftIO $ runSqlPersistMPool action pool
+    -- TODO make this configurable on startup
+    serveImages = serveDirectoryWebApp "/home/janhrcek/Tmp/joga_images"
     --
     getLessons :: Handler [Entity Lesson]
     getLessons = runPool $ selectList [] []
@@ -221,9 +223,12 @@ apiServer pool =
         `handleConstraintError` "Exercise with this name already exists"
     --
     deleteExercise :: ExerciseId -> Handler ()
-    deleteExercise eid = runPool $ do
-      deleteWhere [ExerciseTargetExerciseId ==. eid]
-      delete eid
+    deleteExercise eid =
+      do
+        runPool $ do
+          deleteWhere [ExerciseTargetExerciseId ==. eid]
+          delete eid
+        `handleConstraintError` "This exercise can't be deleted, because it's used in some lesson"
     -- ROUTINE
     getRoutines :: Handler [RoutineWithExercises]
     getRoutines = runPool $ do
@@ -247,8 +252,6 @@ apiServer pool =
                in fromRoutine routineEntity res
           )
           routineEntities
-    -- TODO make this configurable on startup
-    serveImages = serveDirectoryWebApp "/home/janhrcek/Tmp/joga_images"
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

@@ -9,6 +9,7 @@ import Domain
         , ExerciseId
         , Position
         , PositionId
+        , Routine
         , RoutineId
         , Target
         , TargetId
@@ -54,6 +55,7 @@ type alias Model =
 type Modal
     = HttpError Ht2.Error
     | ExerciseValidationError Exercise.ValidationError
+    | RoutineValidationError Routine.ValidationError
     | ConfirmDeletionModal String Msg
 
 
@@ -139,6 +141,10 @@ type Msg
     | GotExerciseValidationError Exercise.ValidationError
       -- Routine
     | RoutineMsg Routine.Msg
+    | CreateRoutine Routine
+    | UpdateRoutine Routine
+    | DeleteRoutine RoutineId
+    | GotRoutineValidationError Routine.ValidationError
     | ErrorAcked
     | ConfirmDeletion String Msg
 
@@ -199,6 +205,13 @@ viewModal modal =
                 { closeMsg = ErrorAcked
                 , title = "Toto cvičení není možno uložit"
                 , bodyText = Exercise.validationErrorToString validationError
+                }
+
+        RoutineValidationError validationError ->
+            Modal.viewError
+                { closeMsg = ErrorAcked
+                , title = "Tuto sestavu není možno uložit"
+                , bodyText = Routine.validationErrorToString validationError
                 }
 
         ConfirmDeletionModal message onConfirm ->
@@ -432,6 +445,23 @@ update msg model =
             , Cmd.none
             )
 
+        CreateRoutine routine ->
+            -- TODO create routine
+            ( model, Cmd.none )
+
+        UpdateRoutine routine ->
+            -- TODO update routine
+            ( model, Cmd.none )
+
+        DeleteRoutine routine ->
+            -- TODO delete routine
+            ( model, Cmd.none )
+
+        GotRoutineValidationError validationError ->
+            ( { model | modal = Just (RoutineValidationError validationError) }
+            , Cmd.none
+            )
+
         ConfirmDeletion message onConfirm ->
             ( { model | modal = Just (ConfirmDeletionModal message onConfirm) }
             , Cmd.none
@@ -466,6 +496,10 @@ exerciseConfig =
 routineConfig : Routine.Config Msg
 routineConfig =
     { msg = RoutineMsg
+    , createRoutine = CreateRoutine
+    , updateRoutine = UpdateRoutine
+    , deleteRoutine = ConfirmDeletion "Opravdu chceš odstranit tuto sestavu?" << DeleteRoutine
+    , validationError = GotRoutineValidationError
     }
 
 
