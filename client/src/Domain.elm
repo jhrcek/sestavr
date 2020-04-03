@@ -13,6 +13,7 @@ module Domain exposing
     , TargetIdTag
     , encodeExercise
     , encodePosition
+    , encodeRoutine
     , encodeTarget
     , exerciseDecoder
     , positionDecoder
@@ -170,6 +171,23 @@ routineExerciseDecoder =
     Decode.map2 RoutineExercise
         (Decode.field "eirExerciseId" Id.decode)
         (Decode.field "eirDuration" Decode.int)
+
+
+encodeRoutine : Routine -> Value
+encodeRoutine routine =
+    Encode.object
+        [ ( "routineId", Id.encode routine.id )
+        , ( "topic", Encode.string routine.topic )
+        , ( "exercises", Encode.list encodeRoutineExercise routine.exercises )
+        ]
+
+
+encodeRoutineExercise : RoutineExercise -> Value
+encodeRoutineExercise re =
+    Encode.object
+        [ ( "eirExerciseId", Id.encode re.exerciseId )
+        , ( "eirDuration", Encode.int re.duration )
+        ]
 
 
 

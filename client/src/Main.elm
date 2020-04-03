@@ -281,6 +281,10 @@ viewBody model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        goToRoute =
+            navigateToRoute model.navKey model.initialUrl
+    in
     case msg of
         StoreMsg storeMsg ->
             let
@@ -308,7 +312,7 @@ update msg model =
 
         SetRoute route ->
             ( model
-            , navigateToRoute model.navKey model.initialUrl route
+            , goToRoute route
             )
 
         UrlRequest urlRequest ->
@@ -420,7 +424,7 @@ update msg model =
             ( model
             , Cmd.batch
                 [ Cmd.map StoreMsg <| Store.createExercise exercise
-                , navigateToRoute model.navKey model.initialUrl Router.Exercises
+                , goToRoute Router.Exercises
                 ]
             )
 
@@ -428,7 +432,7 @@ update msg model =
             ( model
             , Cmd.batch
                 [ Cmd.map StoreMsg <| Store.updateExercise exercise
-                , navigateToRoute model.navKey model.initialUrl (Router.Exercise exercise.id)
+                , goToRoute <| Router.Exercise exercise.id
                 ]
             )
 
@@ -436,7 +440,7 @@ update msg model =
             ( model
             , Cmd.batch
                 [ Cmd.map StoreMsg <| Store.deleteExercise exerciseId
-                , navigateToRoute model.navKey model.initialUrl Router.Exercises
+                , goToRoute Router.Exercises
                 ]
             )
 
@@ -446,16 +450,28 @@ update msg model =
             )
 
         CreateRoutine routine ->
-            -- TODO create routine
-            ( model, Cmd.none )
+            ( model
+            , Cmd.batch
+                [ Cmd.map StoreMsg <| Store.createRoutine routine
+                , goToRoute Router.Routines
+                ]
+            )
 
         UpdateRoutine routine ->
-            -- TODO update routine
-            ( model, Cmd.none )
+            ( model
+            , Cmd.batch
+                [ Cmd.map StoreMsg <| Store.createRoutine routine
+                , goToRoute <| Router.Routine routine.id
+                ]
+            )
 
-        DeleteRoutine routine ->
-            -- TODO delete routine
-            ( model, Cmd.none )
+        DeleteRoutine routineId ->
+            ( model
+            , Cmd.batch
+                [ Cmd.map StoreMsg <| Store.deleteRoutine routineId
+                , goToRoute Router.Routines
+                ]
+            )
 
         GotRoutineValidationError validationError ->
             ( { model | modal = Just (RoutineValidationError validationError) }

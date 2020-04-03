@@ -3,9 +3,11 @@ module Store exposing
     , Store
     , createExercise
     , createPosition
+    , createRoutine
     , createTarget
     , deleteExercise
     , deletePosition
+    , deleteRoutine
     , deleteTarget
     , getExercises
     , getPositions
@@ -15,6 +17,7 @@ module Store exposing
     , update
     , updateExercise
     , updatePosition
+    , updateRoutine
     , updateTarget
     )
 
@@ -28,6 +31,7 @@ import Domain
         , PositionId
         , PositionIdTag
         , Routine
+        , RoutineId
         , RoutineIdTag
         , Target
         , TargetId
@@ -57,6 +61,9 @@ type Msg
     | ExerciseDeleted (ApiCall ExerciseId)
       -- Routine
     | RoutinesFetched (ApiCall (List Routine))
+    | RoutineCreated (ApiCall Routine)
+    | RoutineUpdated (ApiCall Routine)
+    | RoutineDeleted (ApiCall RoutineId)
 
 
 type alias Store =
@@ -117,6 +124,15 @@ update msg store =
 
         RoutinesFetched result ->
             updateOrError result store (\routines s -> { s | routines = Id.buildDict routines })
+
+        RoutineCreated result ->
+            updateOrError result store (\routine s -> { s | routines = Dict.Any.insert routine.id routine store.routines })
+
+        RoutineUpdated result ->
+            updateOrError result store (\routine s -> { s | routines = Dict.Any.insert routine.id routine store.routines })
+
+        RoutineDeleted result ->
+            updateOrError result store (\routineId s -> { s | routines = Dict.Any.remove routineId store.routines })
 
 
 updateOrError : ApiCall a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
@@ -258,4 +274,31 @@ getRoutines =
     Http.get
         { url = "/routine"
         , expect = Ht2.expectJson RoutinesFetched (Decode.list Domain.routineDecoder)
+        }
+
+
+createRoutine : Routine -> Cmd Msg
+createRoutine routine =
+    Http.post
+        { url = "/routine"
+        , body = Http.jsonBody <| Domain.encodeRoutine routine
+        , expect = Ht2.expectJson RoutineCreated Domain.routineDecoder
+        }
+
+
+updateRoutine : Routine -> Cmd Msg
+updateRoutine routine =
+    Http.post
+        { url = "/routine/" ++ Id.toString routine.id
+        , body = Http.jsonBody <| Domain.encodeRoutine routine
+        , expect = Ht2.expectJson RoutineUpdated Domain.routineDecoder
+        }
+
+
+deleteRoutine : RoutineId -> Cmd Msg
+deleteRoutine routineId =
+    Ht2.delete
+        { baseUrl = "/routine/"
+        , resourceId = routineId
+        , onResponse = RoutineDeleted
         }
