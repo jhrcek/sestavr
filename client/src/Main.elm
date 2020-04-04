@@ -22,6 +22,7 @@ import Http.Extra as Ht2
 import Id
 import Modal
 import Page.Exercise as Exercise
+import Page.Lesson as Lesson
 import Page.Position as Position
 import Page.Routine as Routine
 import Page.Target as Target
@@ -71,6 +72,9 @@ initPage route store =
         Router.Targets ->
             TargetModel Target.init
 
+        Router.Lessons ->
+            LessonModel Lesson.init
+
         Router.Exercises ->
             ExerciseList
 
@@ -103,14 +107,13 @@ initPage route store =
 
 type PageModel
     = HomeModel
+    | TargetModel Target.Model
+    | LessonModel Lesson.Model
+    | PositionModel Position.Model
       -- Exercise
     | ExerciseList
     | ExerciseModel ExerciseId
     | ExerciseEditor Exercise.Model
-      -- Target
-    | TargetModel Target.Model
-      -- Position
-    | PositionModel Position.Model
       -- Routine
     | RoutineList
     | RoutineModel RoutineId
@@ -124,6 +127,7 @@ type Msg
     | StoreMsg Store.Msg
     | SetRoute Route
     | ExerciseMsg Exercise.Msg
+    | LessonMsg Lesson.Msg
       -- Target
     | TargetMsg Target.Msg
     | CreateTarget Target
@@ -256,6 +260,13 @@ viewBody model =
             TargetModel tmodel ->
                 E.map TargetMsg <| Target.view model.store.targets tmodel
 
+            LessonModel lmodel ->
+                E.map LessonMsg <|
+                    Lesson.view
+                        model.store.lessons
+                        model.store.routines
+                        lmodel
+
             PositionModel pmodel ->
                 E.map PositionMsg <| Position.view model.store.positions pmodel
 
@@ -272,7 +283,8 @@ viewBody model =
 
             RoutineEditor rmodel ->
                 E.map RoutineMsg <|
-                    Routine.editor model.store.exercises
+                    Routine.editor
+                        model.store.exercises
                         model.store.targets
                         model.store.positions
                         rmodel
@@ -386,6 +398,18 @@ update msg model =
             ( { model | pageModel = newPageModel }
             , routineCmd
             )
+
+        LessonMsg lessonMsg ->
+            let
+                newPageModel =
+                    case model.pageModel of
+                        LessonModel m ->
+                            LessonModel <| Lesson.update lessonMsg m
+
+                        other ->
+                            other
+            in
+            ( { model | pageModel = newPageModel }, Cmd.none )
 
         CreateTarget target ->
             ( model
@@ -565,6 +589,7 @@ navigationLeft currentRoute =
         , menuItem currentRoute Router.Targets "Cílové partie"
         , menuItem currentRoute Router.Positions "Pozice"
         , menuItem currentRoute Router.Routines "Sestavy"
+        , menuItem currentRoute Router.Lessons "Lekce"
         ]
 
 

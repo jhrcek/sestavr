@@ -228,16 +228,18 @@ lessonDecoder =
 
 
 type Tags
-    = PositionIdTag_ PositionIdTag
-    | ExerciseIdTag_ ExerciseIdTag
-    | TargetIdTag_ TargetIdTag
+    = ExerciseIdTag_ ExerciseIdTag
+    | LessonIdTag_ LessonIdTag
+    | PositionIdTag_ PositionIdTag
     | RoutineIdTag_ RoutineIdTag
+    | TargetIdTag_ TargetIdTag
 
 
 tags : List Tags
 tags =
-    [ PositionIdTag_ PositionIdTag
-    , ExerciseIdTag_ ExerciseIdTag
-    , TargetIdTag_ TargetIdTag
+    [ ExerciseIdTag_ ExerciseIdTag
+    , LessonIdTag_ LessonIdTag
+    , PositionIdTag_ PositionIdTag
     , RoutineIdTag_ RoutineIdTag
+    , TargetIdTag_ TargetIdTag
     ]

@@ -21,6 +21,7 @@ type Route
     | Routines
     | Routine RoutineId
     | RoutineEditor (Maybe RoutineId)
+    | Lessons
     | NotFound String
 
 
@@ -30,6 +31,7 @@ route =
         [ P.map Home top
         , P.map Targets (s "target")
         , P.map Positions (s "position")
+        , P.map Lessons (s "lesson")
 
         -- Exercises
         , P.map Exercises (s "exercise")
@@ -66,6 +68,9 @@ toHash r =
 
         Positions ->
             "/position"
+
+        Lessons ->
+            "/lesson"
 
         Exercises ->
             "/exercise"
