@@ -337,10 +337,12 @@ view config positions targets exercise =
         , E.el [ Font.size 20, Font.bold, Font.italic ]
             (E.text <| "Sanskrt : " ++ Maybe.withDefault "N/A" exercise.sanskritName)
         , E.row []
-            [ E.text <| "Pozice: "
+            [ case Dict.Any.get exercise.positionId positions of
+                Just position ->
+                    E.text <| "Pozice: " ++ position.name
 
-            -- TODO improve how we deal with the cases when position not in store
-            , E.text <| Maybe.withDefault "BUG!!!" <| Maybe.map .name <| Dict.Any.get exercise.positionId positions
+                Nothing ->
+                    E.none
             ]
         , E.row []
             [ E.text "Cílové oblasti: "

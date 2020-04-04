@@ -5,6 +5,7 @@ module Page.Routine exposing
     , ValidationError(..)
     , editor
     , emptyEditor
+    , initCopyEditor
     , initEditor
     , listView
     , subscriptions
@@ -69,6 +70,7 @@ type alias DraggableItemId =
 type alias Config msg =
     { msg : Msg -> msg
     , createRoutine : Routine -> msg
+    , copyRoutine : Routine -> msg
     , updateRoutine : Routine -> msg
     , deleteRoutine : RoutineId -> msg
     , validationError : ValidationError -> msg
@@ -95,6 +97,18 @@ initEditor exercises routine =
     , dnd = dndSystem.model
     , targetFilter = Id.emptySet
     , positionFilter = Id.emptySet
+    }
+
+
+initCopyEditor : IdDict ExerciseIdTag Exercise -> Routine -> Model
+initCopyEditor exercises routine =
+    let
+        model =
+            initEditor exercises routine
+    in
+    { model
+        | routineId = Nothing
+        , topic = model.topic ++ " (kopie)"
     }
 
 
@@ -262,22 +276,30 @@ routineDurationMinutes routine =
     routine.exercises |> List.map .duration |> List.sum
 
 
-view : Config msg -> Routine -> Element msg
-view config routine =
+view : Config msg -> IdDict ExerciseIdTag Exercise -> Routine -> Element msg
+view config exercises routine =
     E.column []
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , E.el [ Font.size 28, Font.bold ] (E.text routine.topic)
         , E.text <|
             String.fromInt (List.length routine.exercises)
-                ++ " cvičení, celková délka "
+                ++ " cviky, celková délka "
                 ++ String.fromInt (routineDurationMinutes routine)
                 ++ " minut."
-        , editRoutineButton routine
-        , E.text "TODO copy button"
-        , Input.button Common.buttonAttrs
-            { onPress = Just (config.deleteRoutine routine.id)
-            , label = E.text "Odstranit"
-            }
+        , E.column [] <|
+            List.indexedMap (\idx exercise -> E.text <| String.fromInt (idx + 1) ++ ". " ++ exercise.name) <|
+                List.filterMap (\re -> Dict.Any.get re.exerciseId exercises) routine.exercises
+        , E.row [ E.spacing 5 ]
+            [ editRoutineButton routine
+            , Input.button Common.buttonAttrs
+                { onPress = Just (config.copyRoutine routine)
+                , label = E.text "Kopírovat"
+                }
+            , Input.button Common.buttonAttrs
+                { onPress = Just (config.deleteRoutine routine.id)
+                , label = E.text "Odstranit"
+                }
+            ]
         ]
 
 
@@ -427,14 +449,14 @@ editor exercises targets positions model =
             (E.inFront (ghostView model.dnd model.routineExercises) :: colAttrs exerciseColumnWidth)
             (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
                 :: Input.text
-                    [ E.width (E.px 200)
+                    [ E.width (E.px 250)
                     , E.height (E.px 30)
                     , E.padding 4
                     ]
                     { onChange = ChangeTopic
                     , text = model.topic
                     , placeholder = Nothing
-                    , label = Input.labelLeft [] (E.text "Téma")
+                    , label = Input.labelLeft [ E.padding 5 ] (E.text "Téma")
                     }
                 :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
                 ++ [ E.el [ E.padding 5 ] <|
@@ -442,7 +464,7 @@ editor exercises targets positions model =
                             "Celková délka "
                                 ++ String.fromInt (exercisesDurationMinutes model.routineExercises)
                                 ++ " min"
-                   , E.row []
+                   , E.row [ E.padding 5, E.spacing 5 ]
                         [ cancelEditButton
                         , saveButton
                         ]

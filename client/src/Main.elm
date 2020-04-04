@@ -142,6 +142,7 @@ type Msg
       -- Routine
     | RoutineMsg Routine.Msg
     | CreateRoutine Routine
+    | CopyRoutine Routine
     | UpdateRoutine Routine
     | DeleteRoutine RoutineId
     | GotRoutineValidationError Routine.ValidationError
@@ -263,7 +264,7 @@ viewBody model =
             RoutineModel routineId ->
                 case Dict.Any.get routineId model.store.routines of
                     Just routine ->
-                        Routine.view routineConfig routine
+                        Routine.view routineConfig model.store.exercises routine
 
                     Nothing ->
                         E.text <| "Sestava s ID " ++ Id.toString routineId ++ " neexistuje"
@@ -457,6 +458,11 @@ update msg model =
                 ]
             )
 
+        CopyRoutine routine ->
+            ( { model | pageModel = RoutineEditor <| Routine.initCopyEditor model.store.exercises routine }
+            , Cmd.none
+            )
+
         UpdateRoutine routine ->
             ( model
             , Cmd.batch
@@ -513,6 +519,7 @@ routineConfig : Routine.Config Msg
 routineConfig =
     { msg = RoutineMsg
     , createRoutine = CreateRoutine
+    , copyRoutine = CopyRoutine
     , updateRoutine = UpdateRoutine
     , deleteRoutine = ConfirmDeletion "Opravdu chceš odstranit tuto sestavu?" << DeleteRoutine
     , validationError = GotRoutineValidationError
