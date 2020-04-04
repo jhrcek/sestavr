@@ -21,7 +21,10 @@ module Model
     ExerciseId,
     ExerciseTargetId,
     ExerciseTarget (..),
-    EntityField (ExerciseTargetExerciseId),
+    EntityField
+      ( ExerciseTargetExerciseId,
+        RoutineExerciseRoutineId
+      ),
     Lesson,
     LessonId,
     Position,
@@ -36,11 +39,17 @@ module Model
     ExerciseWithTargets,
     createDemoData,
     migrateAll,
+    routineId,
+    eirDuration,
     fromExercise,
     toExercise,
     targetIds,
     fromRoutine,
     exerciseId,
+    toRoutine,
+    exercises,
+    getDurationMinutes,
+    eirExerciseId,
   )
 where
 
@@ -148,7 +157,7 @@ instance ToJSON ExerciseInRoutine
 
 instance FromJSON ExerciseInRoutine
 
-newtype DurationMinutes = DurationMinutes Int
+newtype DurationMinutes = DurationMinutes {getDurationMinutes :: Int}
   deriving (ToJSON, FromJSON) via Int
 
 fromRoutine :: Entity Routine -> [RoutineExercise] -> RoutineWithExercises
@@ -159,13 +168,19 @@ fromRoutine entity res =
         { routineId = routineId,
           topic = routineTopic routine,
           exercises =
-              ( \re ->
-                  ExerciseInRoutine
-                    (routineExerciseExerciseId re)
-                    (DurationMinutes $ routineExerciseDurationMin re)
-              )
+            ( \re ->
+                ExerciseInRoutine
+                  (routineExerciseExerciseId re)
+                  (DurationMinutes $ routineExerciseDurationMin re)
+            )
               <$> List.sortOn routineExerciseOrder res
         }
+
+toRoutine :: RoutineWithExercises -> Routine
+toRoutine rwe =
+  Routine
+    { routineTopic = topic rwe
+    }
 
 createDemoData :: IO ()
 createDemoData = runSqlite "sestavr.db" $ do

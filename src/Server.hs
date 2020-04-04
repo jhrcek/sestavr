@@ -47,7 +47,10 @@ import Database.Sqlite
     seError,
   )
 import Model
-  ( EntityField (ExerciseTargetExerciseId),
+  ( EntityField
+      ( ExerciseTargetExerciseId,
+        RoutineExerciseRoutineId
+      ),
     Exercise,
     ExerciseId,
     ExerciseTarget (..),
@@ -56,20 +59,26 @@ import Model
     Position,
     PositionId,
     Routine,
-    RoutineExercise,
+    RoutineExercise (..),
     RoutineId,
     RoutineWithExercises,
     Target,
     TargetId,
+    eirDuration,
+    eirExerciseId,
     exerciseId,
     exerciseTargetExerciseId,
     exerciseTargetTargetId,
+    exercises,
     fromExercise,
     fromRoutine,
+    getDurationMinutes,
     migrateAll,
     routineExerciseRoutineId,
+    routineId,
     targetIds,
     toExercise,
+    toRoutine,
   )
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
@@ -113,6 +122,9 @@ apiServer pool =
     :<|> deleteExercise
     -- Routine
     :<|> getRoutines
+    :<|> createRoutine
+    :<|> updateRoutine
+    :<|> deleteRoutine
     -- Static files
     :<|> serveImages
   where
@@ -224,11 +236,12 @@ apiServer pool =
     --
     deleteExercise :: ExerciseId -> Handler ()
     deleteExercise eid =
-      do
-        runPool $ do
-          deleteWhere [ExerciseTargetExerciseId ==. eid]
-          delete eid
-        `handleConstraintError` "This exercise can't be deleted, because it's used in some lesson"
+      runPool
+        ( do
+            deleteWhere [ExerciseTargetExerciseId ==. eid]
+            delete eid
+        )
+        `handleConstraintError` "This exercise can't be deleted, because it's used in some routine"
     -- ROUTINE
     getRoutines :: Handler [RoutineWithExercises]
     getRoutines = runPool $ do
@@ -252,6 +265,57 @@ apiServer pool =
                in fromRoutine routineEntity res
           )
           routineEntities
+    --
+    createRoutine :: RoutineWithExercises -> Handler RoutineWithExercises
+    createRoutine rwe = do
+      let routine = toRoutine rwe
+          exs = exercises rwe
+      runPool $ do
+        rid <- insert routine
+        insertMany_ $
+          zipWith
+            ( \e index ->
+                RoutineExercise
+                  { routineExerciseRoutineId = rid,
+                    routineExerciseExerciseId = eirExerciseId e,
+                    routineExerciseDurationMin = getDurationMinutes $ eirDuration e,
+                    routineExerciseOrder = index
+                  }
+            )
+            exs
+            [0 ..]
+        pure $ rwe {routineId = rid}
+    --
+    updateRoutine :: RoutineId -> RoutineWithExercises -> Handler RoutineWithExercises
+    updateRoutine rid rwe =
+      do
+        let routine = toRoutine rwe
+            exs = exercises rwe
+        runPool $ do
+          replace rid routine
+          deleteWhere [RoutineExerciseRoutineId ==. rid]
+          insertMany_ $
+            zipWith
+              ( \e index ->
+                  RoutineExercise
+                    { routineExerciseRoutineId = rid,
+                      routineExerciseExerciseId = eirExerciseId e,
+                      routineExerciseDurationMin = getDurationMinutes $ eirDuration e,
+                      routineExerciseOrder = index
+                    }
+              )
+              exs
+              [0 ..]
+          pure rwe
+    --
+    deleteRoutine :: RoutineId -> Handler ()
+    deleteRoutine rid =
+      runPool
+        ( do
+            deleteWhere [RoutineExerciseRoutineId ==. rid]
+            delete rid
+        )
+        `handleConstraintError` "This routine can't be deleted, because it's used in some lesson"
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

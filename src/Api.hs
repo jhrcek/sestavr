@@ -41,6 +41,9 @@ type SestavrAPI =
     :<|> "exercise" :> Capture "exerciseId" ExerciseId :> Delete '[JSON] ()
     -- Routine
     :<|> "routine" :> Get '[JSON] [RoutineWithExercises]
+    :<|> "routine" :> ReqBody '[JSON] RoutineWithExercises :> Post '[JSON] RoutineWithExercises
+    :<|> "routine" :> Capture "routineId" RoutineId :> ReqBody '[JSON] RoutineWithExercises :> Post '[JSON] RoutineWithExercises
+    :<|> "routine" :> Capture "routineId" RoutineId :> Delete '[JSON] ()
     -- Static files
     :<|> Raw
 

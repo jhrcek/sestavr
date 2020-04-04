@@ -262,10 +262,11 @@ routineDurationMinutes routine =
     routine.exercises |> List.map .duration |> List.sum
 
 
-view : Routine -> Element msg
-view routine =
+view : Config msg -> Routine -> Element msg
+view config routine =
     E.column []
-        [ E.el [ Font.size 28, Font.bold ] (E.text routine.topic)
+        [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
+        , E.el [ Font.size 28, Font.bold ] (E.text routine.topic)
         , E.text <|
             String.fromInt (List.length routine.exercises)
                 ++ " cvičení, celková délka "
@@ -273,7 +274,10 @@ view routine =
                 ++ " minut."
         , editRoutineButton routine
         , E.text "TODO copy button"
-        , E.text "TODO delete button"
+        , Input.button Common.buttonAttrs
+            { onPress = Just (config.deleteRoutine routine.id)
+            , label = E.text "Odstranit"
+            }
         ]
 
 
@@ -602,3 +606,14 @@ updateOrCreate config model =
                                         nonemptyListOfExercises
                                 }
             )
+
+
+backToList : Element msg
+backToList =
+    E.link
+        [ E.mouseOver [ Font.color Color.darkBlue ]
+        , Font.color Color.lightBlue
+        ]
+        { url = Router.href Router.Routines
+        , label = E.text "« Zpět na seznam sestav"
+        }

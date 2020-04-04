@@ -263,7 +263,7 @@ viewBody model =
             RoutineModel routineId ->
                 case Dict.Any.get routineId model.store.routines of
                     Just routine ->
-                        Routine.view routine
+                        Routine.view routineConfig routine
 
                     Nothing ->
                         E.text <| "Sestava s ID " ++ Id.toString routineId ++ " neexistuje"
@@ -460,7 +460,7 @@ update msg model =
         UpdateRoutine routine ->
             ( model
             , Cmd.batch
-                [ Cmd.map StoreMsg <| Store.createRoutine routine
+                [ Cmd.map StoreMsg <| Store.updateRoutine routine
                 , goToRoute <| Router.Routine routine.id
                 ]
             )
