@@ -91,7 +91,7 @@ RoutineExercise json
     order Int
     UniqueExerciseRoutineOrder exerciseId routineId order
 Lesson json
-    routine RoutineId
+    routineId RoutineId
     datetime UTCTime
 |]
 

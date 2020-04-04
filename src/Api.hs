@@ -22,7 +22,6 @@ import Servant.API
 type SestavrAPI =
   Get '[HTML] ByteString -- index.html
     :<|> "main.js" :> Get '[JS] ByteString
-    :<|> "lesson" :> Get '[JSON] [Entity Lesson]
     -- Target
     :<|> "target" :> Get '[JSON] [Entity Target]
     :<|> "target" :> ReqBody '[JSON] Target :> Post '[JSON] (Entity Target)
@@ -44,6 +43,8 @@ type SestavrAPI =
     :<|> "routine" :> ReqBody '[JSON] RoutineWithExercises :> Post '[JSON] RoutineWithExercises
     :<|> "routine" :> Capture "routineId" RoutineId :> ReqBody '[JSON] RoutineWithExercises :> Post '[JSON] RoutineWithExercises
     :<|> "routine" :> Capture "routineId" RoutineId :> Delete '[JSON] ()
+    -- Lesson
+    :<|> "lesson" :> Get '[JSON] [Entity Lesson]
     -- Static files
     :<|> Raw
 

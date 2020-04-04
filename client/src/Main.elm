@@ -169,6 +169,7 @@ init _ url key =
             , Store.getExercises
             , Store.getPositions
             , Store.getRoutines
+            , Store.getLessons
             ]
     )
 

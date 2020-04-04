@@ -10,6 +10,7 @@ module Store exposing
     , deleteRoutine
     , deleteTarget
     , getExercises
+    , getLessons
     , getPositions
     , getRoutines
     , getTargets
@@ -27,6 +28,8 @@ import Domain
         ( Exercise
         , ExerciseId
         , ExerciseIdTag
+        , Lesson
+        , LessonIdTag
         , Position
         , PositionId
         , PositionIdTag
@@ -64,6 +67,8 @@ type Msg
     | RoutineCreated (ApiCall Routine)
     | RoutineUpdated (ApiCall Routine)
     | RoutineDeleted (ApiCall RoutineId)
+      -- Lesson
+    | LessonsFetched (ApiCall (List Lesson))
 
 
 type alias Store =
@@ -71,6 +76,7 @@ type alias Store =
     , positions : IdDict PositionIdTag Position
     , exercises : IdDict ExerciseIdTag Exercise
     , routines : IdDict RoutineIdTag Routine
+    , lessons : IdDict LessonIdTag Lesson
     }
 
 
@@ -80,6 +86,7 @@ init =
     , positions = Id.emptyDict
     , exercises = Id.emptyDict
     , routines = Id.emptyDict
+    , lessons = Id.emptyDict
     }
 
 
@@ -133,6 +140,9 @@ update msg store =
 
         RoutineDeleted result ->
             updateOrError result store (\routineId s -> { s | routines = Dict.Any.remove routineId store.routines })
+
+        LessonsFetched result ->
+            updateOrError result store (\lessons s -> { s | lessons = Id.buildDict lessons })
 
 
 updateOrError : ApiCall a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
@@ -301,4 +311,16 @@ deleteRoutine routineId =
         { baseUrl = "/routine/"
         , resourceId = routineId
         , onResponse = RoutineDeleted
+        }
+
+
+
+-- LESSON
+
+
+getLessons : Cmd Msg
+getLessons =
+    Http.get
+        { url = "/lesson"
+        , expect = Ht2.expectJson LessonsFetched (Decode.list Domain.lessonDecoder)
         }

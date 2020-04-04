@@ -2,6 +2,9 @@ module Domain exposing
     ( Exercise
     , ExerciseId
     , ExerciseIdTag
+    , Lesson
+    , LessonId
+    , LessonIdTag
     , Position
     , PositionId
     , PositionIdTag
@@ -16,14 +19,17 @@ module Domain exposing
     , encodeRoutine
     , encodeTarget
     , exerciseDecoder
+    , lessonDecoder
     , positionDecoder
     , routineDecoder
     , targetDecoder
     )
 
 import Id exposing (Id)
+import Iso8601
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
+import Time exposing (Posix)
 
 
 
@@ -188,6 +194,33 @@ encodeRoutineExercise re =
         [ ( "eirExerciseId", Id.encode re.exerciseId )
         , ( "eirDuration", Encode.int re.duration )
         ]
+
+
+
+-- LESSON
+
+
+type LessonIdTag
+    = LessonIdTag
+
+
+type alias LessonId =
+    Id LessonIdTag
+
+
+type alias Lesson =
+    { id : LessonId
+    , routineId : RoutineId
+    , datetime : Posix
+    }
+
+
+lessonDecoder : Decoder Lesson
+lessonDecoder =
+    Decode.map3 Lesson
+        (Decode.field "id" Id.decode)
+        (Decode.field "routineId" Id.decode)
+        (Decode.field "datetime" Iso8601.decoder)
 
 
 

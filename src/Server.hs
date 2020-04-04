@@ -103,7 +103,6 @@ apiServer :: ConnectionPool -> Server SestavrAPI
 apiServer pool =
   getIndex
     :<|> getElmApp
-    :<|> getLessons
     -- Target
     :<|> getTargets
     :<|> createTarget
@@ -125,6 +124,8 @@ apiServer pool =
     :<|> createRoutine
     :<|> updateRoutine
     :<|> deleteRoutine
+    -- Lesson
+    :<|> getLessons
     -- Static files
     :<|> serveImages
   where
@@ -132,9 +133,6 @@ apiServer pool =
     runPool action = liftIO $ runSqlPersistMPool action pool
     -- TODO make this configurable on startup
     serveImages = serveDirectoryWebApp "/home/janhrcek/Tmp/joga_images"
-    --
-    getLessons :: Handler [Entity Lesson]
-    getLessons = runPool $ selectList [] []
     --
     handleConstraintError :: Handler x -> LBS.ByteString -> Handler x
     handleConstraintError action err =
@@ -316,6 +314,9 @@ apiServer pool =
             delete rid
         )
         `handleConstraintError` "This routine can't be deleted, because it's used in some lesson"
+    -- LESSON
+    getLessons :: Handler [Entity Lesson]
+    getLessons = runPool $ selectList [] []
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}
