@@ -58,9 +58,11 @@ import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.List as List
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, getCurrentTime)
-import Database.Persist.Sqlite
+import Database.Persist.Sql (runMigration)
+import Database.Persist.Types (entityKey, entityVal, Entity)
+import Database.Persist.Class (insert, EntityField)
+import Database.Persist.Sqlite (runSqlite)
 import Database.Persist.TH
-import Database.Persist.Types (entityKey, entityVal)
 import GHC.Generics (Generic)
 
 share

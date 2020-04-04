@@ -11,13 +11,27 @@ module Api
   )
 where
 
-import Data.ByteString
+import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Proxy (Proxy (Proxy))
 import Database.Persist.Types (Entity)
 import Model
 import Network.HTTP.Media ((//), MediaType)
 import Servant.API
+  ( (:<|>) (..),
+    (:>),
+    Accept,
+    Capture,
+    Delete,
+    Get,
+    JSON,
+    MimeRender,
+    Post,
+    Raw,
+    ReqBody,
+    contentType,
+    mimeRender,
+  )
 
 type SestavrAPI =
   Get '[HTML] ByteString -- index.html
