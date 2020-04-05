@@ -1,6 +1,7 @@
 module Page.Lesson exposing
     ( Model
     , Msg
+    , formatDateTime
     , init
     , update
     , view
@@ -52,14 +53,14 @@ lessonView routines lesson =
     in
     E.row []
         [ E.text <|
-            formatDayTime lesson.datetime
+            formatDateTime lesson.datetime
                 ++ " - "
                 ++ routineTopic
         ]
 
 
-formatDayTime : Posix -> String
-formatDayTime posix =
+formatDateTime : Posix -> String
+formatDateTime posix =
     let
         day =
             Time.toDay Time.utc posix

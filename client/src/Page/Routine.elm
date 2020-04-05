@@ -24,6 +24,8 @@ import Domain
         ( Exercise
         , ExerciseId
         , ExerciseIdTag
+        , Lesson
+        , LessonIdTag
         , Position
         , PositionId
         , PositionIdTag
@@ -42,6 +44,7 @@ import Html.Attributes as Attr
 import Id exposing (IdDict, IdSet)
 import List.Extra as List
 import Page.Exercise as Exercise
+import Page.Lesson as Lesson
 import Router
 import Set.Any
 
@@ -276,8 +279,13 @@ routineDurationMinutes routine =
     routine.exercises |> List.map .duration |> List.sum
 
 
-view : Config msg -> IdDict ExerciseIdTag Exercise -> Routine -> Element msg
-view config exercises routine =
+view :
+    Config msg
+    -> IdDict ExerciseIdTag Exercise
+    -> IdDict LessonIdTag Lesson
+    -> Routine
+    -> Element msg
+view config exercises lessons routine =
     E.column []
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , E.el [ Font.size 28, Font.bold ] (E.text routine.topic)
@@ -286,10 +294,10 @@ view config exercises routine =
                 ++ " cviky, celková délka "
                 ++ String.fromInt (routineDurationMinutes routine)
                 ++ " minut."
-        , E.column [] <|
+        , E.column [ E.paddingXY 0 5 ] <|
             List.indexedMap (\idx exercise -> E.text <| String.fromInt (idx + 1) ++ ". " ++ exercise.name) <|
                 List.filterMap (\re -> Dict.Any.get re.exerciseId exercises) routine.exercises
-        , E.row [ E.spacing 5 ]
+        , E.row [ E.spacing 5, E.paddingXY 0 5 ]
             [ editRoutineButton routine
             , Input.button Common.buttonAttrs
                 { onPress = Just (config.copyRoutine routine)
@@ -300,7 +308,27 @@ view config exercises routine =
                 , label = E.text "Odstranit"
                 }
             ]
+        , E.el [ E.paddingXY 0 5 ] <|
+            case lessonsUsingRoutine lessons routine of
+                [] ->
+                    E.text "Tato sestava zatím nebyla použita v žádné lekci"
+
+                ls ->
+                    E.column []
+                        (E.text "Tato sestava byla použita v lekcích"
+                            :: List.map (\lesson -> E.text <| Lesson.formatDateTime lesson.datetime) ls
+                        )
+        , Input.button Common.buttonAttrs
+            { onPress = Nothing
+            , label = E.text "Naplánovat lekci"
+            }
         ]
+
+
+lessonsUsingRoutine : IdDict LessonIdTag Lesson -> Routine -> List Lesson
+lessonsUsingRoutine lessons routine =
+    Dict.Any.filter (\_ lesson -> lesson.routineId == routine.id) lessons
+        |> Dict.Any.values
 
 
 listView : IdDict RoutineIdTag Routine -> Element Msg
