@@ -4,6 +4,7 @@
 module Main where
 
 import Api (SestavrAPI)
+import Control.Monad (when)
 import Data.Proxy (Proxy (..))
 import Database.Persist.Sql (toSqlKey)
 import Database.Persist.Types (Key)
@@ -13,7 +14,8 @@ import Servant.API (Raw)
 import Servant.QuickCheck ((<%>), defaultArgs, not500, serverSatisfies, withServantServer)
 import Servant.QuickCheck.Internal.HasGenRequest (HasGenRequest, genRequest)
 import Server (mkTestServer)
-import Test.Hspec (describe, hspec, it)
+import System.Directory (doesFileExist, removeFile)
+import Test.Hspec (beforeAll, describe, hspec, it)
 import Test.QuickCheck (Arbitrary, applyArbitrary2, applyArbitrary3, arbitrary)
 import Test.QuickCheck.Instances.Text ()
 
@@ -23,9 +25,10 @@ sestavrApi = Proxy
 main :: IO ()
 main = hspec
   $ describe "my server"
+  $ beforeAll removeDbFileIfExists
   $ do
     it "follows best practices" $ do
-      withServantServer sestavrApi mkTestServer $ \baseUrl ->
+      withServantServer sestavrApi (mkTestServer testDb) $ \baseUrl ->
         serverSatisfies
           sestavrApi
           baseUrl
@@ -35,6 +38,16 @@ main = hspec
               --   <%> notAllowedContainsAllowHeader
               <%> mempty
           )
+
+removeDbFileIfExists :: IO ()
+removeDbFileIfExists = do
+  exists <- doesFileExist testDb
+  when exists $ do
+    putStrLn "Removing DB"
+    removeFile testDb
+
+testDb :: FilePath
+testDb = "test.db"
 
 instance Arbitrary (Key Target) where
   arbitrary = toSqlKey <$> arbitrary
