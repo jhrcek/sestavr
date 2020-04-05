@@ -26,10 +26,6 @@ library
       Api
       Model
       Server
-  other-modules:
-      Paths_sestavr
-  autogen-modules:
-      Paths_sestavr
   hs-source-dirs:
       src
   ghc-options: -Wall
@@ -76,5 +72,13 @@ test-suite sestavr-test
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , hspec
+    , http-client
+    , persistent
+    , QuickCheck
+    , quickcheck-instances
+    , servant
+    , servant-quickcheck
     , sestavr
+
   default-language: Haskell2010

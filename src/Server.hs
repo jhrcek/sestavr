@@ -9,6 +9,7 @@
 
 module Server
   ( run,
+    mkTestServer,
   )
 where
 
@@ -108,6 +109,13 @@ mkApp sqliteFile = do
 
 serveApp :: ConnectionPool -> Application
 serveApp pool = serve sestavrApi $ apiServer pool
+
+-- Create Server for servant-quickcheck tests
+mkTestServer :: IO (Server SestavrAPI)
+mkTestServer = do
+  pool <- runStderrLoggingT $ createSqlitePool (Text.pack "test.db") 3
+  runSqlPool (runMigration migrateAll) pool
+  pure $ apiServer pool
 
 apiServer :: ConnectionPool -> Server SestavrAPI
 apiServer pool =
