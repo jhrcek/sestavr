@@ -44,9 +44,10 @@ import Html.Attributes as Attr
 import Id exposing (IdDict, IdSet)
 import List.Extra as List
 import Page.Exercise as Exercise
-import Page.Lesson as Lesson
+import Page.Routine.LessonPlanner as LessonPlanner exposing (LessonPlanner)
 import Router
 import Set.Any
+import Time.Extra as Time
 
 
 type alias Model =
@@ -77,6 +78,7 @@ type alias Config msg =
     , updateRoutine : Routine -> msg
     , deleteRoutine : RoutineId -> msg
     , validationError : ValidationError -> msg
+    , lessonPlannerMsg : LessonPlanner.Msg -> msg
     }
 
 
@@ -284,8 +286,9 @@ view :
     -> IdDict ExerciseIdTag Exercise
     -> IdDict LessonIdTag Lesson
     -> Routine
+    -> LessonPlanner
     -> Element msg
-view config exercises lessons routine =
+view config exercises lessons routine lessonPlanner =
     E.column []
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , E.el [ Font.size 28, Font.bold ] (E.text routine.topic)
@@ -316,12 +319,9 @@ view config exercises lessons routine =
                 ls ->
                     E.column []
                         (E.text "Tato sestava byla použita v lekcích"
-                            :: List.map (\lesson -> E.text <| Lesson.formatDateTime lesson.datetime) ls
+                            :: List.map (\lesson -> E.text <| Time.formatDateTime lesson.datetime) ls
                         )
-        , Input.button Common.buttonAttrs
-            { onPress = Nothing
-            , label = E.text "Naplánovat lekci"
-            }
+        , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
         ]
 
 

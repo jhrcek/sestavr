@@ -25,9 +25,12 @@ import Page.Exercise as Exercise
 import Page.Lesson as Lesson
 import Page.Position as Position
 import Page.Routine as Routine
+import Page.Routine.LessonPlanner as LessonPlanner exposing (LessonPlanner)
 import Page.Target as Target
 import Router exposing (Route)
 import Store exposing (Store)
+import Task
+import Time exposing (Posix)
 import Url exposing (Url)
 
 
@@ -50,6 +53,7 @@ type alias Model =
     , initialUrl : Url
     , pageModel : PageModel
     , modal : Maybe Modal
+    , today : Posix
     }
 
 
@@ -60,8 +64,8 @@ type Modal
     | ConfirmDeletionModal String Msg
 
 
-initPage : Route -> Store -> PageModel
-initPage route store =
+initPage : Route -> Store -> Posix -> PageModel
+initPage route store today =
     case route of
         Router.Home ->
             HomeModel
@@ -92,7 +96,7 @@ initPage route store =
             RoutineList
 
         Router.Routine routineId ->
-            RoutineModel routineId
+            RoutineModel routineId (LessonPlanner.init today)
 
         Router.RoutineEditor maybeRoutineId ->
             maybeRoutineId
@@ -116,7 +120,7 @@ type PageModel
     | ExerciseEditor Exercise.Model
       -- Routine
     | RoutineList
-    | RoutineModel RoutineId
+    | RoutineModel RoutineId LessonPlanner
     | RoutineEditor Routine.Model
     | NotFoundModel String
 
@@ -124,6 +128,7 @@ type PageModel
 type Msg
     = UrlRequest UrlRequest
     | UrlChange Url
+    | GotTime Posix
     | StoreMsg Store.Msg
     | SetRoute Route
     | ExerciseMsg Exercise.Msg
@@ -150,6 +155,7 @@ type Msg
     | UpdateRoutine Routine
     | DeleteRoutine RoutineId
     | GotRoutineValidationError Routine.ValidationError
+    | LessonPlannerMsg LessonPlanner.Msg
     | ErrorAcked
     | ConfirmDeletion String Msg
 
@@ -159,22 +165,29 @@ init _ url key =
     let
         route =
             Router.parseUrl url
+
+        initTime =
+            Time.millisToPosix 0
     in
     ( { navKey = key
       , store = Store.init
       , route = route
       , initialUrl = url
-      , pageModel = initPage route Store.init
+      , pageModel = initPage route Store.init initTime
       , modal = Nothing
+      , today = initTime
       }
-    , Cmd.map StoreMsg <|
-        Cmd.batch
-            [ Store.getTargets
-            , Store.getExercises
-            , Store.getPositions
-            , Store.getRoutines
-            , Store.getLessons
-            ]
+    , Cmd.batch
+        [ Cmd.map StoreMsg <|
+            Cmd.batch
+                [ Store.getTargets
+                , Store.getExercises
+                , Store.getPositions
+                , Store.getRoutines
+                , Store.getLessons
+                ]
+        , Task.perform GotTime Time.now
+        ]
     )
 
 
@@ -273,13 +286,14 @@ viewBody model =
             RoutineList ->
                 E.map RoutineMsg <| Routine.listView model.store.routines
 
-            RoutineModel routineId ->
+            RoutineModel routineId lessonPlanner ->
                 case Dict.Any.get routineId model.store.routines of
                     Just routine ->
                         Routine.view routineConfig
                             model.store.exercises
                             model.store.lessons
                             routine
+                            lessonPlanner
 
                     Nothing ->
                         E.text <| "Sestava s ID " ++ Id.toString routineId ++ " neexistuje"
@@ -322,7 +336,7 @@ update msg model =
             in
             ( { model
                 | route = newRoute
-                , pageModel = initPage newRoute model.store
+                , pageModel = initPage newRoute model.store model.today
               }
             , Cmd.none
             )
@@ -400,6 +414,20 @@ update msg model =
             in
             ( { model | pageModel = newPageModel }
             , routineCmd
+            )
+
+        LessonPlannerMsg lpMsg ->
+            let
+                newPageModel =
+                    case model.pageModel of
+                        RoutineModel rid lessonPlanner ->
+                            RoutineModel rid <| LessonPlanner.update lpMsg lessonPlanner
+
+                        other ->
+                            other
+            in
+            ( { model | pageModel = newPageModel }
+            , Cmd.none
             )
 
         LessonMsg lessonMsg ->
@@ -517,6 +545,20 @@ update msg model =
             , Cmd.none
             )
 
+        GotTime posix ->
+            ( { model
+                | today = posix
+                , pageModel =
+                    case model.pageModel of
+                        RoutineModel rid _ ->
+                            RoutineModel rid (LessonPlanner.init posix)
+
+                        other ->
+                            other
+              }
+            , Cmd.none
+            )
+
 
 targetConfig : Target.Config Msg
 targetConfig =
@@ -551,6 +593,7 @@ routineConfig =
     , updateRoutine = UpdateRoutine
     , deleteRoutine = ConfirmDeletion "Opravdu chceš odstranit tuto sestavu?" << DeleteRoutine
     , validationError = GotRoutineValidationError
+    , lessonPlannerMsg = LessonPlannerMsg
     }
 
 

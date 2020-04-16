@@ -1,7 +1,6 @@
 module Page.Lesson exposing
     ( Model
     , Msg
-    , formatDateTime
     , init
     , update
     , view
@@ -11,7 +10,8 @@ import Dict.Any
 import Domain exposing (Lesson, LessonIdTag, Routine, RoutineIdTag)
 import Element as E exposing (Element)
 import Id exposing (IdDict)
-import Time exposing (Month(..), Posix)
+import Time exposing (Month(..))
+import Time.Extra as Time
 
 
 type alias Model =
@@ -53,62 +53,7 @@ lessonView routines lesson =
     in
     E.row []
         [ E.text <|
-            formatDateTime lesson.datetime
+            Time.formatDateTime lesson.datetime
                 ++ " - "
                 ++ routineTopic
         ]
-
-
-formatDateTime : Posix -> String
-formatDateTime posix =
-    let
-        day =
-            Time.toDay Time.utc posix
-
-        month =
-            toCzechMonth <| Time.toMonth Time.utc posix
-
-        year =
-            Time.toYear Time.utc posix
-    in
-    String.fromInt day ++ ". " ++ month ++ " " ++ String.fromInt year
-
-
-toCzechMonth : Month -> String
-toCzechMonth month =
-    case month of
-        Jan ->
-            "Leden"
-
-        Feb ->
-            "Únor"
-
-        Mar ->
-            "Březen"
-
-        Apr ->
-            "Duben"
-
-        May ->
-            "Květen"
-
-        Jun ->
-            "Červen"
-
-        Jul ->
-            "Červenec"
-
-        Aug ->
-            "Srpen"
-
-        Sep ->
-            "Září"
-
-        Oct ->
-            "Říjen"
-
-        Nov ->
-            "Listopad"
-
-        Dec ->
-            "Prosinec"
