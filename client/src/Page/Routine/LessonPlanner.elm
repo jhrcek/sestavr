@@ -1,5 +1,6 @@
 module Page.Routine.LessonPlanner exposing
-    ( LessonPlanner
+    ( Config
+    , LessonPlanner
     , Msg
     , init
     , update
@@ -7,6 +8,7 @@ module Page.Routine.LessonPlanner exposing
     )
 
 import Color
+import Command
 import Common
 import Element as E exposing (Element)
 import Element.Background as Background
@@ -29,6 +31,7 @@ type alias DateTimePicker =
     { pickerYear : Int
     , pickerMonth : Month
     , pickedDay : Maybe ( Int, Month, Int )
+    , pickedTime : String
     }
 
 
@@ -37,8 +40,17 @@ type Msg
     | NextMonth
     | PrevMonth
     | PickDay Int Month Int
+    | SetTime String
     | CancelSchedulingLesson
     | SaveLesson
+
+
+type alias Config msg =
+    { validationError : String -> msg
+
+    -- TODO change to Year, Month, Day , Hour and Minute or other more timey types
+    , createLesson : ( Int, Month, Int ) -> ( Int, Int ) -> msg
+    }
 
 
 init : Posix -> LessonPlanner
@@ -46,41 +58,73 @@ init today =
     { today = today, picker = Nothing }
 
 
-update : Msg -> LessonPlanner -> LessonPlanner
-update msg model =
+update : Config msg -> Msg -> LessonPlanner -> ( LessonPlanner, Cmd msg )
+update config msg model =
     case msg of
         ScheduleLesson ->
-            { model
+            ( { model
                 | picker =
                     Just
                         { pickerYear = Time.toYear Time.utc model.today
                         , pickerMonth = Time.toMonth Time.utc model.today
                         , pickedDay = Nothing
+                        , pickedTime = ""
                         }
-            }
+              }
+            , Cmd.none
+            )
 
         CancelSchedulingLesson ->
-            { model | picker = Nothing }
-
-        SaveLesson ->
-            -- TODO fire save command or display error modal here
-            { model | picker = Nothing }
+            ( { model | picker = Nothing }, Cmd.none )
 
         NextMonth ->
-            switchMonth Time.nextMonthYear model
+            ( switchMonth Time.nextMonthYear model, Cmd.none )
 
         PrevMonth ->
-            switchMonth Time.prevMonthYear model
+            ( switchMonth Time.prevMonthYear model, Cmd.none )
 
         PickDay year month day ->
-            updatePlanner
-                (\lp -> { lp | pickedDay = Just ( year, month, day ) })
-                model
+            ( updatePlanner (\lp -> { lp | pickedDay = Just ( year, month, day ) }) model, Cmd.none )
+
+        SetTime hhMmStr ->
+            ( updatePlanner (\lp -> { lp | pickedTime = hhMmStr }) model, Cmd.none )
+
+        SaveLesson ->
+            case model.picker of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just picker ->
+                    case saveLesson config picker of
+                        Err validationError ->
+                            ( model
+                            , Command.perform <| config.validationError validationError
+                            )
+
+                        Ok saveCommand ->
+                            ( { model | picker = Nothing }
+                            , Command.perform saveCommand
+                            )
 
 
 updatePlanner : (DateTimePicker -> DateTimePicker) -> LessonPlanner -> LessonPlanner
 updatePlanner f p =
     { p | picker = Maybe.map f p.picker }
+
+
+saveLesson : Config msg -> DateTimePicker -> Result String msg
+saveLesson config lessonPlanner =
+    case lessonPlanner.pickedDay of
+        Nothing ->
+            Err "Musíš vybrat datum v kalendáři"
+
+        Just yearMonthDay ->
+            case parseHoursMinutes lessonPlanner.pickedTime of
+                Err e ->
+                    Err e
+
+                Ok hourMinute ->
+                    Ok <| config.createLesson yearMonthDay hourMinute
 
 
 switchMonth : (Month -> Int -> ( Month, Int )) -> LessonPlanner -> LessonPlanner
@@ -108,21 +152,83 @@ view lessonPlanner =
                 , label = E.text "Naplánovat lekci"
                 }
 
-        Just rec ->
+        Just dtp ->
             E.column []
                 [ E.el [ Font.size 28, Font.bold ] (E.text "Plánování lekce")
-                , datePicker rec lessonPlanner.today
-                , E.row [ E.spacing 5, E.padding 5 ]
+                , E.text "Vyber datum a čas lekce"
+                , datePicker dtp lessonPlanner.today
+                , timePicker dtp
+                , E.row [ E.spacing 5, E.paddingXY 0 5 ]
                     [ Input.button Common.buttonAttrs
                         { onPress = Just CancelSchedulingLesson
                         , label = E.text "Zrušit"
                         }
                     , Input.button Common.buttonAttrs
-                        { onPress = Nothing -- TODO SaveLesson
+                        { onPress = Just SaveLesson
                         , label = E.text "Vytvořit lekci"
                         }
                     ]
                 ]
+
+
+timePicker : DateTimePicker -> Element Msg
+timePicker picker =
+    case picker.pickedDay of
+        Just _ ->
+            E.row []
+                [ Input.text [ E.padding 4, E.width (E.px 100) ]
+                    { onChange = SetTime
+                    , text = picker.pickedTime
+                    , placeholder = Just <| Input.placeholder [] <| E.text "HH:MM"
+                    , label = Input.labelLeft [ E.centerY ] (E.text "Čas lekce")
+                    }
+                , if String.isEmpty picker.pickedTime then
+                    E.none
+
+                  else
+                    case parseHoursMinutes picker.pickedTime of
+                        Ok _ ->
+                            E.none
+
+                        Err e ->
+                            E.el [ E.centerY, Font.color Color.red ] <| E.text e
+                ]
+
+        -- If the date wasn't picked yet, don't show the time picker
+        Nothing ->
+            E.none
+
+
+parseHoursMinutes : String -> Result String ( Int, Int )
+parseHoursMinutes str =
+    if String.isEmpty str then
+        Err "Musíš zvolit datum a čas"
+
+    else
+        case String.split ":" str of
+            [ hh, mm ] ->
+                case String.toInt hh of
+                    Just h ->
+                        if 0 <= h && h < 24 then
+                            case String.toInt mm of
+                                Just m ->
+                                    if 0 <= m && m <= 59 then
+                                        Ok ( h, m )
+
+                                    else
+                                        Err "Minuta musí být v rozmezí 0 - 59"
+
+                                Nothing ->
+                                    Err "Minuta musí být číslo"
+
+                        else
+                            Err "Hodina musí být v rozmezí 0 - 23"
+
+                    Nothing ->
+                        Err "Hodina musí být číslo"
+
+            _ ->
+                Err "Čas musí mít format HH:MM"
 
 
 datePicker : DateTimePicker -> Posix -> Element Msg

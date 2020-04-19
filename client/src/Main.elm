@@ -30,7 +30,7 @@ import Page.Target as Target
 import Router exposing (Route)
 import Store exposing (Store)
 import Task
-import Time exposing (Posix)
+import Time exposing (Month, Posix)
 import Url exposing (Url)
 
 
@@ -62,6 +62,7 @@ type Modal
     | ExerciseValidationError Exercise.ValidationError
     | RoutineValidationError Routine.ValidationError
     | ConfirmDeletionModal String Msg
+    | LessonPlannerValitaionError String
 
 
 initPage : Route -> Store -> Posix -> PageModel
@@ -155,7 +156,10 @@ type Msg
     | UpdateRoutine Routine
     | DeleteRoutine RoutineId
     | GotRoutineValidationError Routine.ValidationError
+      -- Lesson Planner
     | LessonPlannerMsg LessonPlanner.Msg
+    | GotLessonPlannerValitaionError String
+    | CreateLesson ( Int, Month, Int ) ( Int, Int )
     | ErrorAcked
     | ConfirmDeletion String Msg
 
@@ -239,6 +243,13 @@ viewModal modal =
                 , confirmMsg = onConfirm
                 , title = "Opravdu?"
                 , bodyText = message
+                }
+
+        LessonPlannerValitaionError validationError ->
+            Modal.viewError
+                { closeMsg = ErrorAcked
+                , title = "Tuto lekci není možné uložit"
+                , bodyText = validationError
                 }
 
 
@@ -418,16 +429,17 @@ update msg model =
 
         LessonPlannerMsg lpMsg ->
             let
-                newPageModel =
+                ( newPageModel, lpCmd ) =
                     case model.pageModel of
                         RoutineModel rid lessonPlanner ->
-                            RoutineModel rid <| LessonPlanner.update lpMsg lessonPlanner
+                            Tuple.mapFirst (RoutineModel rid) <|
+                                LessonPlanner.update lessonPlannerConfig lpMsg lessonPlanner
 
                         other ->
-                            other
+                            ( other, Cmd.none )
             in
             ( { model | pageModel = newPageModel }
-            , Cmd.none
+            , lpCmd
             )
 
         LessonMsg lessonMsg ->
@@ -559,6 +571,16 @@ update msg model =
             , Cmd.none
             )
 
+        GotLessonPlannerValitaionError validationError ->
+            ( { model | modal = Just (LessonPlannerValitaionError validationError) }
+            , Cmd.none
+            )
+
+        CreateLesson _ _ ->
+            {- (year, month, day) (hour, minute) -}
+            -- TODO create lesson backend api call
+            ( model, Cmd.none )
+
 
 targetConfig : Target.Config Msg
 targetConfig =
@@ -594,6 +616,13 @@ routineConfig =
     , deleteRoutine = ConfirmDeletion "Opravdu chceš odstranit tuto sestavu?" << DeleteRoutine
     , validationError = GotRoutineValidationError
     , lessonPlannerMsg = LessonPlannerMsg
+    }
+
+
+lessonPlannerConfig : LessonPlanner.Config Msg
+lessonPlannerConfig =
+    { validationError = GotLessonPlannerValitaionError
+    , createLesson = CreateLesson
     }
 
 

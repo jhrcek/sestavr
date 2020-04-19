@@ -190,7 +190,7 @@ viewPositions targets maybeEdited =
                         case maybeEdited of
                             Just editedPosition ->
                                 if target.id == editedPosition.id then
-                                    Input.text [ E.width (E.px 100), E.height (E.px 30), E.padding 5 ]
+                                    Input.text [ E.width (E.px 100), E.height (E.px 30), E.padding 4 ]
                                         { onChange = EditedNameChanged
                                         , text = editedPosition.name
                                         , placeholder = Nothing
