@@ -14,8 +14,6 @@ import Element.Border as Border
 import Element.Events as Event
 import Element.Font as Font
 import Element.Input as Input
-import Html
-import Html.Attributes as Attr
 import List.Extra as List
 import Time exposing (Month(..), Posix, Weekday(..))
 import Time.Extra as Time
@@ -30,6 +28,7 @@ type alias LessonPlanner =
 type alias DateTimePicker =
     { pickerYear : Int
     , pickerMonth : Month
+    , pickedDay : Maybe ( Int, Month, Int )
     }
 
 
@@ -37,17 +36,9 @@ type Msg
     = ScheduleLesson
     | NextMonth
     | PrevMonth
+    | PickDay Int Month Int
     | CancelSchedulingLesson
     | SaveLesson
-
-
-type alias DateTime =
-    { year : Int
-    , month : Int
-    , day : Int
-    , hour : Int
-    , minute : Int
-    }
 
 
 init : Posix -> LessonPlanner
@@ -64,6 +55,7 @@ update msg model =
                     Just
                         { pickerYear = Time.toYear Time.utc model.today
                         , pickerMonth = Time.toMonth Time.utc model.today
+                        , pickedDay = Nothing
                         }
             }
 
@@ -75,37 +67,36 @@ update msg model =
             { model | picker = Nothing }
 
         NextMonth ->
-            updatePlanner
-                (\lp ->
-                    let
-                        ( newMonth, newYear ) =
-                            Time.nextMonthYear lp.pickerMonth lp.pickerYear
-                    in
-                    { lp
-                        | pickerYear = newYear
-                        , pickerMonth = newMonth
-                    }
-                )
-                model
+            switchMonth Time.nextMonthYear model
 
         PrevMonth ->
+            switchMonth Time.prevMonthYear model
+
+        PickDay year month day ->
             updatePlanner
-                (\lp ->
-                    let
-                        ( newMonth, newYear ) =
-                            Time.prevMonthYear lp.pickerMonth lp.pickerYear
-                    in
-                    { lp
-                        | pickerYear = newYear
-                        , pickerMonth = newMonth
-                    }
-                )
+                (\lp -> { lp | pickedDay = Just ( year, month, day ) })
                 model
 
 
 updatePlanner : (DateTimePicker -> DateTimePicker) -> LessonPlanner -> LessonPlanner
 updatePlanner f p =
     { p | picker = Maybe.map f p.picker }
+
+
+switchMonth : (Month -> Int -> ( Month, Int )) -> LessonPlanner -> LessonPlanner
+switchMonth monthSwitcher =
+    updatePlanner
+        (\lp ->
+            let
+                ( newMonth, newYear ) =
+                    monthSwitcher lp.pickerMonth lp.pickerYear
+            in
+            { lp
+                | pickerYear = newYear
+                , pickerMonth = newMonth
+                , pickedDay = Nothing
+            }
+        )
 
 
 view : LessonPlanner -> Element Msg
@@ -120,16 +111,7 @@ view lessonPlanner =
         Just rec ->
             E.column []
                 [ E.el [ Font.size 28, Font.bold ] (E.text "Plánování lekce")
-                , datePicker rec.pickerYear rec.pickerMonth lessonPlanner.today
-                , E.row []
-                    [ E.html <| Html.input [ Attr.type_ "date" ] []
-                    , E.html <|
-                        Html.input
-                            [ Attr.type_ "time"
-                            , Attr.step "60" -- minute precision, don't wanna seconds input
-                            ]
-                            []
-                    ]
+                , datePicker rec lessonPlanner.today
                 , E.row [ E.spacing 5, E.padding 5 ]
                     [ Input.button Common.buttonAttrs
                         { onPress = Just CancelSchedulingLesson
@@ -143,24 +125,27 @@ view lessonPlanner =
                 ]
 
 
-datePicker : Int -> Month -> Posix -> Element Msg
-datePicker year month today =
+datePicker : DateTimePicker -> Posix -> Element Msg
+datePicker { pickerYear, pickerMonth, pickedDay } today =
     let
-        -- TODO highlight today
+        isPickedDay y m d =
+            Maybe.withDefault False <|
+                Maybe.map (\( py, pm, pd ) -> y == py && m == pm && d == pd) pickedDay
+
         cellSize =
             45
 
         cellPadding =
-            10
+            11
 
         firstDay =
-            Time.firstDayOfMonthWeekday year month
+            Time.firstDayOfMonthWeekday pickerYear pickerMonth
 
         firstDayOffset =
             Time.weekDayOffset firstDay
 
         daysInMonth =
-            Time.daysInMonth year month
+            Time.daysInMonth pickerYear pickerMonth
 
         weeks =
             List.map
@@ -181,7 +166,7 @@ datePicker year month today =
     E.column [ Border.solid, Border.width 1 ] <|
         E.row [ E.width E.fill, E.height <| E.px cellSize, E.padding 5 ]
             [ E.el [ Event.onClick PrevMonth ] (E.text "«")
-            , E.el [ E.centerX ] (E.text <| Time.toCzechMonth month ++ " " ++ String.fromInt year)
+            , E.el [ E.centerX ] (E.text <| Time.toCzechMonth pickerMonth ++ " " ++ String.fromInt pickerYear)
             , E.el [ Event.onClick NextMonth, E.alignRight ] (E.text "»")
             ]
             :: E.row []
@@ -192,7 +177,6 @@ datePicker year month today =
                             , E.height <| E.px cellSize
                             , Border.solid
                             , Border.width 1
-                            , Font.center
                             , E.padding cellPadding
                             ]
                         <|
@@ -206,31 +190,49 @@ datePicker year month today =
                     E.row [] <|
                         List.map
                             (\dayNumber ->
-                                E.el
-                                    ((if
-                                        dayNumber
-                                            == Time.toDay Time.utc today
-                                            && year
-                                            == Time.toYear Time.utc today
-                                            && month
-                                            == Time.toMonth Time.utc today
-                                      then
-                                        (::) (Background.color Color.lightGrey)
+                                let
+                                    isToday =
+                                        (dayNumber == Time.toDay Time.utc today)
+                                            && (pickerMonth == Time.toMonth Time.utc today)
+                                            && (pickerYear == Time.toYear Time.utc today)
 
-                                      else
-                                        identity
-                                     )
-                                        [ E.width <| E.px cellSize
-                                        , E.height <| E.px cellSize
-                                        , Font.center
-                                        , E.padding cellPadding
-                                        , Border.dotted
-                                        , Border.width 1
-                                        ]
-                                    )
+                                    isPicked =
+                                        isPickedDay pickerYear pickerMonth dayNumber
+                                in
+                                E.el
+                                    [ E.width <| E.px cellSize
+                                    , E.height <| E.px cellSize
+                                    , Border.dotted
+                                    , Border.width 1
+                                    ]
                                 <|
                                     if dayNumber /= 0 then
-                                        E.text <| String.fromInt dayNumber
+                                        E.el
+                                            [ Event.onClick <| PickDay pickerYear pickerMonth dayNumber
+                                            , E.width <| E.px <| cellSize - 2
+                                            , E.height <| E.px <| cellSize - 2
+                                            , E.padding cellPadding
+                                            , Font.center
+                                            , Border.rounded <| cellSize // 2
+                                            , Background.color <|
+                                                if isPicked then
+                                                    Color.darkBlue
+
+                                                else if isToday then
+                                                    Color.lightGrey
+
+                                                else
+                                                    Color.white
+                                            , Font.color <|
+                                                if isPicked then
+                                                    Color.white
+
+                                                else
+                                                    Color.black
+                                            ]
+                                        <|
+                                            E.text <|
+                                                String.fromInt dayNumber
 
                                     else
                                         E.none

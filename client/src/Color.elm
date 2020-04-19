@@ -4,6 +4,7 @@ module Color exposing
     , dialogMask
     , lightBlue
     , lightGrey
+    , white
     )
 
 import Element as E exposing (Color)
@@ -17,6 +18,11 @@ dialogMask =
 black : Color
 black =
     E.rgb255 0 0 0
+
+
+white : Color
+white =
+    E.rgb255 255 255 255
 
 
 lightBlue : Color
