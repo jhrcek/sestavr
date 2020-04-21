@@ -15,6 +15,7 @@ module Domain exposing
     , TargetId
     , TargetIdTag
     , encodeExercise
+    , encodeLesson
     , encodePosition
     , encodeRoutine
     , encodeTarget
@@ -221,6 +222,15 @@ lessonDecoder =
         (Decode.field "id" Id.decode)
         (Decode.field "routineId" Id.decode)
         (Decode.field "datetime" Iso8601.decoder)
+
+
+encodeLesson : Lesson -> Value
+encodeLesson lesson =
+    Encode.object
+        [ ( "id", Id.encode lesson.id )
+        , ( "routineId", Id.encode lesson.routineId )
+        , ( "datetime", Iso8601.encode lesson.datetime )
+        ]
 
 
 

@@ -136,6 +136,7 @@ apiServer pool =
     :<|> deleteRoutine
     -- Lesson
     :<|> getLessons
+    :<|> createLesson
     -- Static files
     :<|> serveImages
   where
@@ -327,6 +328,9 @@ apiServer pool =
     -- LESSON
     getLessons :: Handler [Entity Lesson]
     getLessons = runPool $ selectList [] []
+    --
+    createLesson :: Lesson -> Handler (Entity Lesson)
+    createLesson lesson = runPool $ insertEntity lesson
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

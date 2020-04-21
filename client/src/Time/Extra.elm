@@ -91,8 +91,22 @@ formatDateTime posix =
 
         year =
             Time.toYear Time.utc posix
+
+        hour =
+            Time.toHour Time.utc posix
+
+        minute =
+            Time.toMinute Time.utc posix
     in
-    String.fromInt day ++ ". " ++ month ++ " " ++ String.fromInt year
+    String.fromInt day
+        ++ ". "
+        ++ month
+        ++ " "
+        ++ String.fromInt year
+        ++ " "
+        ++ String.fromInt hour
+        ++ ":"
+        ++ String.fromInt minute
 
 
 monthNumber : Month -> Int
@@ -250,6 +264,10 @@ daysInMonth year month =
 
         Dec ->
             31
+
+
+
+-- TODO replace with helpers from PanagiotisGeorgiadis/elm-datetime
 
 
 weekDayOffset : Weekday -> Int

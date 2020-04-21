@@ -3,17 +3,7 @@ module Main exposing (main)
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav exposing (Key)
 import Dict.Any
-import Domain
-    exposing
-        ( Exercise
-        , ExerciseId
-        , Position
-        , PositionId
-        , Routine
-        , RoutineId
-        , Target
-        , TargetId
-        )
+import Domain exposing (Exercise, ExerciseId, Lesson, Position, PositionId, Routine, RoutineId, Target, TargetId)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
@@ -97,7 +87,7 @@ initPage route store today =
             RoutineList
 
         Router.Routine routineId ->
-            RoutineModel routineId (LessonPlanner.init today)
+            RoutineModel routineId (LessonPlanner.init today routineId)
 
         Router.RoutineEditor maybeRoutineId ->
             maybeRoutineId
@@ -159,7 +149,7 @@ type Msg
       -- Lesson Planner
     | LessonPlannerMsg LessonPlanner.Msg
     | GotLessonPlannerValitaionError String
-    | CreateLesson ( Int, Month, Int ) ( Int, Int )
+    | CreateLesson Lesson
     | ErrorAcked
     | ConfirmDeletion String Msg
 
@@ -563,7 +553,7 @@ update msg model =
                 , pageModel =
                     case model.pageModel of
                         RoutineModel rid _ ->
-                            RoutineModel rid (LessonPlanner.init posix)
+                            RoutineModel rid (LessonPlanner.init posix rid)
 
                         other ->
                             other
@@ -576,10 +566,10 @@ update msg model =
             , Cmd.none
             )
 
-        CreateLesson _ _ ->
-            {- (year, month, day) (hour, minute) -}
-            -- TODO create lesson backend api call
-            ( model, Cmd.none )
+        CreateLesson lesson ->
+            ( model
+            , Cmd.map StoreMsg <| Store.createLesson lesson
+            )
 
 
 targetConfig : Target.Config Msg

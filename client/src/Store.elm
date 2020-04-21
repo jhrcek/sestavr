@@ -2,6 +2,7 @@ module Store exposing
     ( Msg
     , Store
     , createExercise
+    , createLesson
     , createPosition
     , createRoutine
     , createTarget
@@ -69,6 +70,7 @@ type Msg
     | RoutineDeleted (ApiCall RoutineId)
       -- Lesson
     | LessonsFetched (ApiCall (List Lesson))
+    | LessonCreated (ApiCall Lesson)
 
 
 type alias Store =
@@ -143,6 +145,9 @@ update msg store =
 
         LessonsFetched result ->
             updateOrError result store (\lessons s -> { s | lessons = Id.buildDict lessons })
+
+        LessonCreated result ->
+            updateOrError result store (\lesson s -> { s | lessons = Dict.Any.insert lesson.id lesson store.lessons })
 
 
 updateOrError : ApiCall a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
@@ -323,4 +328,13 @@ getLessons =
     Http.get
         { url = "/lesson"
         , expect = Ht2.expectJson LessonsFetched (Decode.list Domain.lessonDecoder)
+        }
+
+
+createLesson : Lesson -> Cmd Msg
+createLesson lesson =
+    Http.post
+        { url = "/lesson"
+        , body = Http.jsonBody <| Domain.encodeLesson lesson
+        , expect = Ht2.expectJson LessonCreated Domain.lessonDecoder
         }

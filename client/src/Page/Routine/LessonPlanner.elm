@@ -7,15 +7,20 @@ module Page.Routine.LessonPlanner exposing
     , view
     )
 
+import Calendar
+import Clock
 import Color
 import Command
 import Common
+import DateTime
+import Domain exposing (Lesson, RoutineId)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Events as Event
 import Element.Font as Font
 import Element.Input as Input
+import Id
 import List.Extra as List
 import Time exposing (Month(..), Posix, Weekday(..))
 import Time.Extra as Time
@@ -23,6 +28,7 @@ import Time.Extra as Time
 
 type alias LessonPlanner =
     { today : Posix
+    , routineId : RoutineId
     , picker : Maybe DateTimePicker
     }
 
@@ -49,13 +55,16 @@ type alias Config msg =
     { validationError : String -> msg
 
     -- TODO change to Year, Month, Day , Hour and Minute or other more timey types
-    , createLesson : ( Int, Month, Int ) -> ( Int, Int ) -> msg
+    , createLesson : Lesson -> msg
     }
 
 
-init : Posix -> LessonPlanner
-init today =
-    { today = today, picker = Nothing }
+init : Posix -> RoutineId -> LessonPlanner
+init today routineId =
+    { today = today
+    , picker = Nothing
+    , routineId = routineId
+    }
 
 
 update : Config msg -> Msg -> LessonPlanner -> ( LessonPlanner, Cmd msg )
@@ -95,7 +104,7 @@ update config msg model =
                     ( model, Cmd.none )
 
                 Just picker ->
-                    case saveLesson config picker of
+                    case saveLesson config picker model.routineId of
                         Err validationError ->
                             ( model
                             , Command.perform <| config.validationError validationError
@@ -112,19 +121,30 @@ updatePlanner f p =
     { p | picker = Maybe.map f p.picker }
 
 
-saveLesson : Config msg -> DateTimePicker -> Result String msg
-saveLesson config lessonPlanner =
+saveLesson : Config msg -> DateTimePicker -> RoutineId -> Result String msg
+saveLesson config lessonPlanner routineId =
     case lessonPlanner.pickedDay of
         Nothing ->
             Err "Musíš vybrat datum v kalendáři"
 
-        Just yearMonthDay ->
-            case parseHoursMinutes lessonPlanner.pickedTime of
-                Err e ->
-                    Err e
+        Just ( year, month, day ) ->
+            case Calendar.fromRawParts { day = day, month = month, year = year } of
+                Nothing ->
+                    Err "Tohle datum není v kalendáři"
 
-                Ok hourMinute ->
-                    Ok <| config.createLesson yearMonthDay hourMinute
+                Just date ->
+                    parseHoursMinutes lessonPlanner.pickedTime
+                        |> Result.map
+                            (\time ->
+                                let
+                                    newLesson =
+                                        { id = Id.fromInt -1
+                                        , routineId = routineId
+                                        , datetime = DateTime.toPosix <| DateTime.fromDateAndTime date time
+                                        }
+                                in
+                                config.createLesson newLesson
+                            )
 
 
 switchMonth : (Month -> Int -> ( Month, Int )) -> LessonPlanner -> LessonPlanner
@@ -182,16 +202,6 @@ timePicker picker =
                     , placeholder = Just <| Input.placeholder [] <| E.text "HH:MM"
                     , label = Input.labelLeft [ E.centerY ] (E.text "Čas lekce")
                     }
-                , if String.isEmpty picker.pickedTime then
-                    E.none
-
-                  else
-                    case parseHoursMinutes picker.pickedTime of
-                        Ok _ ->
-                            E.none
-
-                        Err e ->
-                            E.el [ E.centerY, Font.color Color.red ] <| E.text e
                 ]
 
         -- If the date wasn't picked yet, don't show the time picker
@@ -199,7 +209,7 @@ timePicker picker =
             E.none
 
 
-parseHoursMinutes : String -> Result String ( Int, Int )
+parseHoursMinutes : String -> Result String Clock.Time
 parseHoursMinutes str =
     if String.isEmpty str then
         Err "Musíš zvolit datum a čas"
@@ -213,7 +223,20 @@ parseHoursMinutes str =
                             case String.toInt mm of
                                 Just m ->
                                     if 0 <= m && m <= 59 then
-                                        Ok ( h, m )
+                                        case
+                                            Clock.fromRawParts
+                                                { hours = h
+                                                , minutes = m
+                                                , seconds = 0
+                                                , milliseconds = 0
+                                                }
+                                        of
+                                            Just time ->
+                                                Ok time
+
+                                            Nothing ->
+                                                -- Should never happen, as we already validated hours and minutes
+                                                Err <| "Nepodařilo se sestavit čas z hodin a minut: " ++ String.fromInt h ++ ":" ++ String.fromInt m
 
                                     else
                                         Err "Minuta musí být v rozmezí 0 - 59"

@@ -59,6 +59,7 @@ type SestavrAPI =
     :<|> "routine" :> Capture "routineId" RoutineId :> Delete '[JSON] ()
     -- Lesson
     :<|> "lesson" :> Get '[JSON] [Entity Lesson]
+    :<|> "lesson" :> ReqBody '[JSON] Lesson :> Post '[JSON] (Entity Lesson)
     -- Static files
     :<|> Raw
 
