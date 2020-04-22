@@ -2,7 +2,6 @@ module Time.Extra exposing
     ( daysInMonth
     , firstDayOfMonthWeekday
     , formatDateTime
-    , monthNumber
     , nextMonthYear
     , prevMonthYear
     , toCzechMonth
@@ -11,8 +10,8 @@ module Time.Extra exposing
     , weekDays
     )
 
-import Iso8601
-import List.Extra as List
+import Array
+import Calendar
 import Time exposing (Month(..), Posix, Weekday(..))
 
 
@@ -58,7 +57,8 @@ toCzechMonth month =
 
 nextMonthYear : Month -> Int -> ( Month, Int )
 nextMonthYear month year =
-    ( List.getAt (monthNumber month |> modBy 12) months
+    ( Calendar.months
+        |> Array.get (Calendar.monthToInt month |> modBy 12)
         |> Maybe.withDefault Jan
     , if month == Dec then
         year + 1
@@ -70,7 +70,8 @@ nextMonthYear month year =
 
 prevMonthYear : Month -> Int -> ( Month, Int )
 prevMonthYear month year =
-    ( List.getAt (monthNumber month - 2 |> modBy 12) months
+    ( Calendar.months
+        |> Array.get (Calendar.monthToInt month - 2 |> modBy 12)
         |> Maybe.withDefault Jan
     , if month == Jan then
         year - 1
@@ -107,63 +108,6 @@ formatDateTime posix =
         ++ String.fromInt hour
         ++ ":"
         ++ String.fromInt minute
-
-
-monthNumber : Month -> Int
-monthNumber month =
-    case month of
-        Jan ->
-            1
-
-        Feb ->
-            2
-
-        Mar ->
-            3
-
-        Apr ->
-            4
-
-        May ->
-            5
-
-        Jun ->
-            6
-
-        Jul ->
-            7
-
-        Aug ->
-            8
-
-        Sep ->
-            9
-
-        Oct ->
-            10
-
-        Nov ->
-            11
-
-        Dec ->
-            12
-
-
-months : List Month
-months =
-    [ Jan
-    , Feb
-    , Mar
-    , Apr
-    , May
-    , Jun
-    , Jul
-    , Aug
-    , Sep
-    , Oct
-    , Nov
-    , Dec
-    ]
 
 
 weekDays : List Weekday
@@ -205,17 +149,13 @@ weekDay2Letters weekday =
 
 firstDayOfMonthWeekday : Int -> Month -> Weekday
 firstDayOfMonthWeekday year month =
-    let
-        monthNumStr =
-            String.padLeft 2 '0' <| String.fromInt <| monthNumber month
-    in
-    (String.fromInt year ++ "-" ++ monthNumStr ++ "-01")
-        |> Iso8601.toTime
-        |> Result.map (Time.toWeekday Time.utc)
-        -- TODO this is really hacky way of getting weekday of first day of month.
-        -- Find some library that makes this easier and without returning errors
-        -- Just use https://package.elm-lang.org/packages/justinmimbs/date/
-        |> Result.withDefault Mon
+    case Calendar.fromRawParts { year = year, month = month, day = 1 } of
+        Just firstDayOfMonth ->
+            Calendar.getWeekday firstDayOfMonth
+
+        -- Should not happen because year is positive and each month contains day 1
+        Nothing ->
+            Mon
 
 
 daysInMonth : Int -> Month -> Int
@@ -264,10 +204,6 @@ daysInMonth year month =
 
         Dec ->
             31
-
-
-
--- TODO replace with helpers from PanagiotisGeorgiadis/elm-datetime
 
 
 weekDayOffset : Weekday -> Int
