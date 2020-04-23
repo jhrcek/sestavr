@@ -123,13 +123,15 @@ form : Model -> Element Msg
 form model =
     case model.newField of
         Nothing ->
-            Input.button Common.buttonAttrs
-                { onPress = Just AddClicked
-                , label = E.text "Přidat partii"
-                }
+            E.el [ E.paddingXY 0 5 ]
+                (Input.button Common.buttonAttrs
+                    { onPress = Just AddClicked
+                    , label = E.text "Přidat partii"
+                    }
+                )
 
         Just fieldName ->
-            E.column []
+            E.column [ E.paddingXY 0 5 ]
                 [ E.text "Tvorba nové partie"
                 , Input.text [ E.width (E.px 100) ]
                     { onChange = NewNameChanged

@@ -42,7 +42,7 @@ view lessons routines _ =
         |> List.sortBy (.datetime >> Time.posixToMillis)
         |> List.reverse
         |> List.map (lessonView routines)
-        |> (::) (Common.heading1 "Sestavy")
+        |> (::) (Common.heading1 "Lekce")
         |> E.column []
 
 

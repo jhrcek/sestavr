@@ -123,13 +123,15 @@ form : Model -> Element Msg
 form model =
     case model.newField of
         Nothing ->
-            Input.button Common.buttonAttrs
-                { onPress = Just AddClicked
-                , label = E.text "Přidat pozici"
-                }
+            E.el [ E.paddingXY 0 5 ]
+                (Input.button Common.buttonAttrs
+                    { onPress = Just AddClicked
+                    , label = E.text "Přidat pozici"
+                    }
+                )
 
         Just fieldName ->
-            E.column []
+            E.column [ E.paddingXY 0 5 ]
                 [ E.text "Tvorba nové pozice"
                 , Input.text [ E.width (E.px 100) ]
                     { onChange = NewNameChanged
@@ -137,7 +139,7 @@ form model =
                     , placeholder = Nothing
                     , label = Input.labelLeft [ E.centerY ] (E.text "Název")
                     }
-                , E.row [ E.spacing 5, E.padding 5 ]
+                , E.row [ E.spacing 5, E.paddingXY 0 5 ]
                     [ Input.button Common.buttonAttrs
                         { onPress = Just CancelClicked
                         , label = E.text "Zrušit"
