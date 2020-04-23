@@ -296,15 +296,13 @@ listView exercises =
         |> List.sortBy .name
         |> List.map exerciseLink
         |> (\exerciseLinks -> exerciseLinks ++ [ createExercisebutton ])
+        |> (::) (Common.heading1 "Cviky")
         |> E.column []
 
 
 exerciseLink : Exercise -> Element msg
 exerciseLink exercise =
-    E.link
-        [ E.mouseOver [ Font.color Color.darkBlue ]
-        , Font.color Color.lightBlue
-        ]
+    E.link Common.linkAttrs
         { url = Router.href (Router.Exercise exercise.id)
         , label =
             E.text <|
@@ -333,7 +331,7 @@ view :
 view config positions targets exercise =
     E.column [ E.width E.fill ]
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
-        , E.el [ Font.size 28, Font.bold ] (E.text exercise.name)
+        , Common.heading1 exercise.name
         , E.el [ Font.size 20, Font.bold, Font.italic ]
             (E.text <| "Sanskrt : " ++ Maybe.withDefault "N/A" exercise.sanskritName)
         , E.row []
@@ -379,10 +377,7 @@ viewTargetArea target =
 
 backToList : Element msg
 backToList =
-    E.link
-        [ E.mouseOver [ Font.color Color.darkBlue ]
-        , Font.color Color.lightBlue
-        ]
+    E.link Common.linkAttrs
         { url = Router.href Exercises
         , label = E.text "« Zpět na seznam cviků"
         }

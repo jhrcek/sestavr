@@ -113,7 +113,8 @@ update config msg model =
 view : IdDict PositionIdTag Position -> Model -> Element Msg
 view targets model =
     E.column [ E.width (E.maximum 500 <| E.px 300) ]
-        [ viewPositions targets model.editedPosition
+        [ Common.heading1 "Pozice"
+        , viewPositions targets model.editedPosition
         , form model
         ]
 

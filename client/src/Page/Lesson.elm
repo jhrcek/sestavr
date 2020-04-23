@@ -6,10 +6,12 @@ module Page.Lesson exposing
     , view
     )
 
+import Common
 import Dict.Any
 import Domain exposing (Lesson, LessonIdTag, Routine, RoutineIdTag)
 import Element as E exposing (Element)
 import Id exposing (IdDict)
+import Router
 import Time exposing (Month(..))
 import Time.Extra as Time
 
@@ -35,11 +37,12 @@ update msg model =
 
 
 view : IdDict LessonIdTag Lesson -> IdDict RoutineIdTag Routine -> Model -> Element msg
-view lessons routines model =
+view lessons routines _ =
     Dict.Any.values lessons
         |> List.sortBy (.datetime >> Time.posixToMillis)
         |> List.reverse
         |> List.map (lessonView routines)
+        |> (::) (Common.heading1 "Sestavy")
         |> E.column []
 
 
@@ -53,7 +56,10 @@ lessonView routines lesson =
     in
     E.row []
         [ E.text <|
-            Time.formatDateTime lesson.datetime
+            Time.formatPosix lesson.datetime
                 ++ " - "
-                ++ routineTopic
+        , E.link Common.linkAttrs
+            { url = Router.href (Router.Routine lesson.routineId)
+            , label = E.text routineTopic
+            }
         ]

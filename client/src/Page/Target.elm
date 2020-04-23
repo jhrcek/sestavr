@@ -113,7 +113,8 @@ update config msg model =
 view : IdDict TargetIdTag Target -> Model -> Element Msg
 view targets model =
     E.column [ E.width (E.maximum 500 <| E.px 300) ]
-        [ viewTargets targets model.editedTarget
+        [ Common.heading1 "Cílové partie"
+        , viewTargets targets model.editedTarget
         , form model
         ]
 

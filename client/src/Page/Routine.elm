@@ -14,7 +14,6 @@ module Page.Routine exposing
     , view
     )
 
-import Color
 import Command
 import Common
 import Dict.Any
@@ -291,7 +290,7 @@ view :
 view config exercises lessons routine lessonPlanner =
     E.column []
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
-        , E.el [ Font.size 28, Font.bold ] (E.text routine.topic)
+        , Common.heading1 routine.topic
         , E.text <|
             String.fromInt (List.length routine.exercises)
                 ++ " cviky, celková délka "
@@ -319,7 +318,7 @@ view config exercises lessons routine lessonPlanner =
                 ls ->
                     E.column []
                         (E.text "Tato sestava byla použita v lekcích"
-                            :: List.map (\lesson -> E.text <| Time.formatDateTime lesson.datetime) ls
+                            :: List.map (\lesson -> E.text <| Time.formatPosix lesson.datetime) ls
                         )
         , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
         ]
@@ -337,15 +336,13 @@ listView routines =
         |> List.sortBy .topic
         |> List.map routineLink
         |> (\routineLinks -> routineLinks ++ [ createRoutineButton ])
+        |> (::) (Common.heading1 "Sestavy")
         |> E.column []
 
 
 routineLink : Routine -> Element msg
 routineLink routine =
-    E.link
-        [ E.mouseOver [ Font.color Color.darkBlue ]
-        , Font.color Color.lightBlue
-        ]
+    E.link Common.linkAttrs
         { url = Router.href (Router.Routine routine.id)
         , label = E.text routine.topic
         }
@@ -660,10 +657,7 @@ updateOrCreate config model =
 
 backToList : Element msg
 backToList =
-    E.link
-        [ E.mouseOver [ Font.color Color.darkBlue ]
-        , Font.color Color.lightBlue
-        ]
+    E.link Common.linkAttrs
         { url = Router.href Router.Routines
         , label = E.text "« Zpět na seznam sestav"
         }

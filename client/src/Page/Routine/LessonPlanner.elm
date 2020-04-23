@@ -174,7 +174,7 @@ view lessonPlanner =
 
         Just dtp ->
             E.column []
-                [ E.el [ Font.size 28, Font.bold ] (E.text "Plánování lekce")
+                [ Common.heading1 "Plánování lekce"
                 , E.text "Vyber datum a čas lekce"
                 , datePicker dtp lessonPlanner.today
                 , timePicker dtp

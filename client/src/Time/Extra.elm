@@ -1,7 +1,7 @@
 module Time.Extra exposing
     ( daysInMonth
     , firstDayOfMonthWeekday
-    , formatDateTime
+    , formatPosix
     , nextMonthYear
     , prevMonthYear
     , toCzechMonth
@@ -81,8 +81,8 @@ prevMonthYear month year =
     )
 
 
-formatDateTime : Posix -> String
-formatDateTime posix =
+formatPosix : Posix -> String
+formatPosix posix =
     let
         day =
             Time.toDay Time.utc posix
@@ -105,9 +105,9 @@ formatDateTime posix =
         ++ " "
         ++ String.fromInt year
         ++ " "
-        ++ String.fromInt hour
+        ++ String.padLeft 2 '0' (String.fromInt hour)
         ++ ":"
-        ++ String.fromInt minute
+        ++ String.padLeft 2 '0' (String.fromInt minute)
 
 
 weekDays : List Weekday

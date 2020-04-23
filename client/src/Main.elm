@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav exposing (Key)
+import Common
 import Dict.Any
 import Domain exposing (Exercise, ExerciseId, Lesson, Position, PositionId, Routine, RoutineId, Target, TargetId)
 import Element as E exposing (Element)
@@ -248,7 +249,10 @@ viewBody model =
     viewLayout model.route <|
         case model.pageModel of
             HomeModel ->
-                E.text "Home"
+                E.column []
+                    [ Common.heading1 "Úvodní stránka"
+                    , E.text "Je něco užitečného, cy by mělo smysl zobrazit na úvodní stránce?"
+                    ]
 
             ExerciseList ->
                 Exercise.listView model.store.exercises
