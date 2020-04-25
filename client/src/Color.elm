@@ -5,7 +5,6 @@ module Color exposing
     , dialogMask
     , lightBlue
     , lightGrey
-    , red
     , white
     )
 
@@ -45,8 +44,3 @@ lightGrey =
 darkGrey : Color
 darkGrey =
     E.rgb255 128 128 128
-
-
-red : Color
-red =
-    E.rgb255 200 0 0

@@ -1,6 +1,5 @@
 module Time.Extra exposing
     ( daysInMonth
-    , diffDays
     , firstDayOfMonthWeekday
     , formatDate
     , formatDateTime
@@ -14,7 +13,6 @@ module Time.Extra exposing
 
 import Array
 import Calendar
-import DateTime
 import Time exposing (Month(..), Posix, Weekday(..))
 
 
@@ -238,10 +236,3 @@ weekDayOffset weekday =
 
         Sun ->
             6
-
-
-diffDays : Posix -> Posix -> Int
-diffDays later earlier =
-    DateTime.getDayDiff
-        (DateTime.fromPosix earlier)
-        (DateTime.fromPosix later)
