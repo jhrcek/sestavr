@@ -14,6 +14,7 @@ module Page.Routine exposing
     , view
     )
 
+import Color
 import Command
 import Common
 import Dict.Any
@@ -36,7 +37,9 @@ import Domain
         , TargetIdTag
         )
 import Element as E exposing (Element)
+import Element.Background as Background
 import Element.Border as Border
+import Element.Events as Event
 import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes as Attr
@@ -46,6 +49,7 @@ import Page.Exercise as Exercise
 import Page.Routine.LessonPlanner as LessonPlanner exposing (LessonPlanner)
 import Router
 import Set.Any
+import Time exposing (Posix)
 import Time.Extra as Time
 
 
@@ -56,6 +60,7 @@ type alias Model =
     , dnd : DnDList.Model
     , targetFilter : IdSet TargetIdTag
     , positionFilter : IdSet PositionIdTag
+    , showingPopupFor : Maybe ExerciseId
     }
 
 
@@ -101,6 +106,7 @@ initEditor exercises routine =
     , dnd = dndSystem.model
     , targetFilter = Id.emptySet
     , positionFilter = Id.emptySet
+    , showingPopupFor = Nothing
     }
 
 
@@ -124,6 +130,7 @@ emptyEditor =
     , dnd = dndSystem.model
     , targetFilter = Id.emptySet
     , positionFilter = Id.emptySet
+    , showingPopupFor = Nothing
     }
 
 
@@ -142,6 +149,8 @@ type Msg
     | ClearTargets
     | ClearPositions
     | SaveRoutine
+    | ShowExerciseDetailsPopup ExerciseId
+    | HideExerciseDetailsPopup
     | DnD DnDList.Msg
 
 
@@ -236,6 +245,16 @@ update config exercises msg model =
             , Cmd.none
             )
 
+        ShowExerciseDetailsPopup exerciseIndex ->
+            ( { model | showingPopupFor = Just exerciseIndex }
+            , Cmd.none
+            )
+
+        HideExerciseDetailsPopup ->
+            ( { model | showingPopupFor = Nothing }
+            , Cmd.none
+            )
+
 
 {-| This is to allow numbers only input the value of which can be deleted (corresponding to 0)
 -}
@@ -318,7 +337,7 @@ view config exercises lessons routine lessonPlanner =
                 ls ->
                     E.column []
                         (E.text "Tato sestava byla použita v lekcích"
-                            :: List.map (\lesson -> E.text <| Time.formatPosix lesson.datetime) ls
+                            :: List.map (\lesson -> E.text <| Time.formatDateTime lesson.datetime) ls
                         )
         , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
         ]
@@ -358,10 +377,12 @@ editRoutineButton routine =
 
 createRoutineButton : Element msg
 createRoutineButton =
-    E.link Common.buttonAttrs
-        { url = Router.href (Router.RoutineEditor Nothing)
-        , label = E.text "Nová sestava"
-        }
+    E.el [ E.paddingXY 0 5 ]
+        (E.link Common.buttonAttrs
+            { url = Router.href (Router.RoutineEditor Nothing)
+            , label = E.text "Vytvořit sestavu"
+            }
+        )
 
 
 cancelEditButton : Element msg
@@ -384,10 +405,16 @@ editor :
     IdDict ExerciseIdTag Exercise
     -> IdDict TargetIdTag Target
     -> IdDict PositionIdTag Position
+    -> IdDict RoutineIdTag Routine
+    -> IdDict LessonIdTag Lesson
+    -> Posix
     -> Model
     -> Element Msg
-editor exercises targets positions model =
+editor exercises targets positions routines lessons today model =
     let
+        pastExerciseUsages =
+            getPastExerciseUsages today routines lessons
+
         colAttrs maxWidth =
             [ E.alignTop
             , E.width <| E.maximum maxWidth E.fill
@@ -397,7 +424,7 @@ editor exercises targets positions model =
             ]
 
         exerciseColumnWidth =
-            460
+            500
 
         filteredExercises =
             Dict.Any.values exercises
@@ -443,7 +470,7 @@ editor exercises targets positions model =
                 totalCount =
                     Dict.Any.size exercises
               in
-              if totalCount > List.length filteredExercises then
+              if totalCount > filteredCount then
                 E.paragraph []
                     [ E.text <|
                         String.fromInt filteredCount
@@ -455,13 +482,50 @@ editor exercises targets positions model =
               else
                 E.none
             ]
-        , E.column (colAttrs exerciseColumnWidth)
-            (E.el [ Font.bold, E.padding 5 ]
-                (E.text "Dostupné cviky")
+        , E.column (E.spacing 5 :: colAttrs exerciseColumnWidth)
+            (E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
                 :: List.map
                     (\exercise ->
-                        E.row [ E.paddingXY 5 0, E.width E.fill ]
+                        E.row [ E.paddingXY 5 0, E.spacing 5, E.width E.fill ]
                             [ E.el [ E.padding 5 ] (E.text exercise.name)
+                            , E.el
+                                [ Border.solid
+                                , Border.width 1
+                                , Border.color Color.darkGrey
+                                , E.padding 5
+                                , E.alignRight
+                                , Font.color Color.darkGrey
+                                , Event.onMouseEnter (ShowExerciseDetailsPopup exercise.id)
+                                , Event.onMouseLeave HideExerciseDetailsPopup
+                                , E.below <|
+                                    case model.showingPopupFor of
+                                        Just exIdWithPopup ->
+                                            if exercise.id == exIdWithPopup then
+                                                exerciseUsagePopup exercise pastExerciseUsages
+
+                                            else
+                                                E.none
+
+                                        Nothing ->
+                                            E.none
+                                ]
+                                (E.text <|
+                                    case Dict.Any.get exercise.id pastExerciseUsages of
+                                        Just usages ->
+                                            let
+                                                mostRecentPastUsage =
+                                                    List.maximumBy (.lesson >> .datetime >> Time.posixToMillis) usages
+                                            in
+                                            case mostRecentPastUsage of
+                                                Just lastUsage ->
+                                                    Time.formatDate lastUsage.lesson.datetime
+
+                                                Nothing ->
+                                                    "Nikdy"
+
+                                        Nothing ->
+                                            "Nikdy"
+                                )
                             , Input.button (E.alignRight :: Common.buttonAttrs)
                                 { onPress = Just (AddToRoutine exercise.id)
                                 , label = E.text "»"
@@ -471,7 +535,7 @@ editor exercises targets positions model =
                     filteredExercises
             )
         , E.column
-            (E.inFront (ghostView model.dnd model.routineExercises) :: colAttrs exerciseColumnWidth)
+            (E.inFront (ghostView model.dnd model.routineExercises) :: E.spacing 5 :: colAttrs exerciseColumnWidth)
             (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
                 :: Input.text
                     [ E.width (E.px 250)
@@ -496,6 +560,93 @@ editor exercises targets positions model =
                    ]
             )
         ]
+
+
+type alias ExerciseUsages =
+    List
+        { lesson : Lesson
+        , routineTopic : String
+        }
+
+
+{-| Calculate a Dict, which for each exercise contains list of PAST lessons, where that exercise was used
+-}
+getPastExerciseUsages :
+    Posix
+    -> IdDict RoutineIdTag Routine
+    -> IdDict LessonIdTag Lesson
+    -> IdDict ExerciseIdTag ExerciseUsages
+getPastExerciseUsages today routines lessons =
+    Dict.Any.foldl
+        (\_ lesson exUsagesAcc ->
+            let
+                lessonExercises : List ( ExerciseId, String )
+                lessonExercises =
+                    case Dict.Any.get lesson.routineId routines of
+                        Just routine ->
+                            List.map (\routineExercise -> ( routineExercise.exerciseId, routine.topic )) routine.exercises
+
+                        Nothing ->
+                            []
+            in
+            List.foldl
+                (\( exerciseId, routineTopic ) ->
+                    Dict.Any.update exerciseId
+                        (\maybeUsages ->
+                            let
+                                usage =
+                                    { lesson = lesson
+                                    , routineTopic = routineTopic
+                                    }
+                            in
+                            case maybeUsages of
+                                Just usages ->
+                                    Just (usage :: usages)
+
+                                Nothing ->
+                                    Just [ usage ]
+                        )
+                )
+                exUsagesAcc
+                lessonExercises
+        )
+        Id.emptyDict
+    <|
+        Dict.Any.filter (\_ lesson -> Time.posixToMillis lesson.datetime < Time.posixToMillis today)
+            lessons
+
+
+exerciseUsagePopup :
+    Exercise
+    -> IdDict ExerciseIdTag ExerciseUsages
+    -> Element msg
+exerciseUsagePopup exercise exerciseUsages =
+    case Dict.Any.get exercise.id exerciseUsages of
+        Nothing ->
+            E.none
+
+        Just [] ->
+            E.none
+
+        Just usages ->
+            E.column
+                [ Border.width 1
+                , Border.solid
+                , Border.color Color.black
+                , Background.color Color.white
+                , Font.color Color.black
+                , E.padding 10
+                ]
+            <|
+                E.text "Naposledy použito"
+                    :: List.map
+                        (\{ lesson, routineTopic } ->
+                            E.text <| Time.formatDateTime lesson.datetime ++ " - " ++ routineTopic
+                        )
+                        (List.sortBy
+                            (negate << Time.posixToMillis << .datetime << .lesson)
+                            usages
+                        )
 
 
 positionCheckboxes : IdDict PositionIdTag Position -> IdSet PositionIdTag -> Element Msg

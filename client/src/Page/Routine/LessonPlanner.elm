@@ -53,8 +53,6 @@ type Msg
 
 type alias Config msg =
     { validationError : String -> msg
-
-    -- TODO change to Year, Month, Day , Hour and Minute or other more timey types
     , createLesson : Lesson -> msg
     }
 
@@ -207,6 +205,10 @@ timePicker picker =
         -- If the date wasn't picked yet, don't show the time picker
         Nothing ->
             E.none
+
+
+
+-- TODO should we give a warning if lesson planned into the past
 
 
 parseHoursMinutes : String -> Result String Clock.Time

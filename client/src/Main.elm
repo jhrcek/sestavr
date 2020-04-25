@@ -309,6 +309,9 @@ viewBody model =
                         model.store.exercises
                         model.store.targets
                         model.store.positions
+                        model.store.routines
+                        model.store.lessons
+                        model.today
                         rmodel
 
             NotFoundModel what ->

@@ -1,7 +1,9 @@
 module Time.Extra exposing
     ( daysInMonth
+    , diffDays
     , firstDayOfMonthWeekday
-    , formatPosix
+    , formatDate
+    , formatDateTime
     , nextMonthYear
     , prevMonthYear
     , toCzechMonth
@@ -12,6 +14,7 @@ module Time.Extra exposing
 
 import Array
 import Calendar
+import DateTime
 import Time exposing (Month(..), Posix, Weekday(..))
 
 
@@ -81,8 +84,8 @@ prevMonthYear month year =
     )
 
 
-formatPosix : Posix -> String
-formatPosix posix =
+formatDate : Posix -> String
+formatDate posix =
     let
         day =
             Time.toDay Time.utc posix
@@ -92,18 +95,24 @@ formatPosix posix =
 
         year =
             Time.toYear Time.utc posix
-
-        hour =
-            Time.toHour Time.utc posix
-
-        minute =
-            Time.toMinute Time.utc posix
     in
     String.fromInt day
         ++ ". "
         ++ month
         ++ " "
         ++ String.fromInt year
+
+
+formatDateTime : Posix -> String
+formatDateTime posix =
+    let
+        hour =
+            Time.toHour Time.utc posix
+
+        minute =
+            Time.toMinute Time.utc posix
+    in
+    formatDate posix
         ++ " "
         ++ String.padLeft 2 '0' (String.fromInt hour)
         ++ ":"
@@ -229,3 +238,10 @@ weekDayOffset weekday =
 
         Sun ->
             6
+
+
+diffDays : Posix -> Posix -> Int
+diffDays later earlier =
+    DateTime.getDayDiff
+        (DateTime.fromPosix earlier)
+        (DateTime.fromPosix later)

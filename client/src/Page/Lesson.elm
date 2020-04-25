@@ -42,6 +42,7 @@ view lessons routines _ =
         |> List.sortBy (.datetime >> Time.posixToMillis)
         |> List.reverse
         |> List.map (lessonView routines)
+        -- TODO there should be "Vytvořit lekci" button here
         |> (::) (Common.heading1 "Lekce")
         |> E.column []
 
@@ -56,7 +57,7 @@ lessonView routines lesson =
     in
     E.row []
         [ E.text <|
-            Time.formatPosix lesson.datetime
+            Time.formatDateTime lesson.datetime
                 ++ " - "
         , E.link Common.linkAttrs
             { url = Router.href (Router.Routine lesson.routineId)

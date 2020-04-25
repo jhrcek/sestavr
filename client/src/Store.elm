@@ -338,3 +338,7 @@ createLesson lesson =
         , body = Http.jsonBody <| Domain.encodeLesson lesson
         , expect = Ht2.expectJson LessonCreated Domain.lessonDecoder
         }
+
+
+
+-- TODO support lesson deletion

@@ -126,7 +126,7 @@ form model =
             E.el [ E.paddingXY 0 5 ]
                 (Input.button Common.buttonAttrs
                     { onPress = Just AddClicked
-                    , label = E.text "Přidat partii"
+                    , label = E.text "Vytvořit partii"
                     }
                 )
 
@@ -235,8 +235,5 @@ viewTargets targets maybeEdited =
                             , iconButton { onPress = Just (DeleteClicked target.id), label = E.text "🗑" }
                             ]
               }
-
-            -- TODO show # of exercises for each target
-            -- TODO link to the search of exercises that have given target
             ]
         }

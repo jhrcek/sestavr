@@ -282,7 +282,7 @@ targetCheckboxes onTargetToggle targets selectedTargets =
     in
     E.column []
         [ E.el [ E.padding 3, E.alignLeft, E.alignTop ] <|
-            E.el [ Font.bold ] (E.text "Cílové oblasti")
+            E.el [ Font.bold ] (E.text "Cílové partie")
         , Dict.Any.values targets
             |> List.greedyGroupsOf 10
             |> List.map (\group -> E.column [ E.alignTop ] (List.map targetCheckbox group))
@@ -316,10 +316,12 @@ exerciseLink exercise =
 
 createExercisebutton : Element msg
 createExercisebutton =
-    E.link Common.buttonAttrs
-        { url = Router.href (Router.ExerciseEditor Nothing)
-        , label = E.text "Nový cvik"
-        }
+    E.el [ E.paddingXY 0 5 ]
+        (E.link Common.buttonAttrs
+            { url = Router.href (Router.ExerciseEditor Nothing)
+            , label = E.text "Vytvořit cvik"
+            }
+        )
 
 
 view :
@@ -343,7 +345,7 @@ view config positions targets exercise =
                     E.none
             ]
         , E.row []
-            [ E.text "Cílové oblasti: "
+            [ E.text "Cílové partie: "
             , E.row [ E.spacing 5 ] <|
                 List.map viewTargetArea <|
                     List.filterMap (\targetId -> Dict.Any.get targetId targets) exercise.targetIds
