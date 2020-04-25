@@ -13,6 +13,7 @@ module Server
 where
 
 import Api (SestavrAPI, sestavrApi)
+import Config (Config (..))
 import Control.Exception.Safe (catch, throwM)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
@@ -94,23 +95,26 @@ import Servant
   )
 import Servant.Server.StaticFiles (serveDirectoryWebApp)
 
-run :: IO ()
-run = do
-  app <- mkApp "sestavr.db"
-  putStrLn "Running on http://localhost:3000"
-  Warp.run 3000 app
+run :: Config -> IO ()
+run config = do
+  let port = configPort config
+      dbFile = configDbFile config
+      imagesDir = configImagesDir config
+  app <- mkApp dbFile imagesDir
+  putStrLn $ "Running on http://localhost:" ++ show port
+  Warp.run port app
 
-mkApp :: FilePath -> IO Application
-mkApp sqliteFile = do
+mkApp :: FilePath -> FilePath -> IO Application
+mkApp sqliteFile imagesDir = do
   pool <- runStderrLoggingT $ createSqlitePool (Text.pack sqliteFile) 3
   runSqlPool (runMigration migrateAll) pool
-  pure $ serveApp pool
+  pure $ serveApp pool imagesDir
 
-serveApp :: ConnectionPool -> Application
-serveApp pool = serve sestavrApi $ apiServer pool
+serveApp :: ConnectionPool -> FilePath -> Application
+serveApp pool imagesDir = serve sestavrApi $ apiServer pool imagesDir
 
-apiServer :: ConnectionPool -> Server SestavrAPI
-apiServer pool =
+apiServer :: ConnectionPool -> FilePath -> Server SestavrAPI
+apiServer pool imagesDir =
   getIndex
     :<|> getElmApp
     -- Target
@@ -142,8 +146,7 @@ apiServer pool =
   where
     runPool :: MonadIO m => SqlPersistM a -> m a
     runPool action = liftIO $ runSqlPersistMPool action pool
-    -- TODO make this configurable on startup
-    serveImages = serveDirectoryWebApp "/home/janhrcek/Tmp/joga_images"
+    serveImages = serveDirectoryWebApp imagesDir
     --
     handleConstraintError :: Handler x -> LBS.ByteString -> Handler x
     handleConstraintError action err =

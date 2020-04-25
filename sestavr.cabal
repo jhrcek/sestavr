@@ -24,6 +24,7 @@ source-repository head
 library
   exposed-modules:
       Api
+      Config
       Model
       Server
   other-modules:
@@ -39,9 +40,11 @@ library
     , bytestring
     , conduit
     , containers
+    , directory
     , file-embed
     , http-media
     , monad-logger
+    , optparse-applicative
     , persistent
     , persistent-sqlite
     , persistent-template
