@@ -7,6 +7,7 @@ module Store exposing
     , createRoutine
     , createTarget
     , deleteExercise
+    , deleteLesson
     , deletePosition
     , deleteRoutine
     , deleteTarget
@@ -30,6 +31,7 @@ import Domain
         , ExerciseId
         , ExerciseIdTag
         , Lesson
+        , LessonId
         , LessonIdTag
         , Position
         , PositionId
@@ -71,6 +73,7 @@ type Msg
       -- Lesson
     | LessonsFetched (ApiCall (List Lesson))
     | LessonCreated (ApiCall Lesson)
+    | LessonDeleted (ApiCall LessonId)
 
 
 type alias Store =
@@ -93,68 +96,71 @@ init =
 
 
 update : Msg -> Store -> ( Store, Maybe Ht2.Error )
-update msg store =
+update msg =
     case msg of
         TargetsFetched result ->
-            updateOrError result store (\targets s -> { s | targets = Id.buildDict targets })
+            updateOrError result (\targets store -> { store | targets = Id.buildDict targets })
 
         TargetCreated result ->
-            updateOrError result store (\target s -> { s | targets = Dict.Any.insert target.id target store.targets })
+            updateOrError result (\target store -> { store | targets = Dict.Any.insert target.id target store.targets })
 
         TargetDeleted result ->
-            updateOrError result store (\targetId s -> { s | targets = Dict.Any.remove targetId store.targets })
+            updateOrError result (\targetId store -> { store | targets = Dict.Any.remove targetId store.targets })
 
         TargetUpdated result ->
-            updateOrError result store (\target s -> { s | targets = Dict.Any.insert target.id target store.targets })
+            updateOrError result (\target store -> { store | targets = Dict.Any.insert target.id target store.targets })
 
         PositionsFetched result ->
-            updateOrError result store (\positions s -> { s | positions = Id.buildDict positions })
+            updateOrError result (\positions store -> { store | positions = Id.buildDict positions })
 
         PositionCreated result ->
-            updateOrError result store (\position s -> { s | positions = Dict.Any.insert position.id position store.positions })
+            updateOrError result (\position store -> { store | positions = Dict.Any.insert position.id position store.positions })
 
         PositionDeleted result ->
-            updateOrError result store (\positionId s -> { s | positions = Dict.Any.remove positionId store.positions })
+            updateOrError result (\positionId store -> { store | positions = Dict.Any.remove positionId store.positions })
 
         PositionUpdated result ->
-            updateOrError result store (\position s -> { s | positions = Dict.Any.insert position.id position store.positions })
+            updateOrError result (\position store -> { store | positions = Dict.Any.insert position.id position store.positions })
 
         ExercisesFetched result ->
-            updateOrError result store (\exercises s -> { s | exercises = Id.buildDict exercises })
+            updateOrError result (\exercises store -> { store | exercises = Id.buildDict exercises })
 
         ExerciseCreated result ->
-            updateOrError result store (\exercise s -> { s | exercises = Dict.Any.insert exercise.id exercise store.exercises })
+            updateOrError result (\exercise store -> { store | exercises = Dict.Any.insert exercise.id exercise store.exercises })
 
         ExerciseUpdated result ->
-            updateOrError result store (\exercise s -> { s | exercises = Dict.Any.insert exercise.id exercise store.exercises })
+            updateOrError result (\exercise store -> { store | exercises = Dict.Any.insert exercise.id exercise store.exercises })
 
         ExerciseDeleted result ->
-            updateOrError result store (\exerciseId s -> { s | exercises = Dict.Any.remove exerciseId store.exercises })
+            updateOrError result (\exerciseId store -> { store | exercises = Dict.Any.remove exerciseId store.exercises })
 
         RoutinesFetched result ->
-            updateOrError result store (\routines s -> { s | routines = Id.buildDict routines })
+            updateOrError result (\routines store -> { store | routines = Id.buildDict routines })
 
         RoutineCreated result ->
-            updateOrError result store (\routine s -> { s | routines = Dict.Any.insert routine.id routine store.routines })
+            updateOrError result (\routine store -> { store | routines = Dict.Any.insert routine.id routine store.routines })
 
         RoutineUpdated result ->
-            updateOrError result store (\routine s -> { s | routines = Dict.Any.insert routine.id routine store.routines })
+            updateOrError result (\routine store -> { store | routines = Dict.Any.insert routine.id routine store.routines })
 
         RoutineDeleted result ->
-            updateOrError result store (\routineId s -> { s | routines = Dict.Any.remove routineId store.routines })
+            updateOrError result (\routineId store -> { store | routines = Dict.Any.remove routineId store.routines })
 
         LessonsFetched result ->
-            updateOrError result store (\lessons s -> { s | lessons = Id.buildDict lessons })
+            updateOrError result (\lessons store -> { store | lessons = Id.buildDict lessons })
 
         LessonCreated result ->
-            updateOrError result store (\lesson s -> { s | lessons = Dict.Any.insert lesson.id lesson store.lessons })
+            updateOrError result (\lesson store -> { store | lessons = Dict.Any.insert lesson.id lesson store.lessons })
+
+        LessonDeleted result ->
+            updateOrError result (\lessonId store -> { store | lessons = Dict.Any.remove lessonId store.lessons })
 
 
-updateOrError : ApiCall a -> Store -> (a -> Store -> Store) -> ( Store, Maybe Ht2.Error )
-updateOrError result store f =
+updateOrError : ApiCall a -> (a -> Store -> Store) -> Store -> ( Store, Maybe Ht2.Error )
+updateOrError result updateStore store =
     case result of
         Ok a ->
-            ( f a store, Nothing )
+            ( updateStore a store, Nothing )
 
         Err e ->
             ( store, Just e )
@@ -340,5 +346,10 @@ createLesson lesson =
         }
 
 
-
--- TODO support lesson deletion
+deleteLesson : LessonId -> Cmd Msg
+deleteLesson lessonId =
+    Ht2.delete
+        { baseUrl = "/lesson/"
+        , resourceId = lessonId
+        , onResponse = LessonDeleted
+        }

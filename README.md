@@ -1,9 +1,9 @@
 # sestavr
 
+A simple web app for planning yoga lessons
 
-## Build frontend -- TODO automate
+## Run it in development mode
 
 ```bash
-cd client
-elm make src/Main.elm --output=dist/main.js --optimize
+make run
 ```

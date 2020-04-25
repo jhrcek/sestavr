@@ -57,6 +57,7 @@ import Model
     ExerciseTarget (..),
     ExerciseWithTargets,
     Lesson,
+    LessonId,
     Position,
     PositionId,
     Routine,
@@ -141,6 +142,7 @@ apiServer pool imagesDir =
     -- Lesson
     :<|> getLessons
     :<|> createLesson
+    :<|> deleteLesson
     -- Static files
     :<|> serveImages
   where
@@ -334,6 +336,9 @@ apiServer pool imagesDir =
     --
     createLesson :: Lesson -> Handler (Entity Lesson)
     createLesson lesson = runPool $ insertEntity lesson
+    --
+    deleteLesson :: LessonId -> Handler ()
+    deleteLesson lessonId = runPool $ delete lessonId
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}

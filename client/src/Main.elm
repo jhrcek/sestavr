@@ -4,7 +4,7 @@ import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav exposing (Key)
 import Common
 import Dict.Any
-import Domain exposing (Exercise, ExerciseId, Lesson, Position, PositionId, Routine, RoutineId, Target, TargetId)
+import Domain exposing (Exercise, ExerciseId, Lesson, LessonId, Position, PositionId, Routine, RoutineId, Target, TargetId)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
@@ -69,7 +69,7 @@ initPage route store today =
             TargetModel Target.init
 
         Router.Lessons ->
-            LessonModel Lesson.init
+            LessonModel
 
         Router.Exercises ->
             ExerciseList
@@ -104,7 +104,7 @@ initPage route store today =
 type PageModel
     = HomeModel
     | TargetModel Target.Model
-    | LessonModel Lesson.Model
+    | LessonModel
     | PositionModel Position.Model
       -- Exercise
     | ExerciseList
@@ -124,7 +124,6 @@ type Msg
     | StoreMsg Store.Msg
     | SetRoute Route
     | ExerciseMsg Exercise.Msg
-    | LessonMsg Lesson.Msg
       -- Target
     | TargetMsg Target.Msg
     | CreateTarget Target
@@ -151,6 +150,7 @@ type Msg
     | LessonPlannerMsg LessonPlanner.Msg
     | GotLessonPlannerValitaionError String
     | CreateLesson Lesson
+    | DeleteLesson LessonId
     | ErrorAcked
     | ConfirmDeletion String Msg
 
@@ -278,12 +278,10 @@ viewBody model =
             TargetModel tmodel ->
                 E.map TargetMsg <| Target.view model.store.targets tmodel
 
-            LessonModel lmodel ->
-                E.map LessonMsg <|
-                    Lesson.view
-                        model.store.lessons
-                        model.store.routines
-                        lmodel
+            LessonModel ->
+                Lesson.view lessonConfig
+                    model.store.lessons
+                    model.store.routines
 
             PositionModel pmodel ->
                 E.map PositionMsg <| Position.view model.store.positions pmodel
@@ -439,18 +437,6 @@ update msg model =
             , lpCmd
             )
 
-        LessonMsg lessonMsg ->
-            let
-                newPageModel =
-                    case model.pageModel of
-                        LessonModel m ->
-                            LessonModel <| Lesson.update lessonMsg m
-
-                        other ->
-                            other
-            in
-            ( { model | pageModel = newPageModel }, Cmd.none )
-
         CreateTarget target ->
             ( model
             , Cmd.map StoreMsg <| Store.createTarget target
@@ -578,6 +564,11 @@ update msg model =
             , Cmd.map StoreMsg <| Store.createLesson lesson
             )
 
+        DeleteLesson lessonId ->
+            ( model
+            , Cmd.map StoreMsg <| Store.deleteLesson lessonId
+            )
+
 
 targetConfig : Target.Config Msg
 targetConfig =
@@ -620,6 +611,12 @@ lessonPlannerConfig : LessonPlanner.Config Msg
 lessonPlannerConfig =
     { validationError = GotLessonPlannerValitaionError
     , createLesson = CreateLesson
+    }
+
+
+lessonConfig : Lesson.Config Msg
+lessonConfig =
+    { deleteLesson = ConfirmDeletion "Opravdu chceš odstranit tuto lekci?" << DeleteLesson
     }
 
 
