@@ -1,4 +1,4 @@
-module Page.Target exposing
+module Page.Tag exposing
     ( Config
     , Model
     , Msg
@@ -12,7 +12,7 @@ import Color
 import Command
 import Common
 import Dict.Any
-import Domain exposing (Target, TargetId, TargetIdTag)
+import Domain exposing (Tag, TagId, TagIdTag)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -23,9 +23,9 @@ import Task
 
 
 type alias Config msg =
-    { createTarget : Target -> msg
-    , deleteTarget : TargetId -> msg
-    , updateTarget : Target -> msg
+    { createTag : Tag -> msg
+    , deleteTag : TagId -> msg
+    , updateTag : Tag -> msg
     , noop : msg
     }
 
@@ -33,24 +33,24 @@ type alias Config msg =
 type Msg
     = AddClicked
     | CancelClicked
-    | EditClicked Target
+    | EditClicked Tag
     | EditedNameChanged String
     | SaveEditedNameClicked
     | SaveNewNameClicked
     | NewNameChanged String
-    | DeleteClicked TargetId
+    | DeleteClicked TagId
 
 
 type alias Model =
     { newField : Maybe String
-    , editedTarget : Maybe Target
+    , editedTag : Maybe Tag
     }
 
 
 init : Model
 init =
     { newField = Nothing
-    , editedTarget = Nothing
+    , editedTag = Nothing
     }
 
 
@@ -59,7 +59,7 @@ update config msg model =
     case msg of
         AddClicked ->
             ( { model | newField = Just "" }
-            , Dom.focus newTargetInputId |> Task.attempt (always config.noop)
+            , Dom.focus newTagInputId |> Task.attempt (always config.noop)
             )
 
         NewNameChanged newName ->
@@ -72,53 +72,53 @@ update config msg model =
             , Cmd.none
             )
 
-        EditClicked target ->
-            ( { model | editedTarget = Just target }
+        EditClicked tag ->
+            ( { model | editedTag = Just tag }
             , Cmd.none
             )
 
         EditedNameChanged newName ->
-            ( { model | editedTarget = Maybe.map (\t -> { t | name = newName }) model.editedTarget }
+            ( { model | editedTag = Maybe.map (\t -> { t | name = newName }) model.editedTag }
             , Cmd.none
             )
 
         SaveNewNameClicked ->
             let
-                createTarget =
+                createTag =
                     case model.newField of
-                        Just targetName ->
+                        Just tagName ->
                             Command.perform <|
-                                config.createTarget
-                                    { id = Id.fromInt 0, name = targetName }
+                                config.createTag
+                                    { id = Id.fromInt 0, name = tagName }
 
                         Nothing ->
                             Cmd.none
             in
             ( { model | newField = Nothing }
-            , createTarget
+            , createTag
             )
 
         SaveEditedNameClicked ->
             let
-                updateTarget =
-                    case model.editedTarget of
-                        Just target ->
-                            Command.perform <| config.updateTarget target
+                updateTag =
+                    case model.editedTag of
+                        Just tag ->
+                            Command.perform <| config.updateTag tag
 
                         Nothing ->
                             Cmd.none
             in
-            ( { model | editedTarget = Nothing }, updateTarget )
+            ( { model | editedTag = Nothing }, updateTag )
 
-        DeleteClicked targetId ->
-            ( model, Command.perform <| config.deleteTarget targetId )
+        DeleteClicked tagId ->
+            ( model, Command.perform <| config.deleteTag tagId )
 
 
-view : IdDict TargetIdTag Target -> Model -> Element Msg
-view targets model =
+view : IdDict TagIdTag Tag -> Model -> Element Msg
+view tags model =
     E.column [ E.width (E.maximum 500 <| E.px 300) ]
-        [ Common.heading1 "Cílové partie"
-        , viewTargets targets model.editedTarget
+        [ Common.heading1 "Tagy"
+        , viewTags tags model.editedTag
         , form model
         ]
 
@@ -130,15 +130,15 @@ form model =
             E.el [ E.paddingXY 0 5 ]
                 (Input.button Common.buttonAttrs
                     { onPress = Just AddClicked
-                    , label = E.text "Vytvořit partii"
+                    , label = E.text "Vytvořit tag"
                     }
                 )
 
         Just fieldName ->
             E.column [ E.paddingXY 0 5 ]
-                [ E.text "Tvorba nové partie"
+                [ E.text "Tvorba nového tagu"
                 , Input.text
-                    [ E.htmlAttribute (Html.Attributes.id newTargetInputId)
+                    [ E.htmlAttribute (Html.Attributes.id newTagInputId)
                     , E.width (E.px 100)
                     ]
                     { onChange = NewNameChanged
@@ -164,8 +164,8 @@ form model =
                 ]
 
 
-viewTargets : IdDict TargetIdTag Target -> Maybe Target -> Element Msg
-viewTargets targets maybeEdited =
+viewTags : IdDict TagIdTag Tag -> Maybe Tag -> Element Msg
+viewTags tags maybeEdited =
     let
         iconButton =
             Input.button
@@ -191,18 +191,18 @@ viewTargets targets maybeEdited =
         , E.spacing 2
         , E.padding 2
         ]
-        { data = List.sortBy .name <| Dict.Any.values targets
+        { data = List.sortBy .name <| Dict.Any.values tags
         , columns =
             [ { header = colHeader "Název"
               , width = E.fill
               , view =
-                    \target ->
+                    \tag ->
                         case maybeEdited of
-                            Just editedTarget ->
-                                if target.id == editedTarget.id then
+                            Just editedTag ->
+                                if tag.id == editedTag.id then
                                     Input.text [ E.width (E.px 100), E.height (E.px 30), E.padding 5 ]
                                         { onChange = EditedNameChanged
-                                        , text = editedTarget.name
+                                        , text = editedTag.name
                                         , placeholder = Nothing
                                         , label = Input.labelHidden "Název"
                                         }
@@ -213,7 +213,7 @@ viewTargets targets maybeEdited =
                                         , Border.width 1
                                         , E.padding 5
                                         ]
-                                        (E.text target.name)
+                                        (E.text tag.name)
 
                             Nothing ->
                                 E.el
@@ -221,31 +221,31 @@ viewTargets targets maybeEdited =
                                     , Border.width 1
                                     , E.padding 5
                                     ]
-                                    (E.text target.name)
+                                    (E.text tag.name)
               }
             , { header = colHeader "Možnosti"
               , width = E.fill
               , view =
-                    \target ->
+                    \tag ->
                         E.row [ E.spacing 2 ]
                             [ iconButton <|
                                 case maybeEdited of
-                                    Just editedTarget ->
-                                        if target.id == editedTarget.id then
+                                    Just editedTag ->
+                                        if tag.id == editedTag.id then
                                             { onPress = Just SaveEditedNameClicked, label = E.text "💾" }
 
                                         else
-                                            { onPress = Just (EditClicked target), label = E.text "🖉" }
+                                            { onPress = Just (EditClicked tag), label = E.text "🖉" }
 
                                     Nothing ->
-                                        { onPress = Just (EditClicked target), label = E.text "🖉" }
-                            , iconButton { onPress = Just (DeleteClicked target.id), label = E.text "🗑" }
+                                        { onPress = Just (EditClicked tag), label = E.text "🖉" }
+                            , iconButton { onPress = Just (DeleteClicked tag.id), label = E.text "🗑" }
                             ]
               }
             ]
         }
 
 
-newTargetInputId : String
-newTargetInputId =
-    "target-input"
+newTagInputId : String
+newTagInputId =
+    "tag-input"

@@ -36,11 +36,11 @@ import Servant.API
 type SestavrAPI =
   Get '[HTML] ByteString -- index.html
     :<|> "main.js" :> Get '[JS] ByteString
-    -- Target
-    :<|> "target" :> Get '[JSON] [Entity Target]
-    :<|> "target" :> ReqBody '[JSON] Target :> Post '[JSON] (Entity Target)
-    :<|> "target" :> Capture "targetId" TargetId :> Delete '[JSON] ()
-    :<|> "target" :> Capture "targetId" TargetId :> ReqBody '[JSON] Target :> Post '[JSON] ()
+    -- Tag
+    :<|> "tag" :> Get '[JSON] [Entity Target]
+    :<|> "tag" :> ReqBody '[JSON] Target :> Post '[JSON] (Entity Target)
+    :<|> "tag" :> Capture "tagId" TargetId :> Delete '[JSON] ()
+    :<|> "tag" :> Capture "tagId" TargetId :> ReqBody '[JSON] Target :> Post '[JSON] ()
     -- Position
     :<|> "position" :> Get '[JSON] [Entity Position]
     :<|> "position" :> ReqBody '[JSON] Position :> Post '[JSON] (Entity Position)

@@ -72,8 +72,8 @@ update config msg model =
             , Cmd.none
             )
 
-        EditClicked target ->
-            ( { model | editedPosition = Just target }
+        EditClicked position ->
+            ( { model | editedPosition = Just position }
             , Cmd.none
             )
 
@@ -86,10 +86,10 @@ update config msg model =
             let
                 createPosition =
                     case model.newField of
-                        Just targetName ->
+                        Just positionName ->
                             Command.perform <|
                                 config.createPosition
-                                    { id = Id.fromInt 0, name = targetName }
+                                    { id = Id.fromInt 0, name = positionName }
 
                         Nothing ->
                             Cmd.none
@@ -102,23 +102,23 @@ update config msg model =
             let
                 updatePosition =
                     case model.editedPosition of
-                        Just target ->
-                            Command.perform <| config.updatePosition target
+                        Just position ->
+                            Command.perform <| config.updatePosition position
 
                         Nothing ->
                             Cmd.none
             in
             ( { model | editedPosition = Nothing }, updatePosition )
 
-        DeleteClicked targetId ->
-            ( model, Command.perform <| config.deletePosition targetId )
+        DeleteClicked positionId ->
+            ( model, Command.perform <| config.deletePosition positionId )
 
 
 view : IdDict PositionIdTag Position -> Model -> Element Msg
-view targets model =
+view positions model =
     E.column [ E.width (E.maximum 500 <| E.px 300) ]
         [ Common.heading1 "Pozice"
-        , viewPositions targets model.editedPosition
+        , viewPositions positions model.editedPosition
         , form model
         ]
 
@@ -165,7 +165,7 @@ form model =
 
 
 viewPositions : IdDict PositionIdTag Position -> Maybe Position -> Element Msg
-viewPositions targets maybeEdited =
+viewPositions positions maybeEdited =
     let
         iconButton =
             Input.button
@@ -191,15 +191,15 @@ viewPositions targets maybeEdited =
         , E.spacing 2
         , E.padding 2
         ]
-        { data = List.sortBy .name <| Dict.Any.values targets
+        { data = List.sortBy .name <| Dict.Any.values positions
         , columns =
             [ { header = colHeader "Název"
               , width = E.fill
               , view =
-                    \target ->
+                    \position ->
                         case maybeEdited of
                             Just editedPosition ->
-                                if target.id == editedPosition.id then
+                                if position.id == editedPosition.id then
                                     Input.text [ E.width (E.px 100), E.height (E.px 30), E.padding 4 ]
                                         { onChange = EditedNameChanged
                                         , text = editedPosition.name
@@ -213,7 +213,7 @@ viewPositions targets maybeEdited =
                                         , Border.width 1
                                         , E.padding 5
                                         ]
-                                        (E.text target.name)
+                                        (E.text position.name)
 
                             Nothing ->
                                 E.el
@@ -221,25 +221,25 @@ viewPositions targets maybeEdited =
                                     , Border.width 1
                                     , E.padding 5
                                     ]
-                                    (E.text target.name)
+                                    (E.text position.name)
               }
             , { header = colHeader "Možnosti"
               , width = E.fill
               , view =
-                    \target ->
+                    \position ->
                         E.row [ E.spacing 2 ]
                             [ iconButton <|
                                 case maybeEdited of
                                     Just editedPosition ->
-                                        if target.id == editedPosition.id then
+                                        if position.id == editedPosition.id then
                                             { onPress = Just SaveEditedNameClicked, label = E.text "💾" }
 
                                         else
-                                            { onPress = Just (EditClicked target), label = E.text "🖉" }
+                                            { onPress = Just (EditClicked position), label = E.text "🖉" }
 
                                     Nothing ->
-                                        { onPress = Just (EditClicked target), label = E.text "🖉" }
-                            , iconButton { onPress = Just (DeleteClicked target.id), label = E.text "🗑" }
+                                        { onPress = Just (EditClicked position), label = E.text "🖉" }
+                            , iconButton { onPress = Just (DeleteClicked position.id), label = E.text "🗑" }
                             ]
               }
             ]
@@ -248,4 +248,4 @@ viewPositions targets maybeEdited =
 
 newPositionInputId : String
 newPositionInputId =
-    "target-input"
+    "position-input"

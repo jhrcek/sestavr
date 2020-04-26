@@ -11,19 +11,19 @@ module Domain exposing
     , Routine
     , RoutineId
     , RoutineIdTag
-    , Target
-    , TargetId
-    , TargetIdTag
+    , Tag
+    , TagId
+    , TagIdTag
     , encodeExercise
     , encodeLesson
     , encodePosition
     , encodeRoutine
-    , encodeTarget
+    , encodeTag
     , exerciseDecoder
     , lessonDecoder
     , positionDecoder
     , routineDecoder
-    , targetDecoder
+    , tagDecoder
     )
 
 import Id exposing (Id)
@@ -34,34 +34,34 @@ import Time exposing (Posix)
 
 
 
--- TARGET
+-- TAG
 
 
-type TargetIdTag
-    = TargetIdTag
+type TagIdTag
+    = TagIdTag
 
 
-type alias TargetId =
-    Id TargetIdTag
+type alias TagId =
+    Id TagIdTag
 
 
-type alias Target =
-    { id : TargetId
+type alias Tag =
+    { id : TagId
     , name : String
     }
 
 
-targetDecoder : Decoder Target
-targetDecoder =
-    Decode.map2 Target
+tagDecoder : Decoder Tag
+tagDecoder =
+    Decode.map2 Tag
         (Decode.field "id" Id.decode)
         (Decode.field "name" Decode.string)
 
 
-encodeTarget : Target -> Value
-encodeTarget target =
+encodeTag : Tag -> Value
+encodeTag tag =
     Encode.object
-        [ ( "name", Encode.string target.name ) ]
+        [ ( "name", Encode.string tag.name ) ]
 
 
 
@@ -113,7 +113,7 @@ type alias Exercise =
     , sanskritName : Maybe String
     , description : String
     , positionId : PositionId
-    , targetIds : List TargetId
+    , tagIds : List TagId
     }
 
 
@@ -136,7 +136,7 @@ encodeExercise exercise =
         , ( "sanskritName", Maybe.withDefault Encode.null <| Maybe.map Encode.string exercise.sanskritName )
         , ( "description", Encode.string exercise.description )
         , ( "positionId", Id.encode exercise.positionId )
-        , ( "targetIds", Encode.list Id.encode exercise.targetIds )
+        , ( "targetIds", Encode.list Id.encode exercise.tagIds )
         ]
 
 
@@ -242,7 +242,7 @@ type Tags
     | LessonIdTag_ LessonIdTag
     | PositionIdTag_ PositionIdTag
     | RoutineIdTag_ RoutineIdTag
-    | TargetIdTag_ TargetIdTag
+    | TagIdTag_ TagIdTag
 
 
 tags : List Tags
@@ -251,5 +251,5 @@ tags =
     , LessonIdTag_ LessonIdTag
     , PositionIdTag_ PositionIdTag
     , RoutineIdTag_ RoutineIdTag
-    , TargetIdTag_ TargetIdTag
+    , TagIdTag_ TagIdTag
     ]

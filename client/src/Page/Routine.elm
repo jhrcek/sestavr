@@ -32,9 +32,9 @@ import Domain
         , Routine
         , RoutineId
         , RoutineIdTag
-        , Target
-        , TargetId
-        , TargetIdTag
+        , Tag
+        , TagId
+        , TagIdTag
         )
 import Element as E exposing (Element)
 import Element.Background as Background
@@ -58,7 +58,7 @@ type alias Model =
     , topic : String
     , routineExercises : List ExerciseInRoutine
     , dnd : DnDList.Model
-    , targetFilter : IdSet TargetIdTag
+    , tagFilter : IdSet TagIdTag
     , positionFilter : IdSet PositionIdTag
     , showingPopupFor : Maybe ExerciseId
     }
@@ -104,7 +104,7 @@ initEditor exercises routine =
     , routineExercises = routineExercises
     , topic = routine.topic
     , dnd = dndSystem.model
-    , targetFilter = Id.emptySet
+    , tagFilter = Id.emptySet
     , positionFilter = Id.emptySet
     , showingPopupFor = Nothing
     }
@@ -128,7 +128,7 @@ emptyEditor =
     , routineExercises = []
     , topic = ""
     , dnd = dndSystem.model
-    , targetFilter = Id.emptySet
+    , tagFilter = Id.emptySet
     , positionFilter = Id.emptySet
     , showingPopupFor = Nothing
     }
@@ -142,11 +142,11 @@ subscriptions model =
 type Msg
     = AddToRoutine ExerciseId
     | RemoveFromRoutine ExerciseInRoutine
-    | ToggleTargetId TargetId
+    | ToggleTagId TagId
     | TogglePositionId PositionId
     | ChangeDuration DraggableItemId String
     | ChangeTopic String
-    | ClearTargets
+    | ClearTags
     | ClearPositions
     | SaveRoutine
     | ShowExerciseDetailsPopup ExerciseId
@@ -178,8 +178,8 @@ update config exercises msg model =
             , Cmd.none
             )
 
-        ToggleTargetId targetId ->
-            ( { model | targetFilter = Set.Any.toggle targetId model.targetFilter }
+        ToggleTagId tagId ->
+            ( { model | tagFilter = Set.Any.toggle tagId model.tagFilter }
             , Cmd.none
             )
 
@@ -204,8 +204,8 @@ update config exercises msg model =
             , Cmd.none
             )
 
-        ClearTargets ->
-            ( { model | targetFilter = Id.emptySet }
+        ClearTags ->
+            ( { model | tagFilter = Id.emptySet }
             , Cmd.none
             )
 
@@ -403,14 +403,14 @@ saveButton =
 
 editor :
     IdDict ExerciseIdTag Exercise
-    -> IdDict TargetIdTag Target
+    -> IdDict TagIdTag Tag
     -> IdDict PositionIdTag Position
     -> IdDict RoutineIdTag Routine
     -> IdDict LessonIdTag Lesson
     -> Posix
     -> Model
     -> Element Msg
-editor exercises targets positions routines lessons today model =
+editor exercises tags positions routines lessons today model =
     let
         pastExerciseUsages =
             getPastExerciseUsages today routines lessons
@@ -429,12 +429,12 @@ editor exercises targets positions routines lessons today model =
         filteredExercises =
             Dict.Any.values exercises
                 |> List.sortBy .name
-                |> (if Set.Any.isEmpty model.targetFilter then
+                |> (if Set.Any.isEmpty model.tagFilter then
                         identity
 
                     else
-                        -- Keep only exercises that target at least one area selected in targetFilter
-                        List.filter (\exercise -> setAny (\targetId -> List.member targetId exercise.targetIds) model.targetFilter)
+                        -- Keep only exercises that have at least one tag selected in tagFilter
+                        List.filter (\exercise -> setAny (\tagId -> List.member tagId exercise.tagIds) model.tagFilter)
                    )
                 |> (if Set.Any.isEmpty model.positionFilter then
                         identity
@@ -449,13 +449,13 @@ editor exercises targets positions routines lessons today model =
         , E.width <| E.maximum (200 + 2 * exerciseColumnWidth) E.fill
         ]
         [ E.column (E.paddingXY 5 0 :: colAttrs 200)
-            [ Exercise.targetCheckboxes ToggleTargetId targets model.targetFilter
-            , if Set.Any.isEmpty model.targetFilter then
+            [ Exercise.tagCheckboxes ToggleTagId tags model.tagFilter
+            , if Set.Any.isEmpty model.tagFilter then
                 E.none
 
               else
                 Input.button Common.buttonAttrs
-                    { onPress = Just ClearTargets, label = E.text "Zrušit výběr" }
+                    { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
             , positionCheckboxes positions model.positionFilter
             , if Set.Any.isEmpty model.positionFilter then
                 E.none
@@ -650,7 +650,7 @@ exerciseUsagePopup exercise exerciseUsages =
 
 
 positionCheckboxes : IdDict PositionIdTag Position -> IdSet PositionIdTag -> Element Msg
-positionCheckboxes targets selectedPositions =
+positionCheckboxes positions selectedPositions =
     let
         positionCheckbox position =
             Input.checkbox []
@@ -663,7 +663,7 @@ positionCheckboxes targets selectedPositions =
     E.column []
         [ E.el [ E.padding 3, E.alignLeft, E.alignTop ] <|
             E.el [ Font.bold ] (E.text "Typ pozice")
-        , Dict.Any.values targets
+        , Dict.Any.values positions
             |> List.map positionCheckbox
             |> E.column [ E.alignTop ]
         ]

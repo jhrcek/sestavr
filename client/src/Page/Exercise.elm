@@ -6,7 +6,7 @@ module Page.Exercise exposing
     , emptyEditor
     , initEditor
     , listView
-    , targetCheckboxes
+    , tagCheckboxes
     , update
     , validationErrorToString
     , view
@@ -24,9 +24,9 @@ import Domain
         , Position
         , PositionId
         , PositionIdTag
-        , Target
-        , TargetId
-        , TargetIdTag
+        , Tag
+        , TagId
+        , TagIdTag
         )
 import Element as E exposing (Element)
 import Element.Font as Font
@@ -44,7 +44,7 @@ type alias Model =
     , sanskritName : String
     , description : String
     , positionId : Maybe PositionId
-    , targetAreas : IdSet TargetIdTag
+    , tags : IdSet TagIdTag
     }
 
 
@@ -52,7 +52,7 @@ type Msg
     = SetName String
     | SetSanskritName String
     | SetDescription String
-    | ToggleTargetId TargetId
+    | ToggleTagId TagId
     | PositionSelected PositionId
     | SaveExercise
 
@@ -116,7 +116,7 @@ updateOrCreate config model =
                                         Just model.sanskritName
                                 , description = model.description
                                 , positionId = positionId
-                                , targetIds = Set.Any.toList model.targetAreas
+                                , tagIds = Set.Any.toList model.tags
                                 }
             )
 
@@ -128,7 +128,7 @@ initEditor exercise =
     , sanskritName = Maybe.withDefault "" exercise.sanskritName
     , description = exercise.description
     , positionId = Just exercise.positionId
-    , targetAreas = Id.buildSet exercise.targetIds
+    , tags = Id.buildSet exercise.tagIds
     }
 
 
@@ -139,7 +139,7 @@ emptyEditor =
     , sanskritName = ""
     , description = ""
     , positionId = Nothing
-    , targetAreas = Id.emptySet
+    , tags = Id.emptySet
     }
 
 
@@ -161,8 +161,8 @@ update config msg model =
             , Cmd.none
             )
 
-        ToggleTargetId targetId ->
-            ( { model | targetAreas = Set.Any.toggle targetId model.targetAreas }
+        ToggleTagId tagId ->
+            ( { model | tags = Set.Any.toggle tagId model.tags }
             , Cmd.none
             )
 
@@ -188,10 +188,10 @@ update config msg model =
 
 viewEditor :
     IdDict PositionIdTag Position
-    -> IdDict TargetIdTag Target
+    -> IdDict TagIdTag Tag
     -> Model
     -> Element Msg
-viewEditor positions targets model =
+viewEditor positions tags model =
     let
         fieldWidth =
             E.width E.fill
@@ -228,7 +228,7 @@ viewEditor positions targets model =
             }
         , E.row [ E.spacing 30 ]
             [ positionRadios positions model.positionId
-            , targetCheckboxes ToggleTargetId targets model.targetAreas
+            , tagCheckboxes ToggleTagId tags model.tags
             ]
         , E.row [ E.alignRight, E.spacing 5 ]
             [ E.link Common.buttonAttrs
@@ -267,24 +267,24 @@ positionRadios positions maybeCurrentPosition =
         )
 
 
-targetCheckboxes : (TargetId -> msg) -> IdDict TargetIdTag Target -> IdSet TargetIdTag -> Element msg
-targetCheckboxes onTargetToggle targets selectedTargets =
+tagCheckboxes : (TagId -> msg) -> IdDict TagIdTag Tag -> IdSet TagIdTag -> Element msg
+tagCheckboxes onTagToggle tags selectedTags =
     let
-        targetCheckbox target =
+        tagCheckbox tag =
             Input.checkbox []
-                { onChange = \_ -> onTargetToggle target.id
+                { onChange = \_ -> onTagToggle tag.id
                 , icon = Input.defaultCheckbox
-                , checked = Set.Any.member target.id selectedTargets
-                , label = Input.labelRight [] (E.text target.name)
+                , checked = Set.Any.member tag.id selectedTags
+                , label = Input.labelRight [] (E.text tag.name)
                 }
     in
     E.column [ E.alignTop ]
         [ E.el [ E.padding 3, E.alignLeft ] <|
-            E.el [ Font.bold ] (E.text "Cílové partie")
-        , Dict.Any.values targets
+            E.el [ Font.bold ] (E.text "Tagy")
+        , Dict.Any.values tags
             |> List.sortBy .name
             |> List.greedyGroupsOf 10
-            |> List.map (\group -> E.column [ E.alignTop ] (List.map targetCheckbox group))
+            |> List.map (\group -> E.column [ E.alignTop ] (List.map tagCheckbox group))
             |> E.row [ E.width E.fill, E.alignTop ]
         ]
 
@@ -339,10 +339,10 @@ createExercisebutton =
 view :
     Config msg
     -> IdDict PositionIdTag Position
-    -> IdDict TargetIdTag Target
+    -> IdDict TagIdTag Tag
     -> Exercise
     -> Element msg
-view config positions targets exercise =
+view config positions tags exercise =
     E.column [ E.width E.fill, E.spacing 10 ]
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 exercise.name
@@ -358,11 +358,11 @@ view config positions targets exercise =
             ]
         , E.row []
             [ E.text <|
-                "Cílové partie: "
+                "Tagy: "
                     ++ String.join ", "
                         (List.sort <|
                             List.map .name <|
-                                List.filterMap (\targetId -> Dict.Any.get targetId targets) exercise.targetIds
+                                List.filterMap (\tagId -> Dict.Any.get tagId tags) exercise.tagIds
                         )
             ]
         , E.row [ E.spacing 5 ]

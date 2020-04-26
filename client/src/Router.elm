@@ -13,7 +13,7 @@ import Url.Parser as P exposing ((</>), Parser, int, s, top)
 
 type Route
     = Home
-    | Targets
+    | Tags
     | Positions
     | Exercises
     | Exercise ExerciseId
@@ -29,7 +29,7 @@ route : Parser (Route -> a) a
 route =
     P.oneOf
         [ P.map Home top
-        , P.map Targets (s "target")
+        , P.map Tags (s "tag")
         , P.map Positions (s "position")
         , P.map Lessons (s "lesson")
 
@@ -63,8 +63,8 @@ toHash r =
         Home ->
             "/"
 
-        Targets ->
-            "/target"
+        Tags ->
+            "/tag"
 
         Positions ->
             "/position"

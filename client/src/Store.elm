@@ -5,23 +5,23 @@ module Store exposing
     , createLesson
     , createPosition
     , createRoutine
-    , createTarget
+    , createTag
     , deleteExercise
     , deleteLesson
     , deletePosition
     , deleteRoutine
-    , deleteTarget
+    , deleteTag
     , getExercises
     , getLessons
     , getPositions
     , getRoutines
-    , getTargets
+    , getTags
     , init
     , update
     , updateExercise
     , updatePosition
     , updateRoutine
-    , updateTarget
+    , updateTag
     )
 
 import Dict.Any
@@ -39,9 +39,9 @@ import Domain
         , Routine
         , RoutineId
         , RoutineIdTag
-        , Target
-        , TargetId
-        , TargetIdTag
+        , Tag
+        , TagId
+        , TagIdTag
         )
 import Http
 import Http.Extra as Ht2 exposing (ApiCall)
@@ -50,11 +50,11 @@ import Json.Decode as Decode
 
 
 type Msg
-    = -- Target
-      TargetsFetched (ApiCall (List Target))
-    | TargetCreated (ApiCall Target)
-    | TargetDeleted (ApiCall TargetId)
-    | TargetUpdated (ApiCall Target)
+    = -- Tag
+      TagsFetched (ApiCall (List Tag))
+    | TagCreated (ApiCall Tag)
+    | TagDeleted (ApiCall TagId)
+    | TagUpdated (ApiCall Tag)
       -- Position
     | PositionsFetched (ApiCall (List Position))
     | PositionCreated (ApiCall Position)
@@ -77,7 +77,7 @@ type Msg
 
 
 type alias Store =
-    { targets : IdDict TargetIdTag Target
+    { tags : IdDict TagIdTag Tag
     , positions : IdDict PositionIdTag Position
     , exercises : IdDict ExerciseIdTag Exercise
     , routines : IdDict RoutineIdTag Routine
@@ -87,7 +87,7 @@ type alias Store =
 
 init : Store
 init =
-    { targets = Id.emptyDict
+    { tags = Id.emptyDict
     , positions = Id.emptyDict
     , exercises = Id.emptyDict
     , routines = Id.emptyDict
@@ -98,17 +98,17 @@ init =
 update : Msg -> Store -> ( Store, Maybe Ht2.Error )
 update msg =
     case msg of
-        TargetsFetched result ->
-            updateOrError result (\targets store -> { store | targets = Id.buildDict targets })
+        TagsFetched result ->
+            updateOrError result (\tags store -> { store | tags = Id.buildDict tags })
 
-        TargetCreated result ->
-            updateOrError result (\target store -> { store | targets = Dict.Any.insert target.id target store.targets })
+        TagCreated result ->
+            updateOrError result (\tag store -> { store | tags = Dict.Any.insert tag.id tag store.tags })
 
-        TargetDeleted result ->
-            updateOrError result (\targetId store -> { store | targets = Dict.Any.remove targetId store.targets })
+        TagDeleted result ->
+            updateOrError result (\tagId store -> { store | tags = Dict.Any.remove tagId store.tags })
 
-        TargetUpdated result ->
-            updateOrError result (\target store -> { store | targets = Dict.Any.insert target.id target store.targets })
+        TagUpdated result ->
+            updateOrError result (\tag store -> { store | tags = Dict.Any.insert tag.id tag store.tags })
 
         PositionsFetched result ->
             updateOrError result (\positions store -> { store | positions = Id.buildDict positions })
@@ -167,44 +167,44 @@ updateOrError result updateStore store =
 
 
 
--- TARGET
+-- TAG
 
 
-getTargets : Cmd Msg
-getTargets =
+getTags : Cmd Msg
+getTags =
     Http.get
-        { url = "/target"
+        { url = "/tag"
         , expect =
             Ht2.expectJson
-                TargetsFetched
-                (Decode.list Domain.targetDecoder)
+                TagsFetched
+                (Decode.list Domain.tagDecoder)
         }
 
 
-createTarget : Target -> Cmd Msg
-createTarget target =
+createTag : Tag -> Cmd Msg
+createTag tag =
     Http.post
-        { url = "/target"
-        , body = Http.jsonBody <| Domain.encodeTarget target
-        , expect = Ht2.expectJson TargetCreated Domain.targetDecoder
+        { url = "/tag"
+        , body = Http.jsonBody <| Domain.encodeTag tag
+        , expect = Ht2.expectJson TagCreated Domain.tagDecoder
         }
 
 
-deleteTarget : TargetId -> Cmd Msg
-deleteTarget targetId =
+deleteTag : TagId -> Cmd Msg
+deleteTag tagId =
     Ht2.delete
-        { baseUrl = "/target/"
-        , resourceId = targetId
-        , onResponse = TargetDeleted
+        { baseUrl = "/tag/"
+        , resourceId = tagId
+        , onResponse = TagDeleted
         }
 
 
-updateTarget : Target -> Cmd Msg
-updateTarget target =
+updateTag : Tag -> Cmd Msg
+updateTag tag =
     Http.post
-        { url = "/target/" ++ Id.toString target.id
-        , body = Http.jsonBody <| Domain.encodeTarget target
-        , expect = Ht2.expectWhatever (TargetUpdated << Result.map (\() -> target))
+        { url = "/tag/" ++ Id.toString tag.id
+        , body = Http.jsonBody <| Domain.encodeTag tag
+        , expect = Ht2.expectWhatever (TagUpdated << Result.map (\() -> tag))
         }
 
 

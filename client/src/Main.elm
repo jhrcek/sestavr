@@ -4,7 +4,19 @@ import Browser exposing (Document, UrlRequest)
 import Browser.Navigation as Nav exposing (Key)
 import Common
 import Dict.Any
-import Domain exposing (Exercise, ExerciseId, Lesson, LessonId, Position, PositionId, Routine, RoutineId, Target, TargetId)
+import Domain
+    exposing
+        ( Exercise
+        , ExerciseId
+        , Lesson
+        , LessonId
+        , Position
+        , PositionId
+        , Routine
+        , RoutineId
+        , Tag
+        , TagId
+        )
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
@@ -17,7 +29,7 @@ import Page.Lesson as Lesson
 import Page.Position as Position
 import Page.Routine as Routine
 import Page.Routine.LessonPlanner as LessonPlanner exposing (LessonPlanner)
-import Page.Target as Target
+import Page.Tag as Tag
 import Router exposing (Route)
 import Store exposing (Store)
 import Task
@@ -65,8 +77,8 @@ initPage route store today =
         Router.Positions ->
             PositionModel Position.init
 
-        Router.Targets ->
-            TargetModel Target.init
+        Router.Tags ->
+            TagModel Tag.init
 
         Router.Lessons ->
             LessonModel
@@ -103,7 +115,7 @@ initPage route store today =
 
 type PageModel
     = HomeModel
-    | TargetModel Target.Model
+    | TagModel Tag.Model
     | LessonModel
     | PositionModel Position.Model
       -- Exercise
@@ -124,11 +136,11 @@ type Msg
     | StoreMsg Store.Msg
     | SetRoute Route
     | ExerciseMsg Exercise.Msg
-      -- Target
-    | TargetMsg Target.Msg
-    | CreateTarget Target
-    | DeleteTarget TargetId
-    | UpdateTarget Target
+      -- Tag
+    | TagMsg Tag.Msg
+    | CreateTag Tag
+    | DeleteTag TagId
+    | UpdateTag Tag
       -- Position
     | PositionMsg Position.Msg
     | CreatePosition Position
@@ -176,7 +188,7 @@ init _ url key =
     , Cmd.batch
         [ Cmd.map StoreMsg <|
             Cmd.batch
-                [ Store.getTargets
+                [ Store.getTags
                 , Store.getExercises
                 , Store.getPositions
                 , Store.getRoutines
@@ -263,7 +275,7 @@ viewBody model =
                     Just exercise ->
                         Exercise.view exerciseConfig
                             model.store.positions
-                            model.store.targets
+                            model.store.tags
                             exercise
 
                     Nothing ->
@@ -273,11 +285,11 @@ viewBody model =
                 E.map ExerciseMsg <|
                     Exercise.viewEditor
                         model.store.positions
-                        model.store.targets
+                        model.store.tags
                         emodel
 
-            TargetModel tmodel ->
-                E.map TargetMsg <| Target.view model.store.targets tmodel
+            TagModel tmodel ->
+                E.map TagMsg <| Tag.view model.store.tags tmodel
 
             LessonModel ->
                 Lesson.view lessonConfig
@@ -306,7 +318,7 @@ viewBody model =
                 E.map RoutineMsg <|
                     Routine.editor
                         model.store.exercises
-                        model.store.targets
+                        model.store.tags
                         model.store.positions
                         model.store.routines
                         model.store.lessons
@@ -363,19 +375,19 @@ update msg model =
                     Nav.load url
             )
 
-        TargetMsg targetMsg ->
+        TagMsg tagMsg ->
             let
-                ( newPageModel, targetCmd ) =
+                ( newPageModel, tagCmd ) =
                     case model.pageModel of
-                        TargetModel m ->
-                            Tuple.mapFirst TargetModel <|
-                                Target.update targetConfig targetMsg m
+                        TagModel m ->
+                            Tuple.mapFirst TagModel <|
+                                Tag.update tagConfig tagMsg m
 
                         other ->
                             ( other, Cmd.none )
             in
             ( { model | pageModel = newPageModel }
-            , targetCmd
+            , tagCmd
             )
 
         PositionMsg positionMsg ->
@@ -438,19 +450,19 @@ update msg model =
             , lpCmd
             )
 
-        CreateTarget target ->
+        CreateTag tag ->
             ( model
-            , Cmd.map StoreMsg <| Store.createTarget target
+            , Cmd.map StoreMsg <| Store.createTag tag
             )
 
-        DeleteTarget targetId ->
+        DeleteTag tagId ->
             ( model
-            , Cmd.map StoreMsg <| Store.deleteTarget targetId
+            , Cmd.map StoreMsg <| Store.deleteTag tagId
             )
 
-        UpdateTarget target ->
+        UpdateTag tag ->
             ( model
-            , Cmd.map StoreMsg <| Store.updateTarget target
+            , Cmd.map StoreMsg <| Store.updateTag tag
             )
 
         CreatePosition position ->
@@ -574,11 +586,11 @@ update msg model =
             ( model, Cmd.none )
 
 
-targetConfig : Target.Config Msg
-targetConfig =
-    { createTarget = CreateTarget
-    , deleteTarget = ConfirmDeletion "Opravdu chceš odstranit tuto cílovou oblast?" << DeleteTarget
-    , updateTarget = UpdateTarget
+tagConfig : Tag.Config Msg
+tagConfig =
+    { createTag = CreateTag
+    , deleteTag = ConfirmDeletion "Opravdu chceš odstranit tento tag?" << DeleteTag
+    , updateTag = UpdateTag
     , noop = NoOp
     }
 
@@ -658,10 +670,10 @@ viewLayout route content =
 
 navigationLeft : Route -> Element Msg
 navigationLeft currentRoute =
-    E.column [ E.height E.fill, E.width (E.px 180) ]
+    E.column [ E.height E.fill ]
         [ menuItem currentRoute Router.Home "Domů"
         , menuItem currentRoute Router.Exercises "Cviky"
-        , menuItem currentRoute Router.Targets "Cílové partie"
+        , menuItem currentRoute Router.Tags "Tagy"
         , menuItem currentRoute Router.Positions "Pozice"
         , menuItem currentRoute Router.Routines "Sestavy"
         , menuItem currentRoute Router.Lessons "Lekce"
