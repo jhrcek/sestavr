@@ -448,46 +448,49 @@ editor exercises tags positions routines lessons today model =
         , Border.width 1
         , E.width <| E.maximum (200 + 2 * exerciseColumnWidth) E.fill
         ]
-        [ E.column (E.paddingXY 5 0 :: colAttrs 200)
-            [ Exercise.tagCheckboxes ToggleTagId tags model.tagFilter
-            , if Set.Any.isEmpty model.tagFilter then
-                E.none
+        [ E.column (E.paddingXY 5 0 :: colAttrs 230)
+            [ E.column [ E.alignTop ]
+                [ Exercise.tagCheckboxes ToggleTagId 1000 tags model.tagFilter
+                , if Set.Any.isEmpty model.tagFilter then
+                    E.none
 
-              else
-                Input.button Common.buttonAttrs
-                    { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
-            , positionCheckboxes positions model.positionFilter
-            , if Set.Any.isEmpty model.positionFilter then
-                E.none
+                  else
+                    Input.button Common.buttonAttrs
+                        { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
+                , positionCheckboxes positions model.positionFilter
+                , if Set.Any.isEmpty model.positionFilter then
+                    E.none
 
-              else
-                Input.button Common.buttonAttrs
-                    { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
-            , let
-                filteredCount =
-                    List.length filteredExercises
+                  else
+                    Input.button Common.buttonAttrs
+                        { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
+                , let
+                    filteredCount =
+                        List.length filteredExercises
 
-                totalCount =
-                    Dict.Any.size exercises
-              in
-              if totalCount > filteredCount then
-                E.paragraph []
-                    [ E.text <|
-                        String.fromInt filteredCount
-                            ++ " / "
-                            ++ String.fromInt totalCount
-                            ++ " cviků odpovídá kriteriím"
-                    ]
+                    totalCount =
+                        Dict.Any.size exercises
+                  in
+                  if totalCount > filteredCount then
+                    E.paragraph []
+                        [ E.text <|
+                            String.fromInt filteredCount
+                                ++ " / "
+                                ++ String.fromInt totalCount
+                                ++ " cviků odpovídá kriteriím"
+                        ]
 
-              else
-                E.none
+                  else
+                    E.none
+                ]
             ]
         , E.column (E.spacing 5 :: colAttrs exerciseColumnWidth)
             (E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
                 :: List.map
                     (\exercise ->
                         E.row [ E.paddingXY 5 0, E.spacing 5, E.width E.fill ]
-                            [ E.el [ E.padding 5 ] (E.text exercise.name)
+                            [ E.el [ E.padding 5 ]
+                                (E.text <| elipsis 35 exercise.name)
                             , E.el
                                 [ Border.solid
                                 , Border.width 1
@@ -560,6 +563,15 @@ editor exercises tags positions routines lessons today model =
                    ]
             )
         ]
+
+
+elipsis : Int -> String -> String
+elipsis maxLength s =
+    if String.length s > maxLength then
+        String.left maxLength s ++ "…"
+
+    else
+        s
 
 
 type alias ExerciseUsages =
@@ -661,11 +673,11 @@ positionCheckboxes positions selectedPositions =
                 }
     in
     E.column []
-        [ E.el [ E.padding 3, E.alignLeft, E.alignTop ] <|
-            E.el [ Font.bold ] (E.text "Typ pozice")
-        , Dict.Any.values positions
-            |> List.map positionCheckbox
-            |> E.column [ E.alignTop ]
+        [ E.el [ E.padding 3, Font.bold ]
+            (E.text "Pozice")
+        , E.column [] <|
+            List.map positionCheckbox <|
+                Dict.Any.values positions
         ]
 
 

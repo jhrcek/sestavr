@@ -29,6 +29,7 @@ import Domain
         , TagIdTag
         )
 import Element as E exposing (Element)
+import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Id exposing (IdDict, IdSet)
@@ -228,7 +229,7 @@ viewEditor positions tags model =
             }
         , E.row [ E.spacing 30 ]
             [ positionRadios positions model.positionId
-            , tagCheckboxes ToggleTagId tags model.tags
+            , tagCheckboxes ToggleTagId 10 tags model.tags
             ]
         , E.row [ E.alignRight, E.spacing 5 ]
             [ E.link Common.buttonAttrs
@@ -267,8 +268,8 @@ positionRadios positions maybeCurrentPosition =
         )
 
 
-tagCheckboxes : (TagId -> msg) -> IdDict TagIdTag Tag -> IdSet TagIdTag -> Element msg
-tagCheckboxes onTagToggle tags selectedTags =
+tagCheckboxes : (TagId -> msg) -> Int -> IdDict TagIdTag Tag -> IdSet TagIdTag -> Element msg
+tagCheckboxes onTagToggle checkboxesPerColumn tags selectedTags =
     let
         tagCheckbox tag =
             Input.checkbox []
@@ -279,11 +280,11 @@ tagCheckboxes onTagToggle tags selectedTags =
                 }
     in
     E.column [ E.alignTop ]
-        [ E.el [ E.padding 3, E.alignLeft ] <|
-            E.el [ Font.bold ] (E.text "Tagy")
+        [ E.el [ E.padding 3, Font.bold ]
+            (E.text "Tagy")
         , Dict.Any.values tags
             |> List.sortBy .name
-            |> List.greedyGroupsOf 10
+            |> List.greedyGroupsOf checkboxesPerColumn
             |> List.map (\group -> E.column [ E.alignTop ] (List.map tagCheckbox group))
             |> E.row [ E.width E.fill, E.alignTop ]
         ]
@@ -293,7 +294,10 @@ listView : IdDict ExerciseIdTag Exercise -> Element msg
 listView exercises =
     E.column []
         [ Common.heading1 "Cviky"
-        , E.table []
+        , E.table
+            [ Border.solid
+            , Border.width 1
+            ]
             { data =
                 Dict.Any.values exercises
                     |> List.sortBy .name
