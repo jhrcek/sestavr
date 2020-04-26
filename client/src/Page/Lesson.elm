@@ -21,34 +21,47 @@ type alias Config msg =
 
 view : Config msg -> IdDict LessonIdTag Lesson -> IdDict RoutineIdTag Routine -> Element msg
 view config lessons routines =
-    Dict.Any.values lessons
-        |> List.sortBy (.datetime >> Time.posixToMillis)
-        |> List.reverse
-        |> List.map (lessonView config routines)
-        -- TODO there should probably be "Vytvořit lekci" button here
-        |> (::) (Common.heading1 "Lekce")
-        |> E.column [ E.spacing 5 ]
-
-
-lessonView : Config msg -> IdDict RoutineIdTag Routine -> Lesson -> Element msg
-lessonView config routines lesson =
-    let
-        routineTopic =
-            Dict.Any.get lesson.routineId routines
-                |> Maybe.map .topic
-                |> Maybe.withDefault "Neznámá sestava"
-    in
-    E.row []
-        [ E.text <|
-            Time.formatDateTime lesson.datetime
-                ++ " - "
-        , E.el [ E.width <| E.px 400 ] <|
-            E.link Common.linkAttrs
-                { url = Router.href (Router.Routine lesson.routineId)
-                , label = E.text routineTopic
-                }
-        , Input.button Common.buttonAttrs
-            { onPress = Just <| config.deleteLesson lesson.id
-            , label = E.text "Odstranit"
+    E.column []
+        [ Common.heading1 "Lekce"
+        , E.table []
+            { data =
+                Dict.Any.values lessons
+                    |> List.sortBy (.datetime >> Time.posixToMillis)
+                    |> List.reverse
+            , columns =
+                [ { header = E.text "Datum a čas"
+                  , width = E.px 205
+                  , view =
+                        \lesson ->
+                            E.el [ E.centerY ]
+                                (E.text <| Time.formatDateTime lesson.datetime)
+                  }
+                , { header = E.el [ E.paddingXY 10 0 ] (E.text "Sestava")
+                  , width = E.fill
+                  , view =
+                        \lesson ->
+                            let
+                                routineTopic =
+                                    Dict.Any.get lesson.routineId routines
+                                        |> Maybe.map .topic
+                                        |> Maybe.withDefault "Neznámá sestava"
+                            in
+                            E.el [ E.paddingXY 10 0, E.centerY ] <|
+                                E.link Common.linkAttrs
+                                    { url = Router.href (Router.Routine lesson.routineId)
+                                    , label = E.text routineTopic
+                                    }
+                  }
+                , { header = E.text "Možnosti"
+                  , width = E.px 95
+                  , view =
+                        \lesson ->
+                            E.el [ E.paddingXY 0 3, E.centerY ] <|
+                                Input.button Common.buttonAttrs
+                                    { onPress = Just <| config.deleteLesson lesson.id
+                                    , label = E.text "🗑"
+                                    }
+                  }
+                ]
             }
         ]
