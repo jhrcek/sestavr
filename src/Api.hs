@@ -37,10 +37,10 @@ type SestavrAPI =
   Get '[HTML] ByteString -- index.html
     :<|> "main.js" :> Get '[JS] ByteString
     -- Tag
-    :<|> "tag" :> Get '[JSON] [Entity Target]
-    :<|> "tag" :> ReqBody '[JSON] Target :> Post '[JSON] (Entity Target)
-    :<|> "tag" :> Capture "tagId" TargetId :> Delete '[JSON] ()
-    :<|> "tag" :> Capture "tagId" TargetId :> ReqBody '[JSON] Target :> Post '[JSON] ()
+    :<|> "tag" :> Get '[JSON] [Entity Tag]
+    :<|> "tag" :> ReqBody '[JSON] Tag :> Post '[JSON] (Entity Tag)
+    :<|> "tag" :> Capture "tagId" TagId :> Delete '[JSON] ()
+    :<|> "tag" :> Capture "tagId" TagId :> ReqBody '[JSON] Tag :> Post '[JSON] ()
     -- Position
     :<|> "position" :> Get '[JSON] [Entity Position]
     :<|> "position" :> ReqBody '[JSON] Position :> Post '[JSON] (Entity Position)
@@ -48,9 +48,9 @@ type SestavrAPI =
     :<|> "position" :> Capture "positionId" PositionId :> Delete '[JSON] ()
     :<|> "position" :> Capture "positionId" PositionId :> ReqBody '[JSON] Position :> Post '[JSON] ()
     -- Exercise
-    :<|> "exercise" :> Get '[JSON] [ExerciseWithTargets]
-    :<|> "exercise" :> ReqBody '[JSON] ExerciseWithTargets :> Post '[JSON] ExerciseWithTargets
-    :<|> "exercise" :> Capture "exerciseId" ExerciseId :> ReqBody '[JSON] ExerciseWithTargets :> Post '[JSON] ExerciseWithTargets
+    :<|> "exercise" :> Get '[JSON] [ExerciseWithTags]
+    :<|> "exercise" :> ReqBody '[JSON] ExerciseWithTags :> Post '[JSON] ExerciseWithTags
+    :<|> "exercise" :> Capture "exerciseId" ExerciseId :> ReqBody '[JSON] ExerciseWithTags :> Post '[JSON] ExerciseWithTags
     :<|> "exercise" :> Capture "exerciseId" ExerciseId :> Delete '[JSON] ()
     -- Routine
     :<|> "routine" :> Get '[JSON] [RoutineWithExercises]

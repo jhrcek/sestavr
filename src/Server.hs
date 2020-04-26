@@ -49,13 +49,13 @@ import Database.Sqlite
   )
 import Model
   ( EntityField
-      ( ExerciseTargetExerciseId,
+      ( ExerciseTagExerciseId,
         RoutineExerciseRoutineId
       ),
     Exercise,
     ExerciseId,
-    ExerciseTarget (..),
-    ExerciseWithTargets,
+    ExerciseTag (..),
+    ExerciseWithTags,
     Lesson,
     LessonId,
     Position,
@@ -64,13 +64,13 @@ import Model
     RoutineExercise (..),
     RoutineId,
     RoutineWithExercises,
-    Target,
-    TargetId,
+    Tag,
+    TagId,
     eirDuration,
     eirExerciseId,
     exerciseId,
-    exerciseTargetExerciseId,
-    exerciseTargetTargetId,
+    exerciseTagExerciseId,
+    exerciseTagTagId,
     exercises,
     fromExercise,
     fromRoutine,
@@ -78,7 +78,7 @@ import Model
     migrateAll,
     routineExerciseRoutineId,
     routineId,
-    targetIds,
+    tagIds,
     toExercise,
     toRoutine,
   )
@@ -118,11 +118,11 @@ apiServer :: ConnectionPool -> FilePath -> Server SestavrAPI
 apiServer pool imagesDir =
   getIndex
     :<|> getElmApp
-    -- Target
-    :<|> getTargets
-    :<|> createTarget
-    :<|> deleteTarget
-    :<|> updateTarget
+    -- Tag
+    :<|> getTags
+    :<|> createTag
+    :<|> deleteTag
+    :<|> updateTag
     -- Position
     :<|> getPositions
     :<|> createPosition
@@ -158,24 +158,24 @@ apiServer pool imagesDir =
         handler ex = case seError ex of
           ErrorConstraint -> throw409 ex err
           _ -> throwM ex
-    -- TARGET
-    getTargets :: Handler [Entity Target]
-    getTargets = runPool $ selectList [] []
+    -- TAG
+    getTags :: Handler [Entity Tag]
+    getTags = runPool $ selectList [] []
     --
-    createTarget :: Target -> Handler (Entity Target)
-    createTarget target =
-      runPool (insertEntity target)
-        `handleConstraintError` "Target area with this name already exists"
+    createTag :: Tag -> Handler (Entity Tag)
+    createTag tag =
+      runPool (insertEntity tag)
+        `handleConstraintError` "Tag with this name already exists"
     --
-    deleteTarget :: TargetId -> Handler ()
-    deleteTarget targetId =
-      runPool (delete targetId)
-        `handleConstraintError` "Target area can't be deleted, it is used in some Exercises"
+    deleteTag :: TagId -> Handler ()
+    deleteTag tagId =
+      runPool (delete tagId)
+        `handleConstraintError` "Tag can't be deleted, it is used in some Exercises"
     --
-    updateTarget :: TargetId -> Target -> Handler ()
-    updateTarget targetId target =
-      runPool (replace targetId target)
-        `handleConstraintError` "Target area with this name already exists"
+    updateTag :: TagId -> Tag -> Handler ()
+    updateTag tagId tag =
+      runPool (replace tagId tag)
+        `handleConstraintError` "Tag with this name already exists"
     -- POSITION
     getPositions :: Handler [Entity Position]
     getPositions = runPool $ selectList [] []
@@ -202,57 +202,57 @@ apiServer pool imagesDir =
       runPool (replace positionId position)
         `handleConstraintError` "Position with this name already exists"
     -- EXERCISE
-    getExercises :: Handler [ExerciseWithTargets]
+    getExercises :: Handler [ExerciseWithTags]
     getExercises = runPool $ do
-      exerciseToTargets <- selectList [] [] :: SqlPersistM [Entity ExerciseTarget]
+      exerciseToTags <- selectList [] [] :: SqlPersistM [Entity ExerciseTag]
       exerciseEntities <- selectList [] [] :: SqlPersistM [Entity Exercise]
-      let eidToTargets :: Map.Map ExerciseId [TargetId]
-          eidToTargets =
+      let eidToTags :: Map.Map ExerciseId [TagId]
+          eidToTags =
             Map.fromListWith (<>) $
               fmap
                 ( \entity ->
                     let val = entityVal entity
-                     in ( exerciseTargetExerciseId val,
-                          [exerciseTargetTargetId val]
+                     in ( exerciseTagExerciseId val,
+                          [exerciseTagTagId val]
                         )
                 )
-                exerciseToTargets
+                exerciseToTags
       pure $
         fmap
           ( \exEntity ->
-              let targets = Map.findWithDefault [] (entityKey exEntity) eidToTargets
-               in fromExercise exEntity targets
+              let tags = Map.findWithDefault [] (entityKey exEntity) eidToTags
+               in fromExercise exEntity tags
           )
           exerciseEntities
     --
-    createExercise :: ExerciseWithTargets -> Handler ExerciseWithTargets
-    createExercise exerciseWithTargets =
+    createExercise :: ExerciseWithTags -> Handler ExerciseWithTags
+    createExercise exerciseWithTags =
       do
-        let exercise = toExercise exerciseWithTargets
-            tids = targetIds exerciseWithTargets
+        let exercise = toExercise exerciseWithTags
+            tids = tagIds exerciseWithTags
         runPool $ do
           eid <- insert exercise
-          insertMany_ $ fmap (ExerciseTarget eid) tids
-          pure $ exerciseWithTargets {exerciseId = eid}
+          insertMany_ $ fmap (ExerciseTag eid) tids
+          pure $ exerciseWithTags {exerciseId = eid}
         `handleConstraintError` "Exercise with this name already exists"
     --
-    updateExercise :: ExerciseId -> ExerciseWithTargets -> Handler ExerciseWithTargets
-    updateExercise eid exerciseWithTargets =
+    updateExercise :: ExerciseId -> ExerciseWithTags -> Handler ExerciseWithTags
+    updateExercise eid exerciseWithTags =
       do
-        let exercise = toExercise exerciseWithTargets
-            tids = targetIds exerciseWithTargets
+        let exercise = toExercise exerciseWithTags
+            tids = tagIds exerciseWithTags
         runPool $ do
           replace eid exercise
-          deleteWhere [ExerciseTargetExerciseId ==. eid]
-          insertMany_ $ fmap (ExerciseTarget eid) tids
-          pure exerciseWithTargets
+          deleteWhere [ExerciseTagExerciseId ==. eid]
+          insertMany_ $ fmap (ExerciseTag eid) tids
+          pure exerciseWithTags
         `handleConstraintError` "Exercise with this name already exists"
     --
     deleteExercise :: ExerciseId -> Handler ()
     deleteExercise eid =
       runPool
         ( do
-            deleteWhere [ExerciseTargetExerciseId ==. eid]
+            deleteWhere [ExerciseTagExerciseId ==. eid]
             delete eid
         )
         `handleConstraintError` "This exercise can't be deleted, because it's used in some routine"

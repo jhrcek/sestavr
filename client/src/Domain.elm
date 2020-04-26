@@ -125,7 +125,7 @@ exerciseDecoder =
         (Decode.field "sanskritName" <| Decode.nullable Decode.string)
         (Decode.field "description" Decode.string)
         (Decode.field "positionId" Id.decode)
-        (Decode.field "targetIds" <| Decode.list Id.decode)
+        (Decode.field "tagIds" <| Decode.list Id.decode)
 
 
 encodeExercise : Exercise -> Value
@@ -136,7 +136,7 @@ encodeExercise exercise =
         , ( "sanskritName", Maybe.withDefault Encode.null <| Maybe.map Encode.string exercise.sanskritName )
         , ( "description", Encode.string exercise.description )
         , ( "positionId", Id.encode exercise.positionId )
-        , ( "targetIds", Encode.list Id.encode exercise.tagIds )
+        , ( "tagIds", Encode.list Id.encode exercise.tagIds )
         ]
 
 

@@ -19,10 +19,10 @@
 module Model
   ( Exercise,
     ExerciseId,
-    ExerciseTargetId,
-    ExerciseTarget (..),
+    ExerciseTagId,
+    ExerciseTag (..),
     EntityField
-      ( ExerciseTargetExerciseId,
+      ( ExerciseTagExerciseId,
         RoutineExerciseRoutineId
       ),
     Lesson,
@@ -34,16 +34,16 @@ module Model
     RoutineExercise (..),
     Routine,
     RoutineExerciseId,
-    Target,
-    TargetId,
-    ExerciseWithTargets,
+    Tag,
+    TagId,
+    ExerciseWithTags,
     createDemoData,
     migrateAll,
     routineId,
     eirDuration,
     fromExercise,
     toExercise,
-    targetIds,
+    tagIds,
     fromRoutine,
     exerciseId,
     toRoutine,
@@ -58,19 +58,19 @@ import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.List as List
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, getCurrentTime)
+import Database.Persist.Class (EntityField, insert)
 import Database.Persist.Sql (runMigration)
-import Database.Persist.Types (entityKey, entityVal, Entity)
-import Database.Persist.Class (insert, EntityField)
 import Database.Persist.Sqlite (runSqlite)
 import Database.Persist.TH
+import Database.Persist.Types (Entity, entityKey, entityVal)
 import GHC.Generics (Generic)
 
 share
   [mkPersist sqlSettings, mkMigrate "migrateAll"]
   [persistLowerCase|
-Target json
+Tag json
     name Text
-    UniqueTargetName name
+    UniqueTagName name
 Position json
     name Text
     UniquePositionName name
@@ -80,10 +80,10 @@ Exercise json
     description Text
     positionId PositionId
     UniqueExerciseName name
-ExerciseTarget json
+ExerciseTag json
     exerciseId ExerciseId
-    targetId TargetId
-    Primary exerciseId targetId
+    tagId TagId
+    Primary exerciseId tagId
 Routine json
     topic Text
 RoutineExercise json
@@ -97,36 +97,36 @@ Lesson json
     datetime UTCTime
 |]
 
--- This is to alleviate frontend from having to join TargetIds from join table
-data ExerciseWithTargets
-  = ExerciseWithTargets
+-- This is to alleviate frontend from having to join TagIds from join table
+data ExerciseWithTags
+  = ExerciseWithTags
       { exerciseId :: ExerciseId,
         name :: Text,
         sanskritName :: Maybe Text,
         description :: Text,
         positionId :: PositionId,
-        targetIds :: [TargetId]
+        tagIds :: [TagId]
       }
   deriving (Generic)
 
-instance ToJSON ExerciseWithTargets
+instance ToJSON ExerciseWithTags
 
-instance FromJSON ExerciseWithTargets
+instance FromJSON ExerciseWithTags
 
-fromExercise :: Entity Exercise -> [TargetId] -> ExerciseWithTargets
-fromExercise entity targetIds =
+fromExercise :: Entity Exercise -> [TagId] -> ExerciseWithTags
+fromExercise entity tagIds =
   let exercise = entityVal entity
       exerciseId = entityKey entity
-   in ExerciseWithTargets
+   in ExerciseWithTags
         { exerciseId = exerciseId,
           name = exerciseName exercise,
           sanskritName = exerciseSanskritName exercise,
           description = exerciseDescription exercise,
           positionId = exercisePositionId exercise,
-          targetIds = targetIds
+          tagIds = tagIds
         }
 
-toExercise :: ExerciseWithTargets -> Exercise
+toExercise :: ExerciseWithTags -> Exercise
 toExercise ewt =
   Exercise
     { exerciseName = name ewt,
@@ -188,11 +188,11 @@ createDemoData :: IO ()
 createDemoData = runSqlite "sestavr.db" $ do
   runMigration migrateAll
 
-  breathId <- insert $ Target "Dech"
-  _feetId <- insert $ Target "Chodidla"
-  hipId <- insert $ Target "Kyčle"
-  backId <- insert $ Target "Záda"
-  _headId <- insert $ Target "Hlava"
+  breathId <- insert $ Tag "Dech"
+  _feetId <- insert $ Tag "Chodidla"
+  hipId <- insert $ Tag "Kyčle"
+  backId <- insert $ Tag "Záda"
+  _headId <- insert $ Tag "Hlava"
 
   sitId <- insert $ Position "Vsedě"
   standId <- insert $ Position "Ve stoji"
@@ -285,9 +285,9 @@ createDemoData = runSqlite "sestavr.db" $ do
         , Exercise "Pozice škorpiona" (Just "Vrschikasana")  "![Vrschikasana](Vrschikasana.png)" handSupportedId
         ]
 
-  _ <- insert $ ExerciseTarget childId hipId
-  _ <- insert $ ExerciseTarget childId backId
-  _ <- insert $ ExerciseTarget childId breathId
+  _ <- insert $ ExerciseTag childId hipId
+  _ <- insert $ ExerciseTag childId backId
+  _ <- insert $ ExerciseTag childId breathId
 
   routine1Id <- insert $ Routine "Moje první sestava"
 
