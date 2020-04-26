@@ -36,7 +36,7 @@ type alias LessonPlanner =
 type alias DateTimePicker =
     { pickerYear : Int
     , pickerMonth : Month
-    , pickedDay : Maybe ( Int, Month, Int )
+    , pickedDay : Maybe Int
     , pickedTime : String
     }
 
@@ -45,7 +45,7 @@ type Msg
     = ScheduleLesson
     | NextMonth
     | PrevMonth
-    | PickDay Int Month Int
+    | PickDay Int
     | SetTime String
     | CancelSchedulingLesson
     | SaveLesson
@@ -90,8 +90,8 @@ update config msg model =
         PrevMonth ->
             ( switchMonth Time.prevMonthYear model, Cmd.none )
 
-        PickDay year month day ->
-            ( updatePlanner (\lp -> { lp | pickedDay = Just ( year, month, day ) }) model, Cmd.none )
+        PickDay day ->
+            ( updatePlanner (\lp -> { lp | pickedDay = Just day }) model, Cmd.none )
 
         SetTime hhMmStr ->
             ( updatePlanner (\lp -> { lp | pickedTime = hhMmStr }) model, Cmd.none )
@@ -120,18 +120,18 @@ updatePlanner f p =
 
 
 saveLesson : Config msg -> DateTimePicker -> RoutineId -> Result String msg
-saveLesson config lessonPlanner routineId =
-    case lessonPlanner.pickedDay of
+saveLesson config picker routineId =
+    case picker.pickedDay of
         Nothing ->
             Err "Musíš vybrat datum v kalendáři"
 
-        Just ( year, month, day ) ->
-            case Calendar.fromRawParts { day = day, month = month, year = year } of
+        Just pickedDay ->
+            case Calendar.fromRawParts { day = pickedDay, month = picker.pickerMonth, year = picker.pickerYear } of
                 Nothing ->
                     Err "Tohle datum není v kalendáři"
 
                 Just date ->
-                    parseHoursMinutes lessonPlanner.pickedTime
+                    parseHoursMinutes picker.pickedTime
                         |> Result.map
                             (\time ->
                                 let
@@ -175,6 +175,12 @@ view lessonPlanner =
                 [ Common.heading1 "Plánování lekce"
                 , E.text "Vyber datum a čas lekce"
                 , datePicker dtp lessonPlanner.today
+                , if isPastDayPicked dtp lessonPlanner.today then
+                    E.el [ Font.color Color.orange ]
+                        (E.text "Zvolené datum je v minulosti (může být, pokud to chceš)")
+
+                  else
+                    E.none
                 , timePicker dtp
                 , E.row [ E.spacing 5, E.paddingXY 0 5 ]
                     [ Input.button Common.buttonAttrs
@@ -205,10 +211,6 @@ timePicker picker =
         -- If the date wasn't picked yet, don't show the time picker
         Nothing ->
             E.none
-
-
-
--- TODO should we give a warning if lesson planned into the past
 
 
 parseHoursMinutes : String -> Result String Clock.Time
@@ -256,12 +258,26 @@ parseHoursMinutes str =
                 Err "Čas musí mít format HH:MM"
 
 
+isPastDayPicked : DateTimePicker -> Posix -> Bool
+isPastDayPicked { pickerYear, pickerMonth, pickedDay } today =
+    pickedDay
+        |> Maybe.andThen (\pd -> Calendar.fromRawParts { year = pickerYear, month = pickerMonth, day = pd })
+        |> Maybe.map (\pickedDate -> Calendar.compare pickedDate (Calendar.fromPosix today) == LT)
+        |> Maybe.withDefault False
+
+
 datePicker : DateTimePicker -> Posix -> Element Msg
 datePicker { pickerYear, pickerMonth, pickedDay } today =
     let
-        isPickedDay y m d =
+        isPickedDay dayNumber =
             Maybe.withDefault False <|
-                Maybe.map (\( py, pm, pd ) -> y == py && m == pm && d == pd) pickedDay
+                Maybe.map (\pd -> dayNumber == pd)
+                    pickedDay
+
+        isToday dayNumber =
+            (dayNumber == Time.toDay Time.utc today)
+                && (pickerMonth == Time.toMonth Time.utc today)
+                && (pickerYear == Time.toYear Time.utc today)
 
         cellSize =
             45
@@ -321,15 +337,6 @@ datePicker { pickerYear, pickerMonth, pickedDay } today =
                     E.row [] <|
                         List.map
                             (\dayNumber ->
-                                let
-                                    isToday =
-                                        (dayNumber == Time.toDay Time.utc today)
-                                            && (pickerMonth == Time.toMonth Time.utc today)
-                                            && (pickerYear == Time.toYear Time.utc today)
-
-                                    isPicked =
-                                        isPickedDay pickerYear pickerMonth dayNumber
-                                in
                                 E.el
                                     [ E.width <| E.px cellSize
                                     , E.height <| E.px cellSize
@@ -339,23 +346,23 @@ datePicker { pickerYear, pickerMonth, pickedDay } today =
                                 <|
                                     if dayNumber /= 0 then
                                         E.el
-                                            [ Event.onClick <| PickDay pickerYear pickerMonth dayNumber
+                                            [ Event.onClick <| PickDay dayNumber
                                             , E.width <| E.px <| cellSize - 2
                                             , E.height <| E.px <| cellSize - 2
                                             , E.padding cellPadding
                                             , Font.center
                                             , Border.rounded <| cellSize // 2
                                             , Background.color <|
-                                                if isPicked then
+                                                if isPickedDay dayNumber then
                                                     Color.darkBlue
 
-                                                else if isToday then
+                                                else if isToday dayNumber then
                                                     Color.lightGrey
 
                                                 else
                                                     Color.white
                                             , Font.color <|
-                                                if isPicked then
+                                                if isPickedDay dayNumber then
                                                     Color.white
 
                                                 else
