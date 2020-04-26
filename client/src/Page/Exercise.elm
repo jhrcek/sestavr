@@ -139,7 +139,7 @@ emptyEditor =
     { exerciseId = Nothing
     , name = ""
     , sanskritName = ""
-    , description = ""
+    , description = "![asana](asana)"
     , positionId = Nothing
     , tags = Id.emptySet
     }
