@@ -328,7 +328,7 @@ view :
     -> Exercise
     -> Element msg
 view config positions targets exercise =
-    E.column [ E.width E.fill ]
+    E.column [ E.width E.fill, E.spacing 10 ]
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 exercise.name
         , E.el [ Font.size 20, Font.bold, Font.italic ]
@@ -349,9 +349,7 @@ view config positions targets exercise =
                             List.filterMap (\targetId -> Dict.Any.get targetId targets) exercise.targetIds
                         )
             ]
-        , E.paragraph []
-            [ E.html <| Markdown.toHtml [] exercise.description ]
-        , E.row [ E.alignRight, E.spacing 5 ]
+        , E.row [ E.spacing 5 ]
             [ E.link Common.buttonAttrs
                 { url = Router.href <| Router.ExerciseEditor <| Just exercise.id
                 , label = E.text "Upravit"
@@ -361,6 +359,8 @@ view config positions targets exercise =
                 , label = E.text "Odstranit"
                 }
             ]
+        , E.paragraph []
+            [ E.html <| Markdown.toHtml [] exercise.description ]
         ]
 
 
