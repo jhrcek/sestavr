@@ -261,7 +261,8 @@ positionRadios positions maybeCurrentPosition =
                     E.el [ Font.bold ] (E.text "Pozice")
             , options =
                 List.map (\p -> Input.option p.id (E.text p.name)) <|
-                    Dict.Any.values positions
+                    List.sortBy .name <|
+                        Dict.Any.values positions
             }
         )
 
@@ -277,10 +278,11 @@ targetCheckboxes onTargetToggle targets selectedTargets =
                 , label = Input.labelRight [] (E.text target.name)
                 }
     in
-    E.column []
-        [ E.el [ E.padding 3, E.alignLeft, E.alignTop ] <|
+    E.column [ E.alignTop ]
+        [ E.el [ E.padding 3, E.alignLeft ] <|
             E.el [ Font.bold ] (E.text "Cílové partie")
         , Dict.Any.values targets
+            |> List.sortBy .name
             |> List.greedyGroupsOf 10
             |> List.map (\group -> E.column [ E.alignTop ] (List.map targetCheckbox group))
             |> E.row [ E.width E.fill, E.alignTop ]
@@ -345,7 +347,7 @@ view config positions targets exercise =
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 exercise.name
         , E.el [ Font.size 20, Font.bold, Font.italic ]
-            (E.text <| "Sanskrt : " ++ Maybe.withDefault "N/A" exercise.sanskritName)
+            (E.text <| "Sanskrt: " ++ Maybe.withDefault "N/A" exercise.sanskritName)
         , E.row []
             [ case Dict.Any.get exercise.positionId positions of
                 Just position ->
@@ -358,8 +360,9 @@ view config positions targets exercise =
             [ E.text <|
                 "Cílové partie: "
                     ++ String.join ", "
-                        (List.map .name <|
-                            List.filterMap (\targetId -> Dict.Any.get targetId targets) exercise.targetIds
+                        (List.sort <|
+                            List.map .name <|
+                                List.filterMap (\targetId -> Dict.Any.get targetId targets) exercise.targetIds
                         )
             ]
         , E.row [ E.spacing 5 ]
