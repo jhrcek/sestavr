@@ -13,7 +13,6 @@ module Page.Exercise exposing
     , viewEditor
     )
 
-import Color
 import Command
 import Common
 import Dict.Any
@@ -30,8 +29,6 @@ import Domain
         , TargetIdTag
         )
 import Element as E exposing (Element)
-import Element.Background as Background
-import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Id exposing (IdDict, IdSet)
@@ -345,10 +342,12 @@ view config positions targets exercise =
                     E.none
             ]
         , E.row []
-            [ E.text "Cílové partie: "
-            , E.row [ E.spacing 5 ] <|
-                List.map viewTargetArea <|
-                    List.filterMap (\targetId -> Dict.Any.get targetId targets) exercise.targetIds
+            [ E.text <|
+                "Cílové partie: "
+                    ++ String.join ", "
+                        (List.map .name <|
+                            List.filterMap (\targetId -> Dict.Any.get targetId targets) exercise.targetIds
+                        )
             ]
         , E.paragraph []
             [ E.html <| Markdown.toHtml [] exercise.description ]
@@ -363,18 +362,6 @@ view config positions targets exercise =
                 }
             ]
         ]
-
-
-viewTargetArea : Target -> Element msg
-viewTargetArea target =
-    E.el
-        [ Border.rounded 10
-        , Border.solid
-        , Border.color Color.black
-        , Background.color (E.rgb255 255 192 203)
-        , E.padding 3
-        ]
-        (E.text target.name)
 
 
 backToList : Element msg
