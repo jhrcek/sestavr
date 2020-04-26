@@ -7,6 +7,7 @@ module Page.Position exposing
     , view
     )
 
+import Browser.Dom as Dom
 import Color
 import Command
 import Common
@@ -16,13 +17,16 @@ import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
+import Html.Attributes
 import Id exposing (IdDict)
+import Task
 
 
 type alias Config msg =
     { createPosition : Position -> msg
     , deletePosition : PositionId -> msg
     , updatePosition : Position -> msg
+    , noop : msg
     }
 
 
@@ -55,7 +59,7 @@ update config msg model =
     case msg of
         AddClicked ->
             ( { model | newField = Just "" }
-            , Cmd.none
+            , Dom.focus newPositionInputId |> Task.attempt (always config.noop)
             )
 
         NewNameChanged newName ->
@@ -133,7 +137,10 @@ form model =
         Just fieldName ->
             E.column [ E.paddingXY 0 5 ]
                 [ E.text "Tvorba nové pozice"
-                , Input.text [ E.width (E.px 100) ]
+                , Input.text
+                    [ E.htmlAttribute (Html.Attributes.id newPositionInputId)
+                    , E.width (E.px 100)
+                    ]
                     { onChange = NewNameChanged
                     , text = fieldName
                     , placeholder = Nothing
@@ -237,3 +244,8 @@ viewPositions targets maybeEdited =
               }
             ]
         }
+
+
+newPositionInputId : String
+newPositionInputId =
+    "target-input"

@@ -153,6 +153,7 @@ type Msg
     | DeleteLesson LessonId
     | ErrorAcked
     | ConfirmDeletion String Msg
+    | NoOp
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
@@ -569,12 +570,16 @@ update msg model =
             , Cmd.map StoreMsg <| Store.deleteLesson lessonId
             )
 
+        NoOp ->
+            ( model, Cmd.none )
+
 
 targetConfig : Target.Config Msg
 targetConfig =
     { createTarget = CreateTarget
     , deleteTarget = ConfirmDeletion "Opravdu chceš odstranit tuto cílovou oblast?" << DeleteTarget
     , updateTarget = UpdateTarget
+    , noop = NoOp
     }
 
 
@@ -583,6 +588,7 @@ positionConfig =
     { createPosition = CreatePosition
     , deletePosition = ConfirmDeletion "Opravdu chceš odstranit tuto pozici?" << DeletePosition
     , updatePosition = UpdatePosition
+    , noop = NoOp
     }
 
 
