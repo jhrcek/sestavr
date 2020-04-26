@@ -3,12 +3,12 @@ module Page.Lesson exposing
     , view
     )
 
+import Color
 import Common
 import Dict.Any
 import Domain exposing (Lesson, LessonId, LessonIdTag, Routine, RoutineIdTag)
 import Element as E exposing (Element)
 import Element.Border as Border
-import Element.Input as Input
 import Id exposing (IdDict)
 import Router
 import Time exposing (Month(..))
@@ -26,36 +26,39 @@ view config lessons routines =
         cellSize =
             33
 
-        cellAttrs =
-            [ Border.solid
-            , Border.width 1
-            , E.height (E.px cellSize)
-            , E.centerX
-            , E.centerY
-            ]
+        cell =
+            E.el
+                [ Border.solid
+                , Border.width 1
+                , Border.color Color.lightGrey
+                , E.height (E.px cellSize)
+                , E.padding 2
+                , E.centerX
+                , E.centerY
+                ]
     in
     E.column []
         [ Common.heading1 "Lekce"
         , E.table
             [ Border.solid
             , Border.width 1
+            , Border.color Color.lightGrey
             ]
             { data =
                 Dict.Any.values lessons
                     |> List.sortBy (.datetime >> Time.posixToMillis)
                     |> List.reverse
             , columns =
-                [ { header =
-                        E.el cellAttrs (E.text "Datum a čas")
+                [ { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Datum a čas"
                   , width = E.px 205
                   , view =
                         \lesson ->
-                            E.el cellAttrs <|
+                            cell <|
                                 E.el [ E.centerY ] <|
                                     E.text <|
                                         Time.formatDateTime lesson.datetime
                   }
-                , { header = E.el cellAttrs <| E.text "Sestava"
+                , { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Sestava"
                   , width = E.fill
                   , view =
                         \lesson ->
@@ -65,26 +68,24 @@ view config lessons routines =
                                         |> Maybe.map .topic
                                         |> Maybe.withDefault "Neznámá sestava"
                             in
-                            E.el cellAttrs <|
+                            cell <|
                                 E.link (E.centerY :: Common.linkAttrs)
                                     { url = Router.href (Router.Routine lesson.routineId)
                                     , label = E.text routineTopic
                                     }
                   }
-                , { header = E.el cellAttrs <| E.text "Možnosti"
+                , { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Možnosti"
                   , width = E.px 95
                   , view =
                         \lesson ->
                             E.el
                                 [ Border.solid
                                 , Border.width 1
-                                , E.centerX
-                                , E.centerY
+                                , Border.color Color.lightGrey
                                 , E.height (E.px cellSize)
-                                , E.width (E.px cellSize)
                                 ]
                             <|
-                                Input.button Common.buttonAttrs
+                                Common.iconButton
                                     { onPress = Just <| config.deleteLesson lesson.id
                                     , label = E.text "🗑"
                                     }

@@ -13,6 +13,7 @@ module Page.Exercise exposing
     , viewEditor
     )
 
+import Color
 import Command
 import Common
 import Dict.Any
@@ -292,26 +293,39 @@ tagCheckboxes onTagToggle checkboxesPerColumn tags selectedTags =
 
 listView : IdDict ExerciseIdTag Exercise -> Element msg
 listView exercises =
+    let
+        cell =
+            E.el
+                [ Border.solid
+                , Border.width 1
+                , E.width E.fill
+                , E.padding 3
+                , Border.color Color.lightGrey
+                ]
+    in
     E.column []
         [ Common.heading1 "Cviky"
         , E.table
             [ Border.solid
             , Border.width 1
+            , Border.color Color.lightGrey
             ]
             { data =
                 Dict.Any.values exercises
                     |> List.sortBy .name
             , columns =
-                [ { header = E.text "Název"
+                [ { header = cell <| E.text "Název"
                   , width = E.fill
-                  , view = exerciseLink
+                  , view =
+                        \exercise -> cell <| exerciseLink exercise
                   }
-                , { header = E.text "Sanskrt"
+                , { header = cell <| E.text "Sanskrt"
                   , width = E.fill
                   , view =
                         \exercise ->
                             Maybe.map E.text exercise.sanskritName
                                 |> Maybe.withDefault (E.text "-")
+                                |> cell
                   }
                 ]
             }

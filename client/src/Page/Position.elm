@@ -14,7 +14,6 @@ import Common
 import Dict.Any
 import Domain exposing (Position, PositionId, PositionIdTag)
 import Element as E exposing (Element)
-import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
 import Html.Attributes
@@ -167,29 +166,19 @@ form model =
 viewPositions : IdDict PositionIdTag Position -> Maybe Position -> Element Msg
 viewPositions positions maybeEdited =
     let
-        iconButton =
-            Input.button
-                [ Border.solid
-                , Border.width 1
-                , E.padding 5
-                , Border.rounded 4
-                , E.mouseOver [ Background.color Color.lightGrey ]
-                ]
-
         colHeader label =
             E.el
                 [ Border.solid
                 , Border.width 1
+                , Border.color Color.lightGrey
                 , E.padding 5
-                , Background.color Color.lightGrey
                 ]
                 (E.text label)
     in
     E.table
         [ Border.solid
         , Border.width 1
-        , E.spacing 2
-        , E.padding 2
+        , Border.color Color.lightGrey
         ]
         { data = List.sortBy .name <| Dict.Any.values positions
         , columns =
@@ -211,6 +200,7 @@ viewPositions positions maybeEdited =
                                     E.el
                                         [ Border.solid
                                         , Border.width 1
+                                        , Border.color Color.lightGrey
                                         , E.padding 5
                                         ]
                                         (E.text position.name)
@@ -219,6 +209,7 @@ viewPositions positions maybeEdited =
                                 E.el
                                     [ Border.solid
                                     , Border.width 1
+                                    , Border.color Color.lightGrey
                                     , E.padding 5
                                     ]
                                     (E.text position.name)
@@ -228,7 +219,7 @@ viewPositions positions maybeEdited =
               , view =
                     \position ->
                         E.row [ E.spacing 2 ]
-                            [ iconButton <|
+                            [ Common.iconButton <|
                                 case maybeEdited of
                                     Just editedPosition ->
                                         if position.id == editedPosition.id then
@@ -239,7 +230,7 @@ viewPositions positions maybeEdited =
 
                                     Nothing ->
                                         { onPress = Just (EditClicked position), label = E.text "🖉" }
-                            , iconButton { onPress = Just (DeleteClicked position.id), label = E.text "🗑" }
+                            , Common.iconButton { onPress = Just (DeleteClicked position.id), label = E.text "🗑" }
                             ]
               }
             ]
