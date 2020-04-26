@@ -289,25 +289,38 @@ targetCheckboxes onTargetToggle targets selectedTargets =
 
 listView : IdDict ExerciseIdTag Exercise -> Element msg
 listView exercises =
-    Dict.Any.values exercises
-        |> List.sortBy .name
-        |> List.map exerciseLink
-        |> (\exerciseLinks -> exerciseLinks ++ [ createExercisebutton ])
-        |> (::) (Common.heading1 "Cviky")
-        |> E.column []
+    E.column []
+        [ Common.heading1 "Cviky"
+        , E.table []
+            { data =
+                Dict.Any.values exercises
+                    |> List.sortBy .name
+            , columns =
+                [ { header = E.text "Název"
+                  , width = E.fill
+                  , view = exerciseLink
+                  }
+                , { header = E.text "Sanskrt"
+                  , width = E.fill
+                  , view =
+                        \exercise ->
+                            Maybe.map E.text exercise.sanskritName
+                                |> Maybe.withDefault (E.text "-")
+                  }
+                ]
+            }
+        , createExercisebutton
+        ]
 
 
 exerciseLink : Exercise -> Element msg
 exerciseLink exercise =
-    E.link Common.linkAttrs
+    E.link
+        (E.paddingEach { top = 0, right = 10, bottom = 0, left = 0 }
+            :: Common.linkAttrs
+        )
         { url = Router.href (Router.Exercise exercise.id)
-        , label =
-            E.text <|
-                exercise.name
-                    ++ Maybe.withDefault ""
-                        (Maybe.map (\s -> " (" ++ s ++ ")")
-                            exercise.sanskritName
-                        )
+        , label = E.text exercise.name
         }
 
 
