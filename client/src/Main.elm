@@ -348,7 +348,9 @@ update msg model =
                 | store = newStore
                 , modal = Maybe.map HttpError maybeError
               }
-            , Cmd.none
+            , Store.redirect storeMsg
+                |> Maybe.map goToRoute
+                |> Maybe.withDefault Cmd.none
             )
 
         UrlChange url ->
@@ -490,10 +492,7 @@ update msg model =
 
         CreateExercise exercise ->
             ( model
-            , Cmd.batch
-                [ Cmd.map StoreMsg <| Store.createExercise exercise
-                , goToRoute Router.Exercises
-                ]
+            , Cmd.map StoreMsg <| Store.createExercise exercise
             )
 
         UpdateExercise exercise ->
@@ -519,10 +518,7 @@ update msg model =
 
         CreateRoutine routine ->
             ( model
-            , Cmd.batch
-                [ Cmd.map StoreMsg <| Store.createRoutine routine
-                , goToRoute Router.Routines
-                ]
+            , Cmd.map StoreMsg <| Store.createRoutine routine
             )
 
         CopyRoutine routine ->

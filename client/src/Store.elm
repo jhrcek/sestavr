@@ -17,6 +17,7 @@ module Store exposing
     , getRoutines
     , getTags
     , init
+    , redirect
     , update
     , updateExercise
     , updatePosition
@@ -47,6 +48,7 @@ import Http
 import Http.Extra as Ht2 exposing (ApiCall)
 import Id exposing (IdDict)
 import Json.Decode as Decode
+import Router exposing (Route)
 
 
 type Msg
@@ -164,6 +166,19 @@ updateOrError result updateStore store =
 
         Err e ->
             ( store, Just e )
+
+
+redirect : Msg -> Maybe Route
+redirect msg =
+    case msg of
+        ExerciseCreated (Ok newExercise) ->
+            Just (Router.Exercise newExercise.id)
+
+        RoutineCreated (Ok newRoutine) ->
+            Just (Router.Routine newRoutine.id)
+
+        _ ->
+            Nothing
 
 
 
