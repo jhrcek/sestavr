@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser exposing (Document, UrlRequest)
+import Browser.Events
 import Browser.Navigation as Nav exposing (Key)
 import Common
 import Dict.Any
@@ -21,8 +22,10 @@ import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Events as Event
 import Element.Font as Font
+import Html.Events
 import Http.Extra as Ht2
 import Id
+import Json.Decode as Decode exposing (Decoder)
 import Modal
 import Page.Exercise as Exercise
 import Page.Lesson as Lesson
@@ -646,12 +649,65 @@ navigateToRoute key initialUrl route =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.pageModel of
-        RoutineEditor rmodel ->
-            Sub.map RoutineMsg <| Routine.subscriptions rmodel
+    Sub.batch
+        [ case model.pageModel of
+            RoutineEditor rmodel ->
+                Sub.map RoutineMsg <| Routine.subscriptions rmodel
 
-        _ ->
-            Sub.none
+            _ ->
+                Sub.none
+        , case model.modal of
+            Just modal ->
+                modalEscapeOrEnterSubscriptions modal
+
+            Nothing ->
+                Sub.none
+        ]
+
+
+modalEscapeOrEnterSubscriptions : Modal -> Sub Msg
+modalEscapeOrEnterSubscriptions modal =
+    case modal of
+        HttpError _ ->
+            Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+
+        ExerciseValidationError _ ->
+            Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+
+        RoutineValidationError _ ->
+            Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+
+        LessonPlannerValitaionError _ ->
+            Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+
+        ConfirmDeletionModal _ onConfirm ->
+            Sub.batch
+                [ Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+                , Browser.Events.onKeyUp (fireOnEnter onConfirm)
+                ]
+
+
+fireOnEscape : Msg -> Decoder Msg
+fireOnEscape =
+    fireOnKeyCode 27
+
+
+fireOnEnter : Msg -> Decoder Msg
+fireOnEnter =
+    fireOnKeyCode 13
+
+
+fireOnKeyCode : Int -> Msg -> Decoder Msg
+fireOnKeyCode theKeyCode message =
+    Html.Events.keyCode
+        |> Decode.andThen
+            (\keyCode ->
+                if keyCode == theKeyCode then
+                    Decode.succeed message
+
+                else
+                    Decode.fail "wrong key"
+            )
 
 
 viewLayout : Route -> Element Msg -> Element Msg
