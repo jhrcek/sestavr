@@ -33,9 +33,10 @@ import Element as E exposing (Element)
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Html exposing (Html)
 import Id exposing (IdDict, IdSet)
 import List.Extra as List
-import Markdown
+import Markdown exposing (defaultOptions)
 import Router exposing (Route(..))
 import Set.Any
 
@@ -139,7 +140,7 @@ emptyEditor =
     { exerciseId = Nothing
     , name = ""
     , sanskritName = ""
-    , description = "![asana](asana)"
+    , description = "<div class=\"image\">![asana](asana)</div>"
     , positionId = Nothing
     , tags = Id.emptySet
     }
@@ -362,7 +363,8 @@ view :
     -> Element msg
 view config positions tags exercise =
     E.column [ E.width E.fill, E.spacing 10 ]
-        [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
+        [ E.html imageSizeStyle
+        , E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 exercise.name
         , E.el [ Font.size 20, Font.bold, Font.italic ]
             (E.text <| "Sanskrt: " ++ Maybe.withDefault "N/A" exercise.sanskritName)
@@ -393,9 +395,27 @@ view config positions tags exercise =
                 , label = E.text "Odstranit"
                 }
             ]
-        , E.paragraph []
-            [ E.html <| Markdown.toHtml [] exercise.description ]
+        , E.paragraph [] [ markdown exercise.description ]
         ]
+
+
+markdown : String -> Element msg
+markdown =
+    E.html << Markdown.toHtmlWith noSanitization []
+
+
+noSanitization : Markdown.Options
+noSanitization =
+    { defaultOptions
+      -- Turning of sanitization to allow setting image dimensions via
+      -- <div class="image">![alt text](image.png)</div>
+        | sanitize = False
+    }
+
+
+imageSizeStyle : Html msg
+imageSizeStyle =
+    Html.node "style" [] [ Html.text ".image>img{height:300px;}" ]
 
 
 backToList : Element msg
