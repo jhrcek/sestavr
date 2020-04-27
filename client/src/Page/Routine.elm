@@ -354,7 +354,7 @@ listView routines =
     Dict.Any.values routines
         |> List.sortBy .topic
         |> List.map routineLink
-        |> (\routineLinks -> routineLinks ++ [ createRoutineButton ])
+        |> (\routineLinks -> createRoutineButton :: routineLinks)
         |> (::) (Common.heading1 "Sestavy")
         |> E.column []
 

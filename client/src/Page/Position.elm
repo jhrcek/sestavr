@@ -117,8 +117,8 @@ view : IdDict PositionIdTag Position -> Model -> Element Msg
 view positions model =
     E.column [ E.width (E.maximum 500 <| E.px 300) ]
         [ Common.heading1 "Pozice"
-        , viewPositions positions model.editedPosition
         , form model
+        , viewPositions positions model.editedPosition
         ]
 
 

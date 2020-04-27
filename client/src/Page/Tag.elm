@@ -117,8 +117,8 @@ view : IdDict TagIdTag Tag -> Model -> Element Msg
 view tags model =
     E.column [ E.width (E.maximum 500 <| E.px 300) ]
         [ Common.heading1 "Tagy"
-        , viewTags tags model.editedTag
         , form model
+        , viewTags tags model.editedTag
         ]
 
 

@@ -305,6 +305,7 @@ listView exercises =
     in
     E.column []
         [ Common.heading1 "Cviky"
+        , createExerciseButton
         , E.table
             [ Border.solid
             , Border.width 1
@@ -329,7 +330,6 @@ listView exercises =
                   }
                 ]
             }
-        , createExercisebutton
         ]
 
 
@@ -344,8 +344,8 @@ exerciseLink exercise =
         }
 
 
-createExercisebutton : Element msg
-createExercisebutton =
+createExerciseButton : Element msg
+createExerciseButton =
     E.el [ E.paddingXY 0 5 ]
         (E.link Common.buttonAttrs
             { url = Router.href (Router.ExerciseEditor Nothing)
