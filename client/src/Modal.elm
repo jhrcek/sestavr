@@ -1,4 +1,4 @@
-module Modal exposing (Config, confirmDeletion, viewError)
+module Modal exposing (Config, confirmAction, viewError)
 
 import Color
 import Common
@@ -16,14 +16,14 @@ type alias Config msg =
     }
 
 
-confirmDeletion :
+confirmAction :
     { cancelMsg : msg
     , confirmMsg : msg
     , title : String
     , bodyText : String
     }
     -> Element msg
-confirmDeletion { cancelMsg, confirmMsg, title, bodyText } =
+confirmAction { cancelMsg, confirmMsg, title, bodyText } =
     E.el
         [ Background.color Color.dialogMask
         , E.width E.fill
