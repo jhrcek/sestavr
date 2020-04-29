@@ -60,6 +60,10 @@ type alias Model =
     , pageModel : PageModel
     , modal : Maybe Modal
     , today : Posix
+
+    -- Unlike other page models, which are scoped to individual pages
+    -- we keep Routine editor model here, so it's preserved on route changes.
+    , routineModel : Routine.Model
     }
 
 
@@ -67,53 +71,99 @@ type Modal
     = HttpError Ht2.Error
     | ExerciseValidationError Exercise.ValidationError
     | RoutineValidationError Routine.ValidationError
-    | ConfirmDeletionModal String Msg
-    | LessonPlannerValitaionError String
+    | YesNoModal (Element Never) Msg Msg
+    | YesCloseModal String Msg
+    | LessonPlannerValidationError String
 
 
-initPage : Route -> Store -> Posix -> PageModel
-initPage route store today =
-    case route of
+initPageModel : Model -> Model
+initPageModel model =
+    case model.route of
         Router.Home ->
-            HomeModel
+            { model | pageModel = HomeModel }
 
         Router.Positions ->
-            PositionModel Position.init
+            { model | pageModel = PositionModel Position.init }
 
         Router.Tags ->
-            TagModel Tag.init
+            { model | pageModel = TagModel Tag.init }
 
         Router.Lessons ->
-            LessonModel
+            { model | pageModel = LessonModel }
 
         Router.Exercises ->
-            ExerciseList
+            { model | pageModel = ExerciseList }
 
         Router.Exercise exerciseId ->
-            ExerciseModel exerciseId
+            { model | pageModel = ExerciseModel exerciseId }
 
         Router.ExerciseEditor maybeExerciseId ->
-            maybeExerciseId
-                |> Maybe.andThen (\exerciseId -> Dict.Any.get exerciseId store.exercises)
-                |> Maybe.map (\exercise -> Exercise.initEditor exercise)
-                |> Maybe.withDefault Exercise.emptyEditor
-                |> ExerciseEditor
+            { model
+                | pageModel =
+                    maybeExerciseId
+                        |> Maybe.andThen (\exerciseId -> Dict.Any.get exerciseId model.store.exercises)
+                        |> Maybe.map (\exercise -> Exercise.initEditor exercise)
+                        |> Maybe.withDefault Exercise.emptyEditor
+                        |> ExerciseEditor
+            }
 
         Router.Routines ->
-            RoutineList
+            { model | pageModel = RoutineList }
 
         Router.Routine routineId ->
-            RoutineModel routineId (LessonPlanner.init today routineId)
+            { model | pageModel = RoutineModel routineId (LessonPlanner.init model.today routineId) }
 
-        Router.RoutineEditor maybeRoutineId ->
-            maybeRoutineId
-                |> Maybe.andThen (\routineId -> Dict.Any.get routineId store.routines)
-                |> Maybe.map (\routine -> Routine.initEditor store.exercises routine)
-                |> Maybe.withDefault Routine.emptyEditor
-                |> RoutineEditor
+        Router.RoutineEditor newRoutineRoute ->
+            let
+                ( newRoutineModel, newModal ) =
+                    if model.routineModel.hasUnsavedChanges then
+                        if model.routineModel.routineRoute == newRoutineRoute then
+                            -- Navigating to previously edited thing
+                            ( model.routineModel, Nothing )
+
+                        else
+                            -- Navigating to something new
+                            ( model.routineModel
+                            , Just <|
+                                YesNoModal
+                                    (E.column []
+                                        [ E.text "Máš neuložené změny sestavy. Opravdu je chceš zahodit?"
+                                        , E.text "Ano = zahodit změny"
+                                        , E.text "Ne  = návrat k neuloženým změnám."
+                                        ]
+                                    )
+                                    (SetRoutineEditor <| initRoutineEditor newRoutineRoute model.store)
+                                    (SetRoutineEditor model.routineModel)
+                            )
+
+                    else
+                        ( initRoutineEditor newRoutineRoute model.store, Nothing )
+            in
+            { model
+                | pageModel = RoutineEditor
+                , routineModel = newRoutineModel
+                , modal = newModal
+            }
 
         Router.NotFound what ->
-            NotFoundModel what
+            { model | pageModel = NotFoundModel what }
+
+
+initRoutineEditor : Router.RoutineEditorRoute -> Store -> Routine.Model
+initRoutineEditor routineRoute store =
+    case routineRoute of
+        Router.NewRoutine ->
+            Routine.emptyEditor
+
+        Router.CopyRoutine routineId ->
+            Dict.Any.get routineId store.routines
+                |> Maybe.map (\routine -> Routine.initCopyEditor store.exercises routine)
+                |> Maybe.withDefault Routine.emptyEditor
+
+        Router.EditRoutine routineId ->
+            Dict.Any.get routineId store.routines
+                |> Maybe.map (\routine -> Routine.initEditor store.exercises routine)
+                |> Maybe.withDefault Routine.emptyEditor
 
 
 type PageModel
@@ -128,7 +178,8 @@ type PageModel
       -- Routine
     | RoutineList
     | RoutineModel RoutineId LessonPlanner
-    | RoutineEditor Routine.Model
+      -- Routine model is kept in the main model
+    | RoutineEditor
     | NotFoundModel String
 
 
@@ -138,7 +189,7 @@ type Msg
     | GotTime Posix
     | StoreMsg Store.Msg
     | SetRoute Route
-    | ExerciseMsg Exercise.Msg
+    | SetRoutineEditor Routine.Model
       -- Tag
     | TagMsg Tag.Msg
     | CreateTag Tag
@@ -150,6 +201,7 @@ type Msg
     | DeletePosition PositionId
     | UpdatePosition Position
       -- Exercise
+    | ExerciseMsg Exercise.Msg
     | UpdateExercise Exercise
     | CreateExercise Exercise
     | DeleteExercise ExerciseId
@@ -157,37 +209,33 @@ type Msg
       -- Routine
     | RoutineMsg Routine.Msg
     | CreateRoutine Routine
-    | CopyRoutine Routine
     | UpdateRoutine Routine
     | DeleteRoutine RoutineId
     | GotRoutineValidationError Routine.ValidationError
+    | ThrowAwayRoutineEditorChanges
       -- Lesson Planner
     | LessonPlannerMsg LessonPlanner.Msg
-    | GotLessonPlannerValitaionError String
+    | GotLessonPlannerValidationError String
     | CreateLesson Lesson
     | DeleteLesson LessonId
-    | ErrorAcked
-    | ConfirmDeletion String Msg
+    | CloseModal
+    | CloseModalAndPerform Msg
+    | ConfirmAction String Msg
     | NoOp
 
 
 init : () -> Url -> Key -> ( Model, Cmd Msg )
 init _ url key =
-    let
-        route =
-            Router.parseUrl url
-
-        initTime =
-            Time.millisToPosix 0
-    in
-    ( { navKey = key
-      , store = Store.init
-      , route = route
-      , initialUrl = url
-      , pageModel = initPage route Store.init initTime
-      , modal = Nothing
-      , today = initTime
-      }
+    ( initPageModel
+        { navKey = key
+        , store = Store.init
+        , route = Router.parseUrl url
+        , initialUrl = url
+        , pageModel = HomeModel
+        , modal = Nothing
+        , today = Time.millisToPosix 0
+        , routineModel = Routine.emptyEditor
+        }
     , Cmd.batch
         [ Cmd.map StoreMsg <|
             Cmd.batch
@@ -225,36 +273,44 @@ viewModal modal =
     case modal of
         HttpError httpError ->
             Modal.viewError
-                { closeMsg = ErrorAcked
+                { closeMsg = CloseModal
                 , title = "Něco se podělalo ☹"
                 , bodyText = Ht2.errorToString httpError
                 }
 
         ExerciseValidationError validationError ->
             Modal.viewError
-                { closeMsg = ErrorAcked
+                { closeMsg = CloseModal
                 , title = "Toto cvičení není možno uložit"
                 , bodyText = Exercise.validationErrorToString validationError
                 }
 
         RoutineValidationError validationError ->
             Modal.viewError
-                { closeMsg = ErrorAcked
+                { closeMsg = CloseModal
                 , title = "Tuto sestavu není možno uložit"
                 , bodyText = Routine.validationErrorToString validationError
                 }
 
-        ConfirmDeletionModal message onConfirm ->
-            Modal.confirmDeletion
-                { cancelMsg = ErrorAcked
-                , confirmMsg = onConfirm
-                , title = "Opravdu?"
-                , bodyText = message
+        YesCloseModal message onConfirm ->
+            Modal.confirmAction
+                { cancelMsg = CloseModal
+                , confirmMsg = CloseModalAndPerform onConfirm
+                , title = "Upozornění"
+                , body = E.text message
                 }
 
-        LessonPlannerValitaionError validationError ->
+        YesNoModal body onYes onNo ->
+            Modal.confirmAction
+                { cancelMsg = CloseModalAndPerform onNo
+                , confirmMsg = CloseModalAndPerform onYes
+                , title = "Upozornění"
+                , body = body
+                }
+
+        LessonPlannerValidationError validationError ->
             Modal.viewError
-                { closeMsg = ErrorAcked
+                { closeMsg = CloseModal
                 , title = "Tuto lekci není možné uložit"
                 , bodyText = validationError
                 }
@@ -303,7 +359,7 @@ viewBody model =
                 E.map PositionMsg <| Position.view model.store.positions pmodel
 
             RoutineList ->
-                E.map RoutineMsg <| Routine.listView model.store.routines
+                E.map RoutineMsg <| Routine.listView model.store.routines model.routineModel
 
             RoutineModel routineId lessonPlanner ->
                 case Dict.Any.get routineId model.store.routines of
@@ -317,7 +373,7 @@ viewBody model =
                     Nothing ->
                         E.text <| "Sestava s ID " ++ Id.toString routineId ++ " neexistuje"
 
-            RoutineEditor rmodel ->
+            RoutineEditor ->
                 E.map RoutineMsg <|
                     Routine.editor
                         model.store.exercises
@@ -326,7 +382,7 @@ viewBody model =
                         model.store.routines
                         model.store.lessons
                         model.today
-                        rmodel
+                        model.routineModel
 
             NotFoundModel what ->
                 E.text <| "Tady nic není : " ++ what
@@ -347,6 +403,12 @@ update msg model =
             ( { model
                 | store = newStore
                 , modal = Maybe.map HttpError maybeError
+                , routineModel =
+                    if Store.routineSavedSuccess storeMsg then
+                        Routine.emptyEditor
+
+                    else
+                        model.routineModel
               }
             , Store.redirect storeMsg
                 |> Maybe.map goToRoute
@@ -354,14 +416,7 @@ update msg model =
             )
 
         UrlChange url ->
-            let
-                newRoute =
-                    Router.parseUrl url
-            in
-            ( { model
-                | route = newRoute
-                , pageModel = initPage newRoute model.store model.today
-              }
+            ( initPageModel { model | route = Router.parseUrl url }
             , Cmd.none
             )
 
@@ -427,16 +482,10 @@ update msg model =
 
         RoutineMsg routineMsg ->
             let
-                ( newPageModel, routineCmd ) =
-                    case model.pageModel of
-                        RoutineEditor m ->
-                            Tuple.mapFirst RoutineEditor <|
-                                Routine.update routineConfig model.store.exercises routineMsg m
-
-                        other ->
-                            ( other, Cmd.none )
+                ( newRoutineModel, routineCmd ) =
+                    Routine.update routineConfig model.store.exercises routineMsg model.routineModel
             in
-            ( { model | pageModel = newPageModel }
+            ( { model | routineModel = newRoutineModel }
             , routineCmd
             )
 
@@ -485,10 +534,13 @@ update msg model =
             , Cmd.map StoreMsg <| Store.updatePosition position
             )
 
-        ErrorAcked ->
+        CloseModal ->
             ( { model | modal = Nothing }
             , Cmd.none
             )
+
+        CloseModalAndPerform anotherMsg ->
+            update anotherMsg { model | modal = Nothing }
 
         CreateExercise exercise ->
             ( model
@@ -521,11 +573,6 @@ update msg model =
             , Cmd.map StoreMsg <| Store.createRoutine routine
             )
 
-        CopyRoutine routine ->
-            ( { model | pageModel = RoutineEditor <| Routine.initCopyEditor model.store.exercises routine }
-            , Cmd.none
-            )
-
         UpdateRoutine routine ->
             ( model
             , Cmd.batch
@@ -547,8 +594,21 @@ update msg model =
             , Cmd.none
             )
 
-        ConfirmDeletion message onConfirm ->
-            ( { model | modal = Just (ConfirmDeletionModal message onConfirm) }
+        ThrowAwayRoutineEditorChanges ->
+            ( { model
+                | routineModel =
+                    case model.route of
+                        Router.RoutineEditor maybeRoutineId ->
+                            initRoutineEditor maybeRoutineId model.store
+
+                        _ ->
+                            Routine.emptyEditor
+              }
+            , Cmd.none
+            )
+
+        ConfirmAction message onConfirm ->
+            ( { model | modal = Just (YesCloseModal message onConfirm) }
             , Cmd.none
             )
 
@@ -566,8 +626,8 @@ update msg model =
             , Cmd.none
             )
 
-        GotLessonPlannerValitaionError validationError ->
-            ( { model | modal = Just (LessonPlannerValitaionError validationError) }
+        GotLessonPlannerValidationError validationError ->
+            ( { model | modal = Just (LessonPlannerValidationError validationError) }
             , Cmd.none
             )
 
@@ -584,11 +644,16 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
+        SetRoutineEditor routineModel ->
+            ( { model | routineModel = routineModel }
+            , Cmd.none
+            )
+
 
 tagConfig : Tag.Config Msg
 tagConfig =
     { createTag = CreateTag
-    , deleteTag = ConfirmDeletion "Opravdu chceš odstranit tento tag?" << DeleteTag
+    , deleteTag = ConfirmAction "Opravdu chceš odstranit tento tag?" << DeleteTag
     , updateTag = UpdateTag
     , noop = NoOp
     }
@@ -597,7 +662,7 @@ tagConfig =
 positionConfig : Position.Config Msg
 positionConfig =
     { createPosition = CreatePosition
-    , deletePosition = ConfirmDeletion "Opravdu chceš odstranit tuto pozici?" << DeletePosition
+    , deletePosition = ConfirmAction "Opravdu chceš odstranit tuto pozici?" << DeletePosition
     , updatePosition = UpdatePosition
     , noop = NoOp
     }
@@ -607,7 +672,7 @@ exerciseConfig : Exercise.Config Msg
 exerciseConfig =
     { updateExercise = UpdateExercise
     , createExercise = CreateExercise
-    , deleteExercise = ConfirmDeletion "Opravdu chceš odstranit tento cvik?" << DeleteExercise
+    , deleteExercise = ConfirmAction "Opravdu chceš odstranit tento cvik?" << DeleteExercise
     , validationError = GotExerciseValidationError
     }
 
@@ -616,24 +681,24 @@ routineConfig : Routine.Config Msg
 routineConfig =
     { msg = RoutineMsg
     , createRoutine = CreateRoutine
-    , copyRoutine = CopyRoutine
     , updateRoutine = UpdateRoutine
-    , deleteRoutine = ConfirmDeletion "Opravdu chceš odstranit tuto sestavu?" << DeleteRoutine
+    , deleteRoutine = ConfirmAction "Opravdu chceš odstranit tuto sestavu?" << DeleteRoutine
     , validationError = GotRoutineValidationError
     , lessonPlannerMsg = LessonPlannerMsg
+    , throwAwayChanges = ConfirmAction "Opravdu chceš zahodit neuložené změny?" ThrowAwayRoutineEditorChanges
     }
 
 
 lessonPlannerConfig : LessonPlanner.Config Msg
 lessonPlannerConfig =
-    { validationError = GotLessonPlannerValitaionError
+    { validationError = GotLessonPlannerValidationError
     , createLesson = CreateLesson
     }
 
 
 lessonConfig : Lesson.Config Msg
 lessonConfig =
-    { deleteLesson = ConfirmDeletion "Opravdu chceš odstranit tuto lekci?" << DeleteLesson
+    { deleteLesson = ConfirmAction "Opravdu chceš odstranit tuto lekci?" << DeleteLesson
     }
 
 
@@ -647,8 +712,8 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ case model.pageModel of
-            RoutineEditor rmodel ->
-                Sub.map RoutineMsg <| Routine.subscriptions rmodel
+            RoutineEditor ->
+                Sub.map RoutineMsg <| Routine.subscriptions model.routineModel
 
             _ ->
                 Sub.none
@@ -665,21 +730,27 @@ modalEscapeOrEnterSubscriptions : Modal -> Sub Msg
 modalEscapeOrEnterSubscriptions modal =
     case modal of
         HttpError _ ->
-            Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+            Browser.Events.onKeyUp (fireOnEscape CloseModal)
 
         ExerciseValidationError _ ->
-            Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+            Browser.Events.onKeyUp (fireOnEscape CloseModal)
 
         RoutineValidationError _ ->
-            Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+            Browser.Events.onKeyUp (fireOnEscape CloseModal)
 
-        LessonPlannerValitaionError _ ->
-            Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+        LessonPlannerValidationError _ ->
+            Browser.Events.onKeyUp (fireOnEscape CloseModal)
 
-        ConfirmDeletionModal _ onConfirm ->
+        YesCloseModal _ onConfirm ->
             Sub.batch
-                [ Browser.Events.onKeyUp (fireOnEscape ErrorAcked)
+                [ Browser.Events.onKeyUp (fireOnEscape CloseModal)
                 , Browser.Events.onKeyUp (fireOnEnter onConfirm)
+                ]
+
+        YesNoModal _ onYes onNo ->
+            Sub.batch
+                [ Browser.Events.onKeyUp (fireOnEscape onNo)
+                , Browser.Events.onKeyUp (fireOnEnter onYes)
                 ]
 
 

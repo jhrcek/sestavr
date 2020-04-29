@@ -214,8 +214,8 @@ viewTags tags maybeEdited =
                                     ]
                                     (E.text tag.name)
               }
-            , { header = colHeader "Možnosti"
-              , width = E.fill
+            , { header = colHeader " "
+              , width = E.shrink
               , view =
                     \tag ->
                         E.row [ E.spacing 2 ]

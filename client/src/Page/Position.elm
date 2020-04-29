@@ -214,8 +214,8 @@ viewPositions positions maybeEdited =
                                     ]
                                     (E.text position.name)
               }
-            , { header = colHeader "Možnosti"
-              , width = E.fill
+            , { header = colHeader " "
+              , width = E.shrink
               , view =
                     \position ->
                         E.row [ E.spacing 2 ]

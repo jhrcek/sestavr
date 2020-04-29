@@ -18,6 +18,7 @@ module Store exposing
     , getTags
     , init
     , redirect
+    , routineSavedSuccess
     , update
     , updateExercise
     , updatePosition
@@ -179,6 +180,19 @@ redirect msg =
 
         _ ->
             Nothing
+
+
+routineSavedSuccess : Msg -> Bool
+routineSavedSuccess msg =
+    case msg of
+        RoutineCreated (Ok _) ->
+            True
+
+        RoutineUpdated (Ok _) ->
+            True
+
+        _ ->
+            False
 
 
 

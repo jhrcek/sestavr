@@ -54,13 +54,14 @@ import Time.Extra as Time
 
 
 type alias Model =
-    { routineId : Maybe RoutineId
+    { routineRoute : Router.RoutineEditorRoute
     , topic : String
     , routineExercises : List ExerciseInRoutine
     , dnd : DnDList.Model
     , tagFilter : IdSet TagIdTag
     , positionFilter : IdSet PositionIdTag
     , showingPopupFor : Maybe ExerciseId
+    , hasUnsavedChanges : Bool
     }
 
 
@@ -78,11 +79,11 @@ type alias DraggableItemId =
 type alias Config msg =
     { msg : Msg -> msg
     , createRoutine : Routine -> msg
-    , copyRoutine : Routine -> msg
     , updateRoutine : Routine -> msg
     , deleteRoutine : RoutineId -> msg
     , validationError : ValidationError -> msg
     , lessonPlannerMsg : LessonPlanner.Msg -> msg
+    , throwAwayChanges : msg
     }
 
 
@@ -100,13 +101,14 @@ initEditor exercises routine =
                         }
                     )
     in
-    { routineId = Just routine.id
+    { routineRoute = Router.EditRoutine routine.id
     , routineExercises = routineExercises
     , topic = routine.topic
     , dnd = dndSystem.model
     , tagFilter = Id.emptySet
     , positionFilter = Id.emptySet
     , showingPopupFor = Nothing
+    , hasUnsavedChanges = False
     }
 
 
@@ -117,20 +119,21 @@ initCopyEditor exercises routine =
             initEditor exercises routine
     in
     { model
-        | routineId = Nothing
+        | routineRoute = Router.CopyRoutine routine.id
         , topic = model.topic ++ " (kopie)"
     }
 
 
 emptyEditor : Model
 emptyEditor =
-    { routineId = Nothing
+    { routineRoute = Router.NewRoutine
     , routineExercises = []
     , topic = ""
     , dnd = dndSystem.model
     , tagFilter = Id.emptySet
     , positionFilter = Id.emptySet
     , showingPopupFor = Nothing
+    , hasUnsavedChanges = False
     }
 
 
@@ -151,6 +154,7 @@ type Msg
     | SaveRoutine
     | ShowExerciseDetailsPopup ExerciseId
     | HideExerciseDetailsPopup
+    | ThrowAwayChanges
     | DnD DnDList.Msg
 
 
@@ -158,23 +162,25 @@ update : Config msg -> IdDict ExerciseIdTag Exercise -> Msg -> Model -> ( Model,
 update config exercises msg model =
     case msg of
         AddToRoutine exerciseId ->
-            ( { model
-                | routineExercises =
-                    (Dict.Any.get exerciseId exercises
-                        |> Maybe.map addExercise
-                        |> Maybe.withDefault identity
-                    )
-                        model.routineExercises
-              }
+            ( markUnsaved
+                { model
+                    | routineExercises =
+                        (Dict.Any.get exerciseId exercises
+                            |> Maybe.map addExercise
+                            |> Maybe.withDefault identity
+                        )
+                            model.routineExercises
+                }
             , Cmd.none
             )
 
         RemoveFromRoutine exerciseInRoutine ->
-            ( { model
-                | routineExercises =
-                    List.filter (\eir -> eir /= exerciseInRoutine)
-                        model.routineExercises
-              }
+            ( markUnsaved
+                { model
+                    | routineExercises =
+                        List.filter (\eir -> eir /= exerciseInRoutine)
+                            model.routineExercises
+                }
             , Cmd.none
             )
 
@@ -189,18 +195,19 @@ update config exercises msg model =
             )
 
         ChangeDuration draggableItemId durationString ->
-            ( { model
-                | routineExercises =
-                    case parseDuration durationString of
-                        Nothing ->
-                            model.routineExercises
-
-                        Just newDuration ->
-                            List.updateIf
-                                (\exerciseInRoutine -> exerciseInRoutine.draggableItemId == draggableItemId)
-                                (\exerciseIntRoutine -> { exerciseIntRoutine | duration = newDuration })
+            ( markUnsaved
+                { model
+                    | routineExercises =
+                        case parseDuration durationString of
+                            Nothing ->
                                 model.routineExercises
-              }
+
+                            Just newDuration ->
+                                List.updateIf
+                                    (\exerciseInRoutine -> exerciseInRoutine.draggableItemId == draggableItemId)
+                                    (\exerciseIntRoutine -> { exerciseIntRoutine | duration = newDuration })
+                                    model.routineExercises
+                }
             , Cmd.none
             )
 
@@ -219,10 +226,11 @@ update config exercises msg model =
                 ( dnd, routineExercises ) =
                     dndSystem.update dndMsg model.dnd model.routineExercises
             in
-            ( { model
-                | dnd = dnd
-                , routineExercises = routineExercises
-              }
+            ( markUnsaved
+                { model
+                    | dnd = dnd
+                    , routineExercises = routineExercises
+                }
             , Cmd.map config.msg <| dndSystem.commands model.dnd
             )
 
@@ -241,7 +249,7 @@ update config exercises msg model =
             )
 
         ChangeTopic newTopic ->
-            ( { model | topic = newTopic }
+            ( markUnsaved { model | topic = newTopic }
             , Cmd.none
             )
 
@@ -254,6 +262,16 @@ update config exercises msg model =
             ( { model | showingPopupFor = Nothing }
             , Cmd.none
             )
+
+        ThrowAwayChanges ->
+            ( model
+            , Command.perform config.throwAwayChanges
+            )
+
+
+markUnsaved : Model -> Model
+markUnsaved model =
+    { model | hasUnsavedChanges = True }
 
 
 {-| This is to allow numbers only input the value of which can be deleted (corresponding to 0)
@@ -310,18 +328,33 @@ view config exercises lessons routine lessonPlanner =
     E.column []
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 routine.topic
-        , E.text <|
-            String.fromInt (List.length routine.exercises)
-                ++ " cviky, celková délka "
-                ++ String.fromInt (routineDurationMinutes routine)
-                ++ " minut."
-        , E.column [ E.paddingXY 0 5 ] <|
-            List.indexedMap (\idx exercise -> E.text <| String.fromInt (idx + 1) ++ ". " ++ exercise.name) <|
-                List.filterMap (\re -> Dict.Any.get re.exerciseId exercises) routine.exercises
+        , E.column
+            [ E.spacing 5 ]
+            [ E.text <| "Počet cviků: " ++ String.fromInt (List.length routine.exercises)
+            , E.text <| "Celková délka: " ++ String.fromInt (routineDurationMinutes routine) ++ " minut."
+            , E.column [ E.paddingXY 0 5 ] <|
+                List.indexedMap
+                    (\idx ( duration, exercise ) ->
+                        E.text <|
+                            String.fromInt (idx + 1)
+                                ++ ". "
+                                ++ exercise.name
+                                ++ ", "
+                                ++ String.fromInt duration
+                                ++ " min"
+                    )
+                <|
+                    List.filterMap
+                        (\re ->
+                            Maybe.map (Tuple.pair re.duration) <|
+                                Dict.Any.get re.exerciseId exercises
+                        )
+                        routine.exercises
+            ]
         , E.row [ E.spacing 5, E.paddingXY 0 5 ]
             [ editRoutineButton routine
-            , Input.button Common.buttonAttrs
-                { onPress = Just (config.copyRoutine routine)
+            , E.link Common.buttonAttrs
+                { url = Router.href <| Router.RoutineEditor <| Router.CopyRoutine routine.id
                 , label = E.text "Kopírovat"
                 }
             , Input.button Common.buttonAttrs
@@ -349,12 +382,20 @@ lessonsUsingRoutine lessons routine =
         |> Dict.Any.values
 
 
-listView : IdDict RoutineIdTag Routine -> Element Msg
-listView routines =
+listView : IdDict RoutineIdTag Routine -> Model -> Element Msg
+listView routines model =
+    let
+        createOrGoBackToEditedRoutine =
+            if model.hasUnsavedChanges then
+                returnToEditedRoutine model.routineRoute
+
+            else
+                createRoutineButton
+    in
     Dict.Any.values routines
         |> List.sortBy .topic
         |> List.map routineLink
-        |> (\routineLinks -> createRoutineButton :: routineLinks)
+        |> (\routineLinks -> createOrGoBackToEditedRoutine :: routineLinks)
         |> (::) (Common.heading1 "Sestavy")
         |> E.column []
 
@@ -370,7 +411,7 @@ routineLink routine =
 editRoutineButton : Routine -> Element msg
 editRoutineButton routine =
     E.link Common.buttonAttrs
-        { url = Router.href <| Router.RoutineEditor <| Just routine.id
+        { url = Router.href <| Router.RoutineEditor <| Router.EditRoutine routine.id
         , label = E.text "Upravit"
         }
 
@@ -379,17 +420,27 @@ createRoutineButton : Element msg
 createRoutineButton =
     E.el [ E.paddingXY 0 5 ]
         (E.link Common.buttonAttrs
-            { url = Router.href (Router.RoutineEditor Nothing)
+            { url = Router.href (Router.RoutineEditor Router.NewRoutine)
             , label = E.text "Vytvořit sestavu"
             }
         )
 
 
-cancelEditButton : Element msg
-cancelEditButton =
-    E.link Common.buttonAttrs
+returnToEditedRoutine : Router.RoutineEditorRoute -> Element msg
+returnToEditedRoutine routineRoute =
+    E.el [ E.paddingXY 0 5 ]
+        (E.link Common.buttonAttrs
+            { url = Router.href (Router.RoutineEditor routineRoute)
+            , label = E.text "Vrátit se k neuložené sestavě"
+            }
+        )
+
+
+backToRoutineListLink : Element msg
+backToRoutineListLink =
+    E.link Common.linkAttrs
         { url = Router.href Router.Routines
-        , label = E.text "Zrušit"
+        , label = E.text "«  Zpět na seznam sestav"
         }
 
 
@@ -398,6 +449,14 @@ saveButton =
     Input.button Common.buttonAttrs
         { onPress = Just SaveRoutine
         , label = E.text "Uložit"
+        }
+
+
+throwAwayEditsButton : Element Msg
+throwAwayEditsButton =
+    Input.button Common.buttonAttrs
+        { onPress = Just ThrowAwayChanges
+        , label = E.text "Zahodit změny"
         }
 
 
@@ -417,13 +476,16 @@ editor exercises tags positions routines lessons today model =
 
         colAttrs maxWidth =
             [ E.alignTop
-            , E.width <| E.maximum maxWidth E.fill
+            , E.width <| E.maximum maxWidth <| E.minimum exerciseColumnMinWidth E.fill
             , E.height E.fill
             , Border.solid
             , Border.width 1
             ]
 
-        exerciseColumnWidth =
+        exerciseColumnMaxWidth =
+            600
+
+        exerciseColumnMinWidth =
             500
 
         filteredExercises =
@@ -443,125 +505,141 @@ editor exercises tags positions routines lessons today model =
                         List.filter (\exercise -> Set.Any.member exercise.positionId model.positionFilter)
                    )
     in
-    E.row
-        [ Border.solid
-        , Border.width 1
-        , E.width <| E.maximum (200 + 2 * exerciseColumnWidth) E.fill
-        ]
-        [ E.column (E.paddingXY 5 0 :: colAttrs 230)
-            [ E.column [ E.alignTop ]
-                [ Exercise.tagCheckboxes ToggleTagId 1000 tags model.tagFilter
-                , if Set.Any.isEmpty model.tagFilter then
-                    E.none
-
-                  else
-                    Input.button Common.buttonAttrs
-                        { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
-                , positionCheckboxes positions model.positionFilter
-                , if Set.Any.isEmpty model.positionFilter then
-                    E.none
-
-                  else
-                    Input.button Common.buttonAttrs
-                        { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
-                , let
-                    filteredCount =
-                        List.length filteredExercises
-
-                    totalCount =
-                        Dict.Any.size exercises
-                  in
-                  if totalCount > filteredCount then
-                    E.paragraph []
-                        [ E.text <|
-                            String.fromInt filteredCount
-                                ++ " / "
-                                ++ String.fromInt totalCount
-                                ++ " cviků odpovídá kriteriím"
-                        ]
-
-                  else
-                    E.none
-                ]
+    E.column []
+        [ backToRoutineListLink
+        , E.row
+            [ Border.solid
+            , Border.width 1
+            , E.width E.fill
             ]
-        , E.column (E.spacing 5 :: colAttrs exerciseColumnWidth)
-            (E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
-                :: List.map
-                    (\exercise ->
-                        E.row [ E.paddingXY 5 0, E.spacing 5, E.width E.fill ]
-                            [ E.el [ E.padding 5 ]
-                                (E.text <| elipsis 35 exercise.name)
-                            , E.el
-                                [ Border.solid
-                                , Border.width 1
-                                , Border.color Color.darkGrey
-                                , E.padding 5
-                                , E.alignRight
-                                , Font.color Color.darkGrey
-                                , Event.onMouseEnter (ShowExerciseDetailsPopup exercise.id)
-                                , Event.onMouseLeave HideExerciseDetailsPopup
-                                , E.below <|
-                                    case model.showingPopupFor of
-                                        Just exIdWithPopup ->
-                                            if exercise.id == exIdWithPopup then
-                                                exerciseUsagePopup exercise pastExerciseUsages
+            [ E.column
+                [ E.paddingXY 5 0
+                , E.alignTop
+                , E.width (E.px 300)
+                , E.height E.fill
+                , Border.solid
+                , Border.width 1
+                ]
+                [ E.column [ E.alignTop ]
+                    [ Exercise.tagCheckboxes ToggleTagId 1000 tags model.tagFilter
+                    , if Set.Any.isEmpty model.tagFilter then
+                        E.none
 
-                                            else
-                                                E.none
+                      else
+                        Input.button Common.buttonAttrs
+                            { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
+                    , positionCheckboxes positions model.positionFilter
+                    , if Set.Any.isEmpty model.positionFilter then
+                        E.none
 
-                                        Nothing ->
-                                            E.none
-                                ]
-                                (E.text <|
-                                    case Dict.Any.get exercise.id pastExerciseUsages of
-                                        Just usages ->
-                                            let
-                                                mostRecentPastUsage =
-                                                    List.maximumBy (.lesson >> .datetime >> Time.posixToMillis) usages
-                                            in
-                                            case mostRecentPastUsage of
-                                                Just lastUsage ->
-                                                    Time.formatDate lastUsage.lesson.datetime
+                      else
+                        Input.button Common.buttonAttrs
+                            { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
+                    , let
+                        filteredCount =
+                            List.length filteredExercises
 
-                                                Nothing ->
-                                                    "Nikdy"
-
-                                        Nothing ->
-                                            "Nikdy"
-                                )
-                            , Input.button (E.alignRight :: Common.buttonAttrs)
-                                { onPress = Just (AddToRoutine exercise.id)
-                                , label = E.text "»"
-                                }
+                        totalCount =
+                            Dict.Any.size exercises
+                      in
+                      if totalCount > filteredCount then
+                        E.paragraph []
+                            [ E.text <|
+                                String.fromInt filteredCount
+                                    ++ " / "
+                                    ++ String.fromInt totalCount
+                                    ++ " cviků odpovídá kriteriím"
                             ]
-                    )
-                    filteredExercises
-            )
-        , E.column
-            (E.inFront (ghostView model.dnd model.routineExercises) :: E.spacing 5 :: colAttrs exerciseColumnWidth)
-            (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
-                :: Input.text
-                    [ E.width (E.px 250)
-                    , E.height (E.px 30)
-                    , E.padding 4
+
+                      else
+                        E.none
                     ]
-                    { onChange = ChangeTopic
-                    , text = model.topic
-                    , placeholder = Nothing
-                    , label = Input.labelLeft [ E.padding 5 ] (E.text "Téma")
-                    }
-                :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
-                ++ [ E.el [ E.padding 5 ] <|
-                        E.text <|
-                            "Celková délka "
-                                ++ String.fromInt (exercisesDurationMinutes model.routineExercises)
-                                ++ " min"
-                   , E.row [ E.padding 5, E.spacing 5 ]
-                        [ cancelEditButton
-                        , saveButton
+                ]
+            , E.column (E.spacing 5 :: colAttrs exerciseColumnMaxWidth)
+                (E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
+                    :: List.map
+                        (\exercise ->
+                            E.row [ E.paddingXY 5 0, E.spacing 5, E.width E.fill ]
+                                [ E.el [ E.padding 5 ]
+                                    (E.text <| elipsis 35 exercise.name)
+                                , E.el
+                                    [ Border.solid
+                                    , Border.width 1
+                                    , Border.color Color.darkGrey
+                                    , E.padding 5
+                                    , E.alignRight
+                                    , Font.color Color.darkGrey
+                                    , Event.onMouseEnter (ShowExerciseDetailsPopup exercise.id)
+                                    , Event.onMouseLeave HideExerciseDetailsPopup
+                                    , E.below <|
+                                        case model.showingPopupFor of
+                                            Just exIdWithPopup ->
+                                                if exercise.id == exIdWithPopup then
+                                                    exerciseUsagePopup exercise pastExerciseUsages
+
+                                                else
+                                                    E.none
+
+                                            Nothing ->
+                                                E.none
+                                    ]
+                                    (E.text <|
+                                        case Dict.Any.get exercise.id pastExerciseUsages of
+                                            Just usages ->
+                                                let
+                                                    mostRecentPastUsage =
+                                                        List.maximumBy (.lesson >> .datetime >> Time.posixToMillis) usages
+                                                in
+                                                case mostRecentPastUsage of
+                                                    Just lastUsage ->
+                                                        Time.formatDate lastUsage.lesson.datetime
+
+                                                    Nothing ->
+                                                        "Nikdy"
+
+                                            Nothing ->
+                                                "Nikdy"
+                                    )
+                                , Input.button (E.alignRight :: Common.buttonAttrs)
+                                    { onPress = Just (AddToRoutine exercise.id)
+                                    , label = E.text "»"
+                                    }
+                                ]
+                        )
+                        filteredExercises
+                )
+            , E.column
+                (E.inFront (ghostView model.dnd model.routineExercises) :: E.spacing 5 :: colAttrs exerciseColumnMaxWidth)
+                (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
+                    :: Input.text
+                        [ E.width (E.px 250)
+                        , E.height (E.px 30)
+                        , E.padding 4
                         ]
-                   ]
-            )
+                        { onChange = ChangeTopic
+                        , text = model.topic
+                        , placeholder = Nothing
+                        , label = Input.labelLeft [ E.padding 5 ] (E.text "Téma")
+                        }
+                    :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
+                    ++ [ E.el [ E.padding 5 ] <|
+                            E.text <|
+                                "Celková délka "
+                                    ++ String.fromInt (exercisesDurationMinutes model.routineExercises)
+                                    ++ " min"
+                       , E.row [ E.padding 5, E.spacing 5 ]
+                            [ saveButton ]
+                       , if model.hasUnsavedChanges then
+                            E.column [ E.padding 5, E.spacing 5 ]
+                                [ E.text "Editor obsahuje neuložené změny"
+                                , throwAwayEditsButton
+                                ]
+
+                         else
+                            E.none
+                       ]
+                )
+            ]
         ]
 
 
@@ -795,11 +873,14 @@ updateOrCreate config model =
                     nonemptyListOfExercises ->
                         let
                             ( request, id ) =
-                                case model.routineId of
-                                    Nothing ->
+                                case model.routineRoute of
+                                    Router.NewRoutine ->
                                         ( config.createRoutine, Id.fromInt -1 )
 
-                                    Just routineId ->
+                                    Router.CopyRoutine _ ->
+                                        ( config.createRoutine, Id.fromInt -1 )
+
+                                    Router.EditRoutine routineId ->
                                         ( config.updateRoutine, routineId )
                         in
                         Ok <|

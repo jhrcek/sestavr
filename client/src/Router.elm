@@ -1,5 +1,6 @@
 module Router exposing
     ( Route(..)
+    , RoutineEditorRoute(..)
     , href
     , parseUrl
     , toHash
@@ -20,9 +21,15 @@ type Route
     | ExerciseEditor (Maybe ExerciseId)
     | Routines
     | Routine RoutineId
-    | RoutineEditor (Maybe RoutineId)
+    | RoutineEditor RoutineEditorRoute
     | Lessons
     | NotFound String
+
+
+type RoutineEditorRoute
+    = NewRoutine
+    | CopyRoutine RoutineId
+    | EditRoutine RoutineId
 
 
 route : Parser (Route -> a) a
@@ -42,8 +49,9 @@ route =
         -- Routines
         , P.map Routines (s "routine")
         , P.map (Routine << Id.fromInt) (s "routine" </> int)
-        , P.map (RoutineEditor Nothing) (s "routine" </> s "create")
-        , P.map (RoutineEditor << Just << Id.fromInt) (s "routine" </> int </> s "edit")
+        , P.map (RoutineEditor NewRoutine) (s "routine" </> s "create")
+        , P.map (RoutineEditor << EditRoutine << Id.fromInt) (s "routine" </> int </> s "edit")
+        , P.map (RoutineEditor << CopyRoutine << Id.fromInt) (s "routine" </> int </> s "copy")
         ]
 
 
@@ -92,13 +100,16 @@ toHash r =
         Routine routineId ->
             "/routine/" ++ Id.toString routineId
 
-        RoutineEditor maybeRoutineId ->
-            case maybeRoutineId of
-                Nothing ->
+        RoutineEditor routineEditorRoute ->
+            case routineEditorRoute of
+                NewRoutine ->
                     "/routine/create"
 
-                Just routineId ->
+                EditRoutine routineId ->
                     "/routine/" ++ Id.toString routineId ++ "/edit"
+
+                CopyRoutine routineId ->
+                    "/routine/" ++ Id.toString routineId ++ "/copy"
 
         NotFound bad ->
             bad
