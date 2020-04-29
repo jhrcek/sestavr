@@ -102,7 +102,12 @@ run config = do
       dbFile = configDbFile config
       imagesDir = configImagesDir config
   app <- mkApp dbFile imagesDir
-  putStrLn $ "Running on http://localhost:" ++ show port
+  putStrLn $
+    unlines
+      [ "Sestavr spušťen.",
+        "Otevři http://localhost:" ++ show port ++ " ve webovém prohlížeči.",
+        "Pro ukončení stiskni CTRL+C."
+      ]
   Warp.run port app
 
 mkApp :: FilePath -> FilePath -> IO Application
