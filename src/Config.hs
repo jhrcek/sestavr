@@ -10,13 +10,12 @@ import Options.Applicative
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Exit (die)
 
-data Config
-  = Config
-      { configPort :: Int,
-        configDbFile :: FilePath,
-        configImagesDir :: FilePath,
-        configCreateDemoData :: Bool
-      }
+data Config = Config
+  { configPort :: Int,
+    configDbFile :: FilePath,
+    configImagesDir :: FilePath,
+    configCreateDemoData :: Bool
+  }
 
 configParser :: Parser Config
 configParser =

@@ -15,3 +15,5 @@ clean:
 	rm client/$(script)
 	rm client/elm-stuff -rf
 	stack clean
+format:
+	git ls-files '*.hs' | xargs ormolu --mode inplace
