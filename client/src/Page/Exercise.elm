@@ -30,6 +30,7 @@ import Domain
         , TagIdTag
         )
 import Element as E exposing (Element)
+import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
@@ -45,6 +46,7 @@ type alias Model =
     { exerciseId : Maybe ExerciseId
     , name : String
     , sanskritName : String
+    , image : String
     , description : String
     , positionId : Maybe PositionId
     , tags : IdSet TagIdTag
@@ -54,6 +56,7 @@ type alias Model =
 type Msg
     = SetName String
     | SetSanskritName String
+    | SetImage String
     | SetDescription String
     | ToggleTagId TagId
     | PositionSelected PositionId
@@ -111,12 +114,8 @@ updateOrCreate config model =
                             request
                                 { id = id
                                 , name = validName
-                                , sanskritName =
-                                    if String.isEmpty model.sanskritName then
-                                        Nothing
-
-                                    else
-                                        Just model.sanskritName
+                                , sanskritName = emptyToNothing model.sanskritName
+                                , image = emptyToNothing model.image
                                 , description = model.description
                                 , positionId = positionId
                                 , tagIds = Set.Any.toList model.tags
@@ -124,11 +123,21 @@ updateOrCreate config model =
             )
 
 
+emptyToNothing : String -> Maybe String
+emptyToNothing s =
+    if String.isEmpty s then
+        Nothing
+
+    else
+        Just s
+
+
 initEditor : Exercise -> Model
 initEditor exercise =
     { exerciseId = Just exercise.id
     , name = exercise.name
     , sanskritName = Maybe.withDefault "" exercise.sanskritName
+    , image = Maybe.withDefault "" exercise.image
     , description = exercise.description
     , positionId = Just exercise.positionId
     , tags = Id.buildSet exercise.tagIds
@@ -140,7 +149,8 @@ emptyEditor =
     { exerciseId = Nothing
     , name = ""
     , sanskritName = ""
-    , description = "<div class=\"image\">![asana](asana)</div>"
+    , image = ""
+    , description = ""
     , positionId = Nothing
     , tags = Id.emptySet
     }
@@ -156,6 +166,11 @@ update config msg model =
 
         SetSanskritName newSanskritName ->
             ( { model | sanskritName = newSanskritName }
+            , Cmd.none
+            )
+
+        SetImage newImage ->
+            ( { model | image = newImage }
             , Cmd.none
             )
 
@@ -215,6 +230,12 @@ viewEditor positions tags model =
             , placeholder = placeholder "Sanskrt název"
             , label = Input.labelHidden "Sanskrt název"
             }
+        , Input.text [ fieldWidth ]
+            { onChange = SetImage
+            , text = model.image
+            , placeholder = placeholder "Obrázek asana.png"
+            , label = Input.labelHidden "Obrázek"
+            }
         , Input.multiline
             [ fieldWidth
             , E.height
@@ -255,7 +276,7 @@ viewEditor positions tags model =
 positionRadios : IdDict PositionIdTag Position -> Maybe PositionId -> Element Msg
 positionRadios positions maybeCurrentPosition =
     E.el
-        [ {- Workarkound - putting alignTop in radio's attributes doesn't align it -} E.alignTop ]
+        [ {- Workaround - putting alignTop in radio's attributes doesn't align it -} E.alignTop ]
         (Input.radio []
             { onChange = PositionSelected
             , selected = maybeCurrentPosition
@@ -366,6 +387,16 @@ view config positions tags exercise =
         [ E.html imageSizeStyle
         , E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 exercise.name
+        , E.row [ E.spacing 5 ]
+            [ E.link Common.buttonAttrs
+                { url = Router.href <| Router.ExerciseEditor <| Just exercise.id
+                , label = E.text "Upravit"
+                }
+            , Input.button Common.buttonAttrs
+                { onPress = Just (config.deleteExercise exercise.id)
+                , label = E.text "Odstranit"
+                }
+            ]
         , E.el [ Font.size 20, Font.bold, Font.italic ]
             (E.text <| "Sanskrt: " ++ Maybe.withDefault "N/A" exercise.sanskritName)
         , E.row []
@@ -385,16 +416,21 @@ view config positions tags exercise =
                                 List.filterMap (\tagId -> Dict.Any.get tagId tags) exercise.tagIds
                         )
             ]
-        , E.row [ E.spacing 5 ]
-            [ E.link Common.buttonAttrs
-                { url = Router.href <| Router.ExerciseEditor <| Just exercise.id
-                , label = E.text "Upravit"
-                }
-            , Input.button Common.buttonAttrs
-                { onPress = Just (config.deleteExercise exercise.id)
-                , label = E.text "Odstranit"
-                }
-            ]
+        , case exercise.image of
+            Just imageFile ->
+                E.image [ E.height <| E.maximum 350 E.shrink ]
+                    { src = imageFile, description = imageFile }
+
+            Nothing ->
+                E.el
+                    [ E.width (E.px 150)
+                    , E.height (E.px 150)
+                    , Background.color Color.lightGrey
+                    , Font.color Color.white
+                    ]
+                    (E.el [ E.centerX, E.centerY ]
+                        (E.text "- bez obrázku -")
+                    )
         , E.paragraph [] [ markdown exercise.description ]
         ]
 

@@ -111,6 +111,7 @@ type alias Exercise =
     { id : ExerciseId
     , name : String
     , sanskritName : Maybe String
+    , image : Maybe String
     , description : String
     , positionId : PositionId
     , tagIds : List TagId
@@ -119,10 +120,11 @@ type alias Exercise =
 
 exerciseDecoder : Decoder Exercise
 exerciseDecoder =
-    Decode.map6 Exercise
+    Decode.map7 Exercise
         (Decode.field "exerciseId" Id.decode)
         (Decode.field "name" Decode.string)
         (Decode.field "sanskritName" <| Decode.nullable Decode.string)
+        (Decode.field "image" <| Decode.nullable Decode.string)
         (Decode.field "description" Decode.string)
         (Decode.field "positionId" Id.decode)
         (Decode.field "tagIds" <| Decode.list Id.decode)
@@ -134,6 +136,7 @@ encodeExercise exercise =
         [ ( "exerciseId", Id.encode exercise.id )
         , ( "name", Encode.string exercise.name )
         , ( "sanskritName", Maybe.withDefault Encode.null <| Maybe.map Encode.string exercise.sanskritName )
+        , ( "image", Maybe.withDefault Encode.null <| Maybe.map Encode.string exercise.image )
         , ( "description", Encode.string exercise.description )
         , ( "positionId", Id.encode exercise.positionId )
         , ( "tagIds", Encode.list Id.encode exercise.tagIds )
