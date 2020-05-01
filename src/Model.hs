@@ -38,18 +38,20 @@ module Model
     TagId,
     ExerciseWithTags,
     createDemoData,
+    eirDuration,
+    eirExerciseId,
+    exerciseDescription,
+    exerciseId,
+    exerciseImage,
+    fromExercise,
+    fromRoutine,
+    getDurationMinutes,
     migrateAll,
     routineId,
-    eirDuration,
-    fromExercise,
-    toExercise,
+    rweExercises,
     tagIds,
-    fromRoutine,
-    exerciseId,
+    toExercise,
     toRoutine,
-    exercises,
-    getDurationMinutes,
-    eirExerciseId,
   )
 where
 
@@ -142,7 +144,7 @@ toExercise ewt =
 data RoutineWithExercises = RoutineWithExercises
   { routineId :: RoutineId,
     topic :: Text,
-    exercises :: [ExerciseInRoutine]
+    rweExercises :: [ExerciseInRoutine]
   }
   deriving (Generic)
 
@@ -170,7 +172,7 @@ fromRoutine entity res =
    in RoutineWithExercises
         { routineId = routineId,
           topic = routineTopic routine,
-          exercises =
+          rweExercises =
             ( \re ->
                 ExerciseInRoutine
                   (routineExerciseExerciseId re)

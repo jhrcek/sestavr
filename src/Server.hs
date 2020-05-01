@@ -15,12 +15,18 @@ where
 import Api (SestavrAPI, sestavrApi)
 import Config (Config (..))
 import Control.Exception.Safe (catch, throwM)
+import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.FileEmbed (embedFile)
+import Data.Foldable (for_)
+import qualified Data.List as List
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import Data.Set (Set)
+import Data.Text (Text)
 import qualified Data.Text as Text
 import Database.Persist ((==.))
 import Database.Persist.Class
@@ -33,7 +39,7 @@ import Database.Persist.Class
     replace,
     selectList,
   )
-import Database.Persist.Sql (SqlPersistM)
+import Database.Persist.Sql (SqlPersistM, fromSqlKey)
 import Database.Persist.Sqlite
   ( ConnectionPool,
     createSqlitePool,
@@ -68,16 +74,18 @@ import Model
     TagId,
     eirDuration,
     eirExerciseId,
+    exerciseDescription,
     exerciseId,
+    exerciseImage,
     exerciseTagExerciseId,
     exerciseTagTagId,
-    exercises,
     fromExercise,
     fromRoutine,
     getDurationMinutes,
     migrateAll,
     routineExerciseRoutineId,
     routineId,
+    rweExercises,
     tagIds,
     toExercise,
     toRoutine,
@@ -95,13 +103,22 @@ import Servant
     throwError,
   )
 import Servant.Server.StaticFiles (serveDirectoryWebApp)
+import System.Directory (listDirectory)
 
 run :: Config -> IO ()
 run config = do
   let port = configPort config
       dbFile = configDbFile config
       imagesDir = configImagesDir config
-  app <- mkApp dbFile imagesDir
+      poolSize = configConnectionPoolSize config
+
+  pool <- runStderrLoggingT $ createSqlitePool (Text.pack dbFile) poolSize
+  runSqlPool (runMigration migrateAll) pool
+
+  verifyImages pool imagesDir
+
+  let app = serveApp pool imagesDir
+
   putStrLn $
     unlines
       [ "Sestavr spušťen.",
@@ -109,12 +126,6 @@ run config = do
         "Pro ukončení stiskni CTRL+C."
       ]
   Warp.run port app
-
-mkApp :: FilePath -> FilePath -> IO Application
-mkApp sqliteFile imagesDir = do
-  pool <- runStderrLoggingT $ createSqlitePool (Text.pack sqliteFile) 3
-  runSqlPool (runMigration migrateAll) pool
-  pure $ serveApp pool imagesDir
 
 serveApp :: ConnectionPool -> FilePath -> Application
 serveApp pool imagesDir = serve sestavrApi $ apiServer pool imagesDir
@@ -288,7 +299,7 @@ apiServer pool imagesDir =
     createRoutine :: RoutineWithExercises -> Handler RoutineWithExercises
     createRoutine rwe = do
       let routine = toRoutine rwe
-          exs = exercises rwe
+          exs = rweExercises rwe
       runPool $ do
         rid <- insert routine
         insertMany_ $
@@ -309,7 +320,7 @@ apiServer pool imagesDir =
     updateRoutine rid rwe =
       do
         let routine = toRoutine rwe
-            exs = exercises rwe
+            exs = rweExercises rwe
         runPool $ do
           replace rid routine
           deleteWhere [RoutineExerciseRoutineId ==. rid]
@@ -359,3 +370,50 @@ indexHtml = $(embedFile "client/dist/index.html")
 
 elmApp :: ByteString
 elmApp = $(embedFile "client/dist/main.js")
+
+{- Print out warnings about
+- images being referenced in Exercises but without corresponding file in the images directory
+- image files in images directory, which are not linked from any exercise
+-}
+verifyImages :: ConnectionPool -> FilePath -> IO ()
+verifyImages pool imagesDir = do
+  imageFiles <- Set.fromList <$> listDirectory imagesDir
+  exercises <- runSqlPersistMPool (selectList [] [] :: SqlPersistM [Entity Exercise]) pool
+  let allImageReferences =
+        fmap
+          ( \exerciseEntity ->
+              let exercise = entityVal exerciseEntity
+               in (entityKey exerciseEntity, extractImageLinks exercise)
+          )
+          exercises
+      missingFiles =
+        fmap
+          ( \(key, refs) -> (key, refs `Set.difference` imageFiles)
+          )
+          allImageReferences
+      unusedImages = imageFiles `Set.difference` foldMap snd allImageReferences
+  for_ missingFiles $ \(exKey, missing) ->
+    unless (Set.null missing)
+      $ putStrLn
+      $ "Exercise " ++ show (fromSqlKey exKey) ++ " refers to nonexistent images: " ++ show missing
+  for_ unusedImages $ \img ->
+    putStrLn $ "Image " ++ img ++ " is not used in any exercise"
+
+extractImageLinks :: Exercise -> Set FilePath
+extractImageLinks exercise =
+  ( case exerciseImage exercise of
+      Just imgRef -> Set.insert (Text.unpack imgRef)
+      Nothing -> id
+  )
+    $ exerciseDescriptionLinks (exerciseDescription exercise)
+  where
+    exerciseDescriptionLinks :: Text -> Set FilePath
+    exerciseDescriptionLinks description =
+      Set.fromList
+        . List.map
+          ( Text.unpack . Text.takeWhile (/= ')')
+              . Text.drop 1
+              . Text.dropWhile (/= '(')
+          )
+        . List.tail
+        $ Text.splitOn "![" description

@@ -173,7 +173,7 @@ routineDecoder =
     Decode.map3 Routine
         (Decode.field "routineId" Id.decode)
         (Decode.field "topic" Decode.string)
-        (Decode.field "exercises" (Decode.list routineExerciseDecoder))
+        (Decode.field "rweExercises" (Decode.list routineExerciseDecoder))
 
 
 routineExerciseDecoder : Decoder RoutineExercise
@@ -188,7 +188,7 @@ encodeRoutine routine =
     Encode.object
         [ ( "routineId", Id.encode routine.id )
         , ( "topic", Encode.string routine.topic )
-        , ( "exercises", Encode.list encodeRoutineExercise routine.exercises )
+        , ( "rweExercises", Encode.list encodeRoutineExercise routine.exercises )
         ]
 
 

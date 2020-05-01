@@ -14,7 +14,8 @@ data Config = Config
   { configPort :: Int,
     configDbFile :: FilePath,
     configImagesDir :: FilePath,
-    configCreateDemoData :: Bool
+    configCreateDemoData :: Bool,
+    configConnectionPoolSize :: Int
   }
 
 configParser :: Parser Config
@@ -41,6 +42,14 @@ configParser =
     <*> switch
       ( long "create-demo-data"
           <> help "Whether to initialize the database with demo data"
+      )
+    <*> option
+      auto
+      ( long "pool-size"
+          <> metavar "INT"
+          <> help "Number of connections in the database connection pool"
+          <> value 2
+          <> showDefault
       )
 
 parseArgs :: IO Config
