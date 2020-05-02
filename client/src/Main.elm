@@ -334,6 +334,7 @@ viewBody model =
                     Just exercise ->
                         Exercise.view exerciseConfig
                             model.store.positions
+                            model.store.exercises
                             model.store.tags
                             exercise
 

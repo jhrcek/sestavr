@@ -376,13 +376,44 @@ createExerciseButton =
         )
 
 
+prevAlphabeticExercise :
+    IdDict ExerciseIdTag Exercise
+    -> Exercise
+    -> Maybe Exercise
+prevAlphabeticExercise es e =
+    let
+        nameSortedExercises =
+            Dict.Any.values es
+                |> List.sortBy .name
+    in
+    nameSortedExercises
+        |> List.findIndex (\e_ -> e_.id == e.id)
+        |> Maybe.andThen (\thisIdx -> List.getAt (thisIdx - 1) nameSortedExercises)
+
+
+nextAlphabeticExercise :
+    IdDict ExerciseIdTag Exercise
+    -> Exercise
+    -> Maybe Exercise
+nextAlphabeticExercise es e =
+    let
+        nameSortedExercises =
+            Dict.Any.values es
+                |> List.sortBy .name
+    in
+    nameSortedExercises
+        |> List.findIndex (\e_ -> e_.id == e.id)
+        |> Maybe.andThen (\thisIdx -> List.getAt (thisIdx + 1) nameSortedExercises)
+
+
 view :
     Config msg
     -> IdDict PositionIdTag Position
+    -> IdDict ExerciseIdTag Exercise
     -> IdDict TagIdTag Tag
     -> Exercise
     -> Element msg
-view config positions tags exercise =
+view config positions exercises tags exercise =
     E.column [ E.width E.fill, E.spacing 10 ]
         [ E.html imageSizeStyle
         , E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
@@ -396,6 +427,26 @@ view config positions tags exercise =
                 { onPress = Just (config.deleteExercise exercise.id)
                 , label = E.text "Odstranit"
                 }
+            ]
+        , E.row [ E.spacing 5 ]
+            [ case prevAlphabeticExercise exercises exercise of
+                Just prevE ->
+                    E.link Common.buttonAttrs
+                        { url = Router.href <| Router.Exercise prevE.id
+                        , label = E.text "Předchozí"
+                        }
+
+                Nothing ->
+                    E.none
+            , case nextAlphabeticExercise exercises exercise of
+                Just nextE ->
+                    E.link Common.buttonAttrs
+                        { url = Router.href <| Router.Exercise nextE.id
+                        , label = E.text "Další"
+                        }
+
+                Nothing ->
+                    E.none
             ]
         , E.el [ Font.size 20, Font.bold, Font.italic ]
             (E.text <| "Sanskrt: " ++ Maybe.withDefault "N/A" exercise.sanskritName)
