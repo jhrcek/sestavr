@@ -327,15 +327,20 @@ viewBody model =
                     ]
 
             ExerciseList ->
-                Exercise.listView model.store.exercises
+                Exercise.listWithDetail exerciseConfig
+                    model.store.positions
+                    model.store.exercises
+                    model.store.tags
+                    Nothing
 
             ExerciseModel exerciseId ->
                 case Dict.Any.get exerciseId model.store.exercises of
                     Just exercise ->
-                        Exercise.view exerciseConfig
+                        Exercise.listWithDetail exerciseConfig
                             model.store.positions
+                            model.store.exercises
                             model.store.tags
-                            exercise
+                            (Just exercise)
 
                     Nothing ->
                         E.text <| "Cvičení s ID " ++ Id.toString exerciseId ++ " neexistuje"

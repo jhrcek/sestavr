@@ -5,11 +5,10 @@ module Page.Exercise exposing
     , ValidationError(..)
     , emptyEditor
     , initEditor
-    , listView
+    , listWithDetail
     , tagCheckboxes
     , update
     , validationErrorToString
-    , view
     , viewEditor
     )
 
@@ -315,13 +314,17 @@ tagCheckboxes onTagToggle checkboxesPerColumn tags selectedTags =
 
 listView : IdDict ExerciseIdTag Exercise -> Element msg
 listView exercises =
-    E.column [ E.width (E.px 450) ]
+    E.column
+        [ -- TODO figure out how to do this without enable vertical scrollbar without hardcoding height
+          E.height (E.px 800)
+        , E.width (E.px 450)
+        ]
         [ Common.heading1 "Cviky"
         , createExerciseButton
         , Dict.Any.values exercises
             |> List.sortBy .name
             |> List.map exerciseMenuItem
-            |> E.column []
+            |> E.column [ E.scrollbarY ]
         ]
 
 
@@ -400,13 +403,37 @@ createExerciseButton =
         )
 
 
-view :
+listWithDetail :
+    Config msg
+    -> IdDict PositionIdTag Position
+    -> IdDict ExerciseIdTag Exercise
+    -> IdDict TagIdTag Tag
+    -> Maybe Exercise
+    -> Element msg
+listWithDetail config positions exercises tags maybeExercise =
+    E.row
+        [ E.spacing 10
+        , E.height E.fill
+        , E.width E.fill
+        ]
+        [ listView exercises
+        , case maybeExercise of
+            Just exercise ->
+                E.el [ E.alignTop, E.width (E.fillPortion 2) ]
+                    (exerciseDetail config positions tags exercise)
+
+            Nothing ->
+                E.none
+        ]
+
+
+exerciseDetail :
     Config msg
     -> IdDict PositionIdTag Position
     -> IdDict TagIdTag Tag
     -> Exercise
     -> Element msg
-view config positions tags exercise =
+exerciseDetail config positions tags exercise =
     E.column [ E.width E.fill, E.spacing 10 ]
         [ E.html imageSizeStyle
         , E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
@@ -482,5 +509,5 @@ backToList : Element msg
 backToList =
     E.link Common.linkAttrs
         { url = Router.href Exercises
-        , label = E.text "« Zpět na seznam cviků"
+        , label = E.text "« Zavřít detail"
         }
