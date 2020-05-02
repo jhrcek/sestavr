@@ -318,6 +318,7 @@ listView exercises =
         [ -- TODO figure out how to do this without enable vertical scrollbar without hardcoding height
           E.height (E.px 800)
         , E.width (E.px 450)
+        , E.alignTop
         ]
         [ Common.heading1 "Cviky"
         , createExerciseButton
@@ -420,7 +421,7 @@ listWithDetail config positions exercises tags maybeExercise =
         , case maybeExercise of
             Just exercise ->
                 E.el [ E.alignTop, E.width (E.fillPortion 2) ]
-                    (exerciseDetail config positions tags exercise)
+                    (exerciseDetail config positions tags exercises exercise)
 
             Nothing ->
                 E.none
@@ -431,9 +432,10 @@ exerciseDetail :
     Config msg
     -> IdDict PositionIdTag Position
     -> IdDict TagIdTag Tag
+    -> IdDict ExerciseIdTag Exercise
     -> Exercise
     -> Element msg
-exerciseDetail config positions tags exercise =
+exerciseDetail config positions tags exercises exercise =
     E.column [ E.width E.fill, E.spacing 10 ]
         [ E.html imageSizeStyle
         , E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
@@ -448,6 +450,7 @@ exerciseDetail config positions tags exercise =
                 , label = E.text "Odstranit"
                 }
             ]
+        , prevNextButtons exercises exercise
         , E.el [ Font.size 20, Font.bold, Font.italic ]
             (E.text <| "Sanskrt: " ++ Maybe.withDefault "N/A" exercise.sanskritName)
         , E.row []
@@ -484,6 +487,39 @@ exerciseDetail config positions tags exercise =
                     )
         , E.paragraph [] [ markdown exercise.description ]
         ]
+
+
+prevNextButtons : IdDict ExerciseIdTag Exercise -> Exercise -> Element msg
+prevNextButtons exercises exercise =
+    E.row [ E.spacing 5 ]
+        [ neighborExercise exercises exercise -1 "Předchozí"
+        , neighborExercise exercises exercise 1 "Další"
+        ]
+
+
+neighborExercise :
+    IdDict ExerciseIdTag Exercise
+    -> Exercise
+    -> Int
+    -> String
+    -> Element msg
+neighborExercise es e diff label =
+    let
+        nameSortedExercises =
+            Dict.Any.values es
+                |> List.sortBy .name
+    in
+    nameSortedExercises
+        |> List.findIndex (\e_ -> e_.id == e.id)
+        |> Maybe.andThen (\thisIdx -> List.getAt (thisIdx + diff) nameSortedExercises)
+        |> Maybe.map
+            (\exercise ->
+                E.link Common.buttonAttrs
+                    { url = Router.href <| Router.Exercise exercise.id
+                    , label = E.text label
+                    }
+            )
+        |> Maybe.withDefault E.none
 
 
 markdown : String -> Element msg
