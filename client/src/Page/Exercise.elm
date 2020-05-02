@@ -315,55 +315,79 @@ tagCheckboxes onTagToggle checkboxesPerColumn tags selectedTags =
 
 listView : IdDict ExerciseIdTag Exercise -> Element msg
 listView exercises =
-    let
-        cell =
-            E.el
-                [ Border.solid
-                , Border.width 1
-                , E.width E.fill
-                , E.padding 3
-                , Border.color Color.lightGrey
-                ]
-    in
-    E.column []
+    E.column [ E.width (E.px 450) ]
         [ Common.heading1 "Cviky"
         , createExerciseButton
-        , E.table
-            [ Border.solid
-            , Border.width 1
-            , Border.color Color.lightGrey
-            ]
-            { data =
-                Dict.Any.values exercises
-                    |> List.sortBy .name
-            , columns =
-                [ { header = cell <| E.text "Název"
-                  , width = E.fill
-                  , view =
-                        \exercise -> cell <| exerciseLink exercise
-                  }
-                , { header = cell <| E.text "Sanskrt"
-                  , width = E.fill
-                  , view =
-                        \exercise ->
-                            Maybe.map E.text exercise.sanskritName
-                                |> Maybe.withDefault (E.text "-")
-                                |> cell
-                  }
-                ]
-            }
+        , Dict.Any.values exercises
+            |> List.sortBy .name
+            |> List.map exerciseMenuItem
+            |> E.column []
         ]
 
 
-exerciseLink : Exercise -> Element msg
-exerciseLink exercise =
-    E.link
-        (E.paddingEach { top = 0, right = 10, bottom = 0, left = 0 }
-            :: Common.linkAttrs
-        )
-        { url = Router.href (Router.Exercise exercise.id)
-        , label = E.text exercise.name
-        }
+exerciseMenuItem : Exercise -> Element msg
+exerciseMenuItem exercise =
+    E.row
+        [ Border.solid
+        , Border.width 1
+        , Border.color Color.lightGrey
+        , E.width E.fill
+        ]
+        [ imagePreview exercise
+        , E.column
+            [ E.width E.fill
+            , E.alignTop
+            , E.padding 5
+            , E.spacing 5
+            ]
+            [ E.paragraph [ E.width E.fill ]
+                [ E.link [ E.width E.fill ]
+                    { url = Router.href (Router.Exercise exercise.id)
+                    , label = E.el [ Font.bold ] (E.text exercise.name)
+                    }
+                ]
+            , E.paragraph [ E.width E.fill ]
+                [ case exercise.sanskritName of
+                    Just sanskritName ->
+                        E.link [ E.width E.fill ]
+                            { url = Router.href (Router.Exercise exercise.id)
+                            , label = E.el [ Font.italic ] (E.text sanskritName)
+                            }
+
+                    Nothing ->
+                        E.none
+                ]
+            ]
+        ]
+
+
+imagePreview : Exercise -> Element msg
+imagePreview exercise =
+    case exercise.image of
+        Nothing ->
+            E.el
+                [ E.width (E.px previewImageSize)
+                , E.height (E.px previewImageSize)
+                , Background.color Color.lightGrey
+                , Font.color Color.white
+                ]
+                (E.el [ E.centerX, E.centerY ]
+                    (E.text "N/A")
+                )
+
+        Just image ->
+            E.image
+                [ E.width (E.px previewImageSize)
+                , E.height (E.px previewImageSize)
+                ]
+                { src = image
+                , description = exercise.name
+                }
+
+
+previewImageSize : Int
+previewImageSize =
+    100
 
 
 createExerciseButton : Element msg

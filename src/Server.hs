@@ -18,7 +18,7 @@ import Control.Exception.Safe (catch, throwM)
 import Control.Monad (unless)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
-import Data.ByteString (ByteString)
+import Data.ByteString (ByteString, readFile)
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.FileEmbed (embedFile)
 import Data.Foldable (for_)
@@ -363,7 +363,9 @@ getIndex :: Handler ByteString
 getIndex = pure indexHtml
 
 getElmApp :: Handler ByteString
-getElmApp = pure elmApp
+getElmApp =
+  -- liftIO $ Data.ByteString.readFile "client/dist/main.js"
+  pure elmApp
 
 indexHtml :: ByteString
 indexHtml = $(embedFile "client/dist/index.html")
