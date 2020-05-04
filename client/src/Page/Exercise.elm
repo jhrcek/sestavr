@@ -4,6 +4,7 @@ module Page.Exercise exposing
     , Msg
     , ValidationError(..)
     , emptyEditor
+    , imagePreview
     , initEditor
     , listWithDetail
     , tagCheckboxes

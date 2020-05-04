@@ -474,19 +474,13 @@ editor exercises tags positions routines lessons today model =
         pastExerciseUsages =
             getPastExerciseUsages today routines lessons
 
-        colAttrs maxWidth =
+        colAttrs =
             [ E.alignTop
-            , E.width <| E.maximum maxWidth <| E.minimum exerciseColumnMinWidth E.fill
+            , E.width <| E.fillPortion 3
             , E.height E.fill
             , Border.solid
             , Border.width 1
             ]
-
-        exerciseColumnMaxWidth =
-            600
-
-        exerciseColumnMinWidth =
-            500
 
         filteredExercises =
             Dict.Any.values exercises
@@ -505,111 +499,21 @@ editor exercises tags positions routines lessons today model =
                         List.filter (\exercise -> Set.Any.member exercise.positionId model.positionFilter)
                    )
     in
-    E.column []
+    E.column [ E.width E.fill ]
         [ backToRoutineListLink
         , E.row
             [ Border.solid
             , Border.width 1
             , E.width E.fill
             ]
-            [ E.column
-                [ E.paddingXY 5 0
-                , E.alignTop
-                , E.width (E.px 300)
-                , E.height E.fill
-                , Border.solid
-                , Border.width 1
+            [ filtersColumn tags positions exercises model filteredExercises
+            , E.column colAttrs
+                [ E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
+                , E.column [ E.scrollbarY, E.height (E.px 900) ] <|
+                    List.map (availableExerciseView pastExerciseUsages model) filteredExercises
                 ]
-                [ E.column [ E.alignTop ]
-                    [ Exercise.tagCheckboxes ToggleTagId 1000 tags model.tagFilter
-                    , if Set.Any.isEmpty model.tagFilter then
-                        E.none
-
-                      else
-                        Input.button Common.buttonAttrs
-                            { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
-                    , positionCheckboxes positions model.positionFilter
-                    , if Set.Any.isEmpty model.positionFilter then
-                        E.none
-
-                      else
-                        Input.button Common.buttonAttrs
-                            { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
-                    , let
-                        filteredCount =
-                            List.length filteredExercises
-
-                        totalCount =
-                            Dict.Any.size exercises
-                      in
-                      if totalCount > filteredCount then
-                        E.paragraph []
-                            [ E.text <|
-                                String.fromInt filteredCount
-                                    ++ " / "
-                                    ++ String.fromInt totalCount
-                                    ++ " cviků odpovídá kriteriím"
-                            ]
-
-                      else
-                        E.none
-                    ]
-                ]
-            , E.column (E.spacing 5 :: colAttrs exerciseColumnMaxWidth)
-                (E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
-                    :: List.map
-                        (\exercise ->
-                            E.row [ E.paddingXY 5 0, E.spacing 5, E.width E.fill ]
-                                [ E.el [ E.padding 5 ]
-                                    (E.text <| elipsis 35 exercise.name)
-                                , E.el
-                                    [ Border.solid
-                                    , Border.width 1
-                                    , Border.color Color.darkGrey
-                                    , E.padding 5
-                                    , E.alignRight
-                                    , Font.color Color.darkGrey
-                                    , Event.onMouseEnter (ShowExerciseDetailsPopup exercise.id)
-                                    , Event.onMouseLeave HideExerciseDetailsPopup
-                                    , E.below <|
-                                        case model.showingPopupFor of
-                                            Just exIdWithPopup ->
-                                                if exercise.id == exIdWithPopup then
-                                                    exerciseUsagePopup exercise pastExerciseUsages
-
-                                                else
-                                                    E.none
-
-                                            Nothing ->
-                                                E.none
-                                    ]
-                                    (E.text <|
-                                        case Dict.Any.get exercise.id pastExerciseUsages of
-                                            Just usages ->
-                                                let
-                                                    mostRecentPastUsage =
-                                                        List.maximumBy (.lesson >> .datetime >> Time.posixToMillis) usages
-                                                in
-                                                case mostRecentPastUsage of
-                                                    Just lastUsage ->
-                                                        Time.formatDate lastUsage.lesson.datetime
-
-                                                    Nothing ->
-                                                        "Nikdy"
-
-                                            Nothing ->
-                                                "Nikdy"
-                                    )
-                                , Input.button (E.alignRight :: Common.buttonAttrs)
-                                    { onPress = Just (AddToRoutine exercise.id)
-                                    , label = E.text "»"
-                                    }
-                                ]
-                        )
-                        filteredExercises
-                )
             , E.column
-                (E.inFront (ghostView model.dnd model.routineExercises) :: E.spacing 5 :: colAttrs exerciseColumnMaxWidth)
+                (E.inFront (ghostView model.dnd model.routineExercises) :: E.spacing 5 :: colAttrs)
                 (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
                     :: Input.text
                         [ E.width (E.px 250)
@@ -643,13 +547,124 @@ editor exercises tags positions routines lessons today model =
         ]
 
 
-elipsis : Int -> String -> String
-elipsis maxLength s =
-    if String.length s > maxLength then
-        String.left maxLength s ++ "…"
+filtersColumn :
+    IdDict TagIdTag Tag
+    -> IdDict PositionIdTag Position
+    -> IdDict ExerciseIdTag Exercise
+    -> Model
+    -> List Exercise
+    -> Element Msg
+filtersColumn tags positions exercises model filteredExercises =
+    E.column
+        [ E.paddingXY 5 0
+        , E.alignTop
+        , E.width <| E.fillPortion 1
+        , E.height E.fill
+        , Border.solid
+        , Border.width 1
+        ]
+        [ E.column [ E.alignTop ]
+            [ Exercise.tagCheckboxes ToggleTagId 1000 tags model.tagFilter
+            , if Set.Any.isEmpty model.tagFilter then
+                E.none
 
-    else
-        s
+              else
+                Input.button Common.buttonAttrs
+                    { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
+            , positionCheckboxes positions model.positionFilter
+            , if Set.Any.isEmpty model.positionFilter then
+                E.none
+
+              else
+                Input.button Common.buttonAttrs
+                    { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
+            , let
+                filteredCount =
+                    List.length filteredExercises
+
+                totalCount =
+                    Dict.Any.size exercises
+              in
+              if totalCount > filteredCount then
+                E.paragraph []
+                    [ E.text <|
+                        String.fromInt filteredCount
+                            ++ " / "
+                            ++ String.fromInt totalCount
+                            ++ " cviků odpovídá kriteriím"
+                    ]
+
+              else
+                E.none
+            ]
+        ]
+
+
+availableExerciseView : IdDict ExerciseIdTag ExerciseUsages -> Model -> Exercise -> Element Msg
+availableExerciseView pastExerciseUsages model exercise =
+    E.row
+        [ Border.solid
+        , Border.width 1
+        , Border.color Color.lightGrey
+        , E.width E.fill
+        , E.spacing 5
+        ]
+        [ Exercise.imagePreview exercise
+        , E.column
+            [ E.width E.fill
+            , E.alignTop
+            , E.padding 5
+            , E.spacing 5
+            ]
+            [ E.paragraph [ E.width E.fill, Font.bold ]
+                [ E.text exercise.name ]
+            , E.paragraph [ E.width E.fill, Font.italic ]
+                [ Maybe.withDefault E.none <| Maybe.map E.text exercise.sanskritName ]
+            ]
+        , E.el
+            [ E.alignTop
+            , Border.solid
+            , Border.width 1
+            , Border.color Color.darkGrey
+            , E.padding 5
+            , E.alignRight
+            , Font.color Color.darkGrey
+            , Event.onMouseEnter (ShowExerciseDetailsPopup exercise.id)
+            , Event.onMouseLeave HideExerciseDetailsPopup
+            , E.below <|
+                case model.showingPopupFor of
+                    Just exIdWithPopup ->
+                        if exercise.id == exIdWithPopup then
+                            exerciseUsagePopup exercise pastExerciseUsages
+
+                        else
+                            E.none
+
+                    Nothing ->
+                        E.none
+            ]
+            (E.text <|
+                case Dict.Any.get exercise.id pastExerciseUsages of
+                    Just usages ->
+                        let
+                            mostRecentPastUsage =
+                                List.maximumBy (.lesson >> .datetime >> Time.posixToMillis) usages
+                        in
+                        case mostRecentPastUsage of
+                            Just lastUsage ->
+                                Time.formatDate lastUsage.lesson.datetime
+
+                            Nothing ->
+                                "Nikdy"
+
+                    Nothing ->
+                        "Nikdy"
+            )
+        , Input.button (E.alignTop :: E.alignRight :: Common.buttonAttrs)
+            { onPress = Just (AddToRoutine exercise.id)
+            , label = E.text "»"
+            }
+        ]
 
 
 type alias ExerciseUsages =
@@ -770,8 +785,29 @@ draggableExercise dndModel index exerciseInRoutine =
         exId =
             String.fromInt exerciseInRoutine.draggableItemId
     in
-    E.row [ E.width E.fill ]
-        [ draggableExerciseElement exerciseInRoutine <|
+    E.row [ E.width E.fill, E.paddingXY 5 0, E.spacing 5 ]
+        [ Input.button Common.buttonAttrs
+            { onPress = Just (RemoveFromRoutine exerciseInRoutine)
+            , label = E.text "«"
+            }
+        , Input.text
+            [ E.width (E.px 50)
+            , E.height (E.px 30)
+            , E.padding 4
+            , E.htmlAttribute (Attr.type_ "number")
+            ]
+            { onChange = ChangeDuration exerciseInRoutine.draggableItemId
+            , text =
+                case exerciseInRoutine.duration of
+                    Duration minutes ->
+                        String.fromInt minutes
+
+                    Empty ->
+                        ""
+            , placeholder = Nothing
+            , label = Input.labelHidden "duration"
+            }
+        , draggableExerciseElement exerciseInRoutine <|
             case dndSystem.info dndModel of
                 Just { dragIndex } ->
                     if dragIndex /= index then
@@ -782,36 +818,12 @@ draggableExercise dndModel index exerciseInRoutine =
 
                 Nothing ->
                     List.map E.htmlAttribute <| Attr.id exId :: dndSystem.dragEvents index exId
-        , Input.text
-            [ E.alignRight
-            , E.width (E.px 50)
-            , E.height (E.px 30)
-            , E.padding 4
-            , E.htmlAttribute (Attr.type_ "number")
-            ]
-            { onChange = ChangeDuration exerciseInRoutine.draggableItemId
-            , text =
-                case exerciseInRoutine.duration of
-                    Empty ->
-                        ""
-
-                    Duration minutes ->
-                        String.fromInt minutes
-            , placeholder = Nothing
-            , label = Input.labelHidden "duration"
-            }
         ]
 
 
 draggableExerciseElement : ExerciseInRoutine -> List (E.Attribute Msg) -> Element Msg
 draggableExerciseElement eir attrs =
-    E.row (E.paddingXY 5 0 :: attrs)
-        [ Input.button Common.buttonAttrs
-            { onPress = Just (RemoveFromRoutine eir)
-            , label = E.text "«"
-            }
-        , E.el [ E.padding 5 ] (E.text eir.exercise.name)
-        ]
+    E.el attrs (E.text eir.exercise.name)
 
 
 ghostView : DnDList.Model -> List ExerciseInRoutine -> Element Msg
