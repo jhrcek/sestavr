@@ -345,23 +345,23 @@ exerciseMenuItem exercise =
             , E.padding 5
             , E.spacing 5
             ]
-            [ E.paragraph [ E.width E.fill ]
-                [ E.link [ E.width E.fill ]
+            [ E.paragraph [ E.width E.fill, Font.bold ]
+                [ E.link []
                     { url = Router.href (Router.Exercise exercise.id)
-                    , label = E.el [ Font.bold ] (E.text exercise.name)
+                    , label = E.text exercise.name
                     }
                 ]
-            , E.paragraph [ E.width E.fill ]
-                [ case exercise.sanskritName of
-                    Just sanskritName ->
-                        E.link [ E.width E.fill ]
+            , case exercise.sanskritName of
+                Just sanskritName ->
+                    E.paragraph [ E.width E.fill, Font.italic ]
+                        [ E.link []
                             { url = Router.href (Router.Exercise exercise.id)
-                            , label = E.el [ Font.italic ] (E.text sanskritName)
+                            , label = E.text sanskritName
                             }
+                        ]
 
-                    Nothing ->
-                        E.none
-                ]
+                Nothing ->
+                    E.none
             ]
         ]
 

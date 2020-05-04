@@ -617,9 +617,22 @@ availableExerciseView pastExerciseUsages model exercise =
             , E.spacing 5
             ]
             [ E.paragraph [ E.width E.fill, Font.bold ]
-                [ E.text exercise.name ]
-            , E.paragraph [ E.width E.fill, Font.italic ]
-                [ Maybe.withDefault E.none <| Maybe.map E.text exercise.sanskritName ]
+                [ E.link []
+                    { url = Router.href (Router.Exercise exercise.id)
+                    , label = E.text exercise.name
+                    }
+                ]
+            , case exercise.sanskritName of
+                Just sanskritName ->
+                    E.paragraph [ E.width E.fill, Font.italic ]
+                        [ E.link []
+                            { url = Router.href (Router.Exercise exercise.id)
+                            , label = E.text sanskritName
+                            }
+                        ]
+
+                Nothing ->
+                    E.none
             ]
         , E.el
             [ E.alignTop
