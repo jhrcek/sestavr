@@ -57,8 +57,9 @@ update : Config msg -> Msg -> Model -> ( Model, Cmd msg )
 update config msg model =
     case msg of
         AddClicked ->
-            ( { model | newField = Just "" }
-            , Dom.focus newTagInputId |> Task.attempt (always config.noop)
+            ( { model | newField = Just "", editedTag = Nothing }
+            , Dom.focus newTagInputId
+                |> Task.attempt (always config.noop)
             )
 
         NewNameChanged newName ->
@@ -72,8 +73,9 @@ update config msg model =
             )
 
         EditClicked tag ->
-            ( { model | editedTag = Just tag }
-            , Cmd.none
+            ( { model | editedTag = Just tag, newField = Nothing }
+            , Dom.focus editedTagInputId
+                |> Task.attempt (always config.noop)
             )
 
         EditedNameChanged newName ->
@@ -127,7 +129,7 @@ form model =
     case model.newField of
         Nothing ->
             E.el [ E.paddingXY 0 5 ]
-                (Input.button Common.buttonAttrs
+                (Input.button Common.blueButton
                     { onPress = Just AddClicked
                     , label = E.text "Vytvořit tag"
                     }
@@ -146,11 +148,11 @@ form model =
                     , label = Input.labelLeft [ E.centerY ] (E.text "Název")
                     }
                 , E.row [ E.spacing 5, E.padding 5 ]
-                    [ Input.button Common.buttonAttrs
+                    [ Input.button Common.coralButton
                         { onPress = Just CancelClicked
                         , label = E.text "Zrušit"
                         }
-                    , Input.button Common.buttonAttrs
+                    , Input.button Common.blueButton
                         { onPress =
                             if String.isEmpty fieldName then
                                 Nothing
@@ -166,7 +168,7 @@ form model =
 viewTags : IdDict TagIdTag Tag -> Maybe Tag -> Element Msg
 viewTags tags maybeEdited =
     let
-        colHeader label =
+        cell label =
             E.el
                 [ Border.solid
                 , Border.width 1
@@ -182,14 +184,19 @@ viewTags tags maybeEdited =
         ]
         { data = List.sortBy .name <| Dict.Any.values tags
         , columns =
-            [ { header = colHeader "Název"
+            [ { header = cell "Název"
               , width = E.fill
               , view =
                     \tag ->
                         case maybeEdited of
                             Just editedTag ->
                                 if tag.id == editedTag.id then
-                                    Input.text [ E.width (E.px 100), E.height (E.px 30), E.padding 5 ]
+                                    Input.text
+                                        [ E.htmlAttribute (Html.Attributes.id editedTagInputId)
+                                        , E.width (E.px 100)
+                                        , E.height E.fill
+                                        , E.padding 5
+                                        ]
                                         { onChange = EditedNameChanged
                                         , text = editedTag.name
                                         , placeholder = Nothing
@@ -197,40 +204,27 @@ viewTags tags maybeEdited =
                                         }
 
                                 else
-                                    E.el
-                                        [ Border.solid
-                                        , Border.width 1
-                                        , Border.color Color.lightGrey
-                                        , E.padding 5
-                                        ]
-                                        (E.text tag.name)
+                                    cell tag.name
 
                             Nothing ->
-                                E.el
-                                    [ Border.solid
-                                    , Border.width 1
-                                    , Border.color Color.lightGrey
-                                    , E.padding 5
-                                    ]
-                                    (E.text tag.name)
+                                cell tag.name
               }
-            , { header = colHeader " "
+            , { header = cell " "
               , width = E.shrink
               , view =
                     \tag ->
                         E.row [ E.spacing 2 ]
-                            [ Common.iconButton <|
-                                case maybeEdited of
-                                    Just editedTag ->
-                                        if tag.id == editedTag.id then
-                                            { onPress = Just SaveEditedNameClicked, label = E.text "💾" }
+                            [ case maybeEdited of
+                                Just editedTag ->
+                                    if tag.id == editedTag.id then
+                                        Common.iconButton SaveEditedNameClicked "💾"
 
-                                        else
-                                            { onPress = Just (EditClicked tag), label = E.text "🖉" }
+                                    else
+                                        Common.iconButton (EditClicked tag) "🖉"
 
-                                    Nothing ->
-                                        { onPress = Just (EditClicked tag), label = E.text "🖉" }
-                            , Common.iconButton { onPress = Just (DeleteClicked tag.id), label = E.text "🗑" }
+                                Nothing ->
+                                    Common.iconButton (EditClicked tag) "🖉"
+                            , Common.iconButton (DeleteClicked tag.id) "🗑"
                             ]
               }
             ]
@@ -240,3 +234,8 @@ viewTags tags maybeEdited =
 newTagInputId : String
 newTagInputId =
     "tag-input"
+
+
+editedTagInputId : String
+editedTagInputId =
+    "edited-tag"

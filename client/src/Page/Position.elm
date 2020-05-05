@@ -57,8 +57,9 @@ update : Config msg -> Msg -> Model -> ( Model, Cmd msg )
 update config msg model =
     case msg of
         AddClicked ->
-            ( { model | newField = Just "" }
-            , Dom.focus newPositionInputId |> Task.attempt (always config.noop)
+            ( { model | newField = Just "", editedPosition = Nothing }
+            , Dom.focus newPositionInputId
+                |> Task.attempt (always config.noop)
             )
 
         NewNameChanged newName ->
@@ -72,8 +73,9 @@ update config msg model =
             )
 
         EditClicked position ->
-            ( { model | editedPosition = Just position }
-            , Cmd.none
+            ( { model | editedPosition = Just position, newField = Nothing }
+            , Dom.focus editedPositionInputId
+                |> Task.attempt (always config.noop)
             )
 
         EditedNameChanged newName ->
@@ -127,7 +129,7 @@ form model =
     case model.newField of
         Nothing ->
             E.el [ E.paddingXY 0 5 ]
-                (Input.button Common.buttonAttrs
+                (Input.button Common.blueButton
                     { onPress = Just AddClicked
                     , label = E.text "Vytvořit pozici"
                     }
@@ -146,11 +148,11 @@ form model =
                     , label = Input.labelLeft [ E.centerY ] (E.text "Název")
                     }
                 , E.row [ E.spacing 5, E.paddingXY 0 5 ]
-                    [ Input.button Common.buttonAttrs
+                    [ Input.button Common.coralButton
                         { onPress = Just CancelClicked
                         , label = E.text "Zrušit"
                         }
-                    , Input.button Common.buttonAttrs
+                    , Input.button Common.blueButton
                         { onPress =
                             if String.isEmpty fieldName then
                                 Nothing
@@ -166,14 +168,14 @@ form model =
 viewPositions : IdDict PositionIdTag Position -> Maybe Position -> Element Msg
 viewPositions positions maybeEdited =
     let
-        colHeader label =
+        cell text =
             E.el
                 [ Border.solid
                 , Border.width 1
                 , Border.color Color.lightGrey
                 , E.padding 5
                 ]
-                (E.text label)
+                (E.text text)
     in
     E.table
         [ Border.solid
@@ -182,14 +184,14 @@ viewPositions positions maybeEdited =
         ]
         { data = List.sortBy .name <| Dict.Any.values positions
         , columns =
-            [ { header = colHeader "Název"
+            [ { header = cell "Název"
               , width = E.fill
               , view =
                     \position ->
                         case maybeEdited of
                             Just editedPosition ->
                                 if position.id == editedPosition.id then
-                                    Input.text [ E.width (E.px 100), E.height (E.px 30), E.padding 4 ]
+                                    Input.text [ E.width (E.px 100), E.height E.fill, E.padding 5 ]
                                         { onChange = EditedNameChanged
                                         , text = editedPosition.name
                                         , placeholder = Nothing
@@ -197,40 +199,27 @@ viewPositions positions maybeEdited =
                                         }
 
                                 else
-                                    E.el
-                                        [ Border.solid
-                                        , Border.width 1
-                                        , Border.color Color.lightGrey
-                                        , E.padding 5
-                                        ]
-                                        (E.text position.name)
+                                    cell position.name
 
                             Nothing ->
-                                E.el
-                                    [ Border.solid
-                                    , Border.width 1
-                                    , Border.color Color.lightGrey
-                                    , E.padding 5
-                                    ]
-                                    (E.text position.name)
+                                cell position.name
               }
-            , { header = colHeader " "
+            , { header = cell " "
               , width = E.shrink
               , view =
                     \position ->
                         E.row [ E.spacing 2 ]
-                            [ Common.iconButton <|
-                                case maybeEdited of
-                                    Just editedPosition ->
-                                        if position.id == editedPosition.id then
-                                            { onPress = Just SaveEditedNameClicked, label = E.text "💾" }
+                            [ case maybeEdited of
+                                Just editedPosition ->
+                                    if position.id == editedPosition.id then
+                                        Common.iconButton SaveEditedNameClicked "💾"
 
-                                        else
-                                            { onPress = Just (EditClicked position), label = E.text "🖉" }
+                                    else
+                                        Common.iconButton (EditClicked position) "🖉"
 
-                                    Nothing ->
-                                        { onPress = Just (EditClicked position), label = E.text "🖉" }
-                            , Common.iconButton { onPress = Just (DeleteClicked position.id), label = E.text "🗑" }
+                                Nothing ->
+                                    Common.iconButton (EditClicked position) "🖉"
+                            , Common.iconButton (DeleteClicked position.id) "🗑"
                             ]
               }
             ]
@@ -240,3 +229,8 @@ viewPositions positions maybeEdited =
 newPositionInputId : String
 newPositionInputId =
     "position-input"
+
+
+editedPositionInputId : String
+editedPositionInputId =
+    "edited-position-input"

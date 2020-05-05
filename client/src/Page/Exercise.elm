@@ -255,7 +255,7 @@ viewEditor positions tags model =
             , tagCheckboxes ToggleTagId 10 tags model.tags
             ]
         , E.row [ E.alignRight, E.spacing 5 ]
-            [ E.link Common.buttonAttrs
+            [ E.link Common.coralButton
                 { url =
                     case model.exerciseId of
                         Just exerciseId ->
@@ -265,7 +265,7 @@ viewEditor positions tags model =
                             Router.href Router.Exercises
                 , label = E.text "Zrušit"
                 }
-            , Input.button Common.buttonAttrs
+            , Input.button Common.blueButton
                 { onPress = Just SaveExercise
                 , label = E.text "Uložit"
                 }
@@ -398,7 +398,7 @@ previewImageSize =
 createExerciseButton : Element msg
 createExerciseButton =
     E.el [ E.paddingXY 0 5 ]
-        (E.link Common.buttonAttrs
+        (E.link Common.blueButton
             { url = Router.href (Router.ExerciseEditor Nothing)
             , label = E.text "Vytvořit cvik"
             }
@@ -442,11 +442,11 @@ exerciseDetail config positions tags exercises exercise =
         , E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 exercise.name
         , E.row [ E.spacing 5 ]
-            [ E.link Common.buttonAttrs
+            [ E.link Common.blueButton
                 { url = Router.href <| Router.ExerciseEditor <| Just exercise.id
                 , label = E.text "Upravit"
                 }
-            , Input.button Common.buttonAttrs
+            , Input.button Common.coralButton
                 { onPress = Just (config.deleteExercise exercise.id)
                 , label = E.text "Odstranit"
                 }
@@ -515,7 +515,7 @@ neighborExercise es e diff label =
         |> Maybe.andThen (\thisIdx -> List.getAt (thisIdx + diff) nameSortedExercises)
         |> Maybe.map
             (\exercise ->
-                E.link Common.buttonAttrs
+                E.link Common.blueButton
                     { url = Router.href <| Router.Exercise exercise.id
                     , label = E.text label
                     }

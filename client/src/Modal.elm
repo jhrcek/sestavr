@@ -40,11 +40,11 @@ confirmAction { cancelMsg, confirmMsg, title, body } =
             [ header cancelMsg title
             , E.el [ E.padding 20 ] (E.map never body)
             , E.row [ E.spacing 5, E.alignRight, E.padding 5 ]
-                [ Input.button Common.buttonAttrs
+                [ Input.button Common.blueButton
                     { onPress = Just confirmMsg
                     , label = E.text "Ano"
                     }
-                , Input.button Common.buttonAttrs
+                , Input.button Common.blueButton
                     { onPress = Just cancelMsg
                     , label = E.text "Ne"
                     }

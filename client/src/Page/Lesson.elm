@@ -23,18 +23,13 @@ type alias Config msg =
 view : Config msg -> IdDict LessonIdTag Lesson -> IdDict RoutineIdTag Routine -> Element msg
 view config lessons routines =
     let
-        cellSize =
-            33
-
         cell =
             E.el
                 [ Border.solid
                 , Border.width 1
                 , Border.color Color.lightGrey
-                , E.height (E.px cellSize)
-                , E.padding 2
-                , E.centerX
-                , E.centerY
+                , E.height E.fill
+                , E.padding 5
                 ]
     in
     E.column []
@@ -50,11 +45,11 @@ view config lessons routines =
                     |> List.reverse
             , columns =
                 [ { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Datum a čas"
-                  , width = E.px 205
+                  , width = E.shrink
                   , view =
                         \lesson ->
                             cell <|
-                                E.el [ E.centerY ] <|
+                                E.el [ E.alignRight ] <|
                                     E.text <|
                                         Time.formatDateTime lesson.datetime
                   }
@@ -74,21 +69,16 @@ view config lessons routines =
                                     , label = E.text routineTopic
                                     }
                   }
-                , { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Možnosti"
-                  , width = E.px 95
+                , { header = cell (E.text " ")
+                  , width = E.shrink
                   , view =
                         \lesson ->
                             E.el
                                 [ Border.solid
                                 , Border.width 1
                                 , Border.color Color.lightGrey
-                                , E.height (E.px cellSize)
                                 ]
-                            <|
-                                Common.iconButton
-                                    { onPress = Just <| config.deleteLesson lesson.id
-                                    , label = E.text "🗑"
-                                    }
+                                (Common.iconButton (config.deleteLesson lesson.id) "🗑")
                   }
                 ]
             }

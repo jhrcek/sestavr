@@ -165,7 +165,7 @@ view : LessonPlanner -> Element Msg
 view lessonPlanner =
     case lessonPlanner.picker of
         Nothing ->
-            Input.button Common.buttonAttrs
+            Input.button Common.blueButton
                 { onPress = Just ScheduleLesson
                 , label = E.text "Naplánovat lekci"
                 }
@@ -183,11 +183,11 @@ view lessonPlanner =
                     E.none
                 , timePicker dtp
                 , E.row [ E.spacing 5, E.paddingXY 0 5 ]
-                    [ Input.button Common.buttonAttrs
+                    [ Input.button Common.coralButton
                         { onPress = Just CancelSchedulingLesson
                         , label = E.text "Zrušit"
                         }
-                    , Input.button Common.buttonAttrs
+                    , Input.button Common.blueButton
                         { onPress = Just SaveLesson
                         , label = E.text "Vytvořit lekci"
                         }
@@ -310,11 +310,11 @@ datePicker { pickerYear, pickerMonth, pickedDay } today =
                     List.repeat firstDayOffset 0
                         ++ List.range 1 daysInMonth
     in
-    E.column [ Border.solid, Border.width 1 ] <|
-        E.row [ E.width E.fill, E.height <| E.px cellSize, E.padding 5 ]
-            [ E.el [ Event.onClick PrevMonth ] (E.text "«")
+    E.column [ Border.width 1, Border.solid ] <|
+        E.row [ E.width E.fill, E.height <| E.px cellSize, E.padding 5, Border.width 1 ]
+            [ E.el [ Event.onClick PrevMonth ] (E.text "◀")
             , E.el [ E.centerX ] (E.text <| Time.toCzechMonth pickerMonth ++ " " ++ String.fromInt pickerYear)
-            , E.el [ Event.onClick NextMonth, E.alignRight ] (E.text "»")
+            , E.el [ Event.onClick NextMonth, E.alignRight ] (E.text "▶")
             ]
             :: E.row []
                 (List.map
@@ -322,7 +322,6 @@ datePicker { pickerYear, pickerMonth, pickedDay } today =
                         E.el
                             [ E.width <| E.px cellSize
                             , E.height <| E.px cellSize
-                            , Border.solid
                             , Border.width 1
                             , E.padding cellPadding
                             ]

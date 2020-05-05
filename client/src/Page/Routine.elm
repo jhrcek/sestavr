@@ -353,11 +353,11 @@ view config exercises lessons routine lessonPlanner =
             ]
         , E.row [ E.spacing 5, E.paddingXY 0 5 ]
             [ editRoutineButton routine
-            , E.link Common.buttonAttrs
+            , E.link Common.blueButton
                 { url = Router.href <| Router.RoutineEditor <| Router.CopyRoutine routine.id
                 , label = E.text "Kopírovat"
                 }
-            , Input.button Common.buttonAttrs
+            , Input.button Common.coralButton
                 { onPress = Just (config.deleteRoutine routine.id)
                 , label = E.text "Odstranit"
                 }
@@ -410,7 +410,7 @@ routineLink routine =
 
 editRoutineButton : Routine -> Element msg
 editRoutineButton routine =
-    E.link Common.buttonAttrs
+    E.link Common.blueButton
         { url = Router.href <| Router.RoutineEditor <| Router.EditRoutine routine.id
         , label = E.text "Upravit"
         }
@@ -419,7 +419,7 @@ editRoutineButton routine =
 createRoutineButton : Element msg
 createRoutineButton =
     E.el [ E.paddingXY 0 5 ]
-        (E.link Common.buttonAttrs
+        (E.link Common.blueButton
             { url = Router.href (Router.RoutineEditor Router.NewRoutine)
             , label = E.text "Vytvořit sestavu"
             }
@@ -429,7 +429,7 @@ createRoutineButton =
 returnToEditedRoutine : Router.RoutineEditorRoute -> Element msg
 returnToEditedRoutine routineRoute =
     E.el [ E.paddingXY 0 5 ]
-        (E.link Common.buttonAttrs
+        (E.link Common.blueButton
             { url = Router.href (Router.RoutineEditor routineRoute)
             , label = E.text "Vrátit se k neuložené sestavě"
             }
@@ -440,13 +440,13 @@ backToRoutineListLink : Element msg
 backToRoutineListLink =
     E.link Common.linkAttrs
         { url = Router.href Router.Routines
-        , label = E.text "«  Zpět na seznam sestav"
+        , label = E.text "« Zpět na seznam sestav"
         }
 
 
 saveButton : Element Msg
 saveButton =
-    Input.button Common.buttonAttrs
+    Input.button Common.blueButton
         { onPress = Just SaveRoutine
         , label = E.text "Uložit"
         }
@@ -454,7 +454,7 @@ saveButton =
 
 throwAwayEditsButton : Element Msg
 throwAwayEditsButton =
-    Input.button Common.buttonAttrs
+    Input.button Common.coralButton
         { onPress = Just ThrowAwayChanges
         , label = E.text "Zahodit změny"
         }
@@ -531,13 +531,9 @@ editor exercises tags positions routines lessons today model =
                                 "Celková délka "
                                     ++ String.fromInt (exercisesDurationMinutes model.routineExercises)
                                     ++ " min"
-                       , E.row [ E.padding 5, E.spacing 5 ]
-                            [ saveButton ]
                        , if model.hasUnsavedChanges then
-                            E.column [ E.padding 5, E.spacing 5 ]
-                                [ E.text "Editor obsahuje neuložené změny"
-                                , throwAwayEditsButton
-                                ]
+                            E.row [ E.padding 5, E.spacing 5 ]
+                                [ saveButton, throwAwayEditsButton ]
 
                          else
                             E.none
@@ -569,14 +565,14 @@ filtersColumn tags positions exercises model filteredExercises =
                 E.none
 
               else
-                Input.button Common.buttonAttrs
+                Input.button Common.blueButton
                     { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
             , positionCheckboxes positions model.positionFilter
             , if Set.Any.isEmpty model.positionFilter then
                 E.none
 
               else
-                Input.button Common.buttonAttrs
+                Input.button Common.blueButton
                     { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
             , let
                 filteredCount =
@@ -638,13 +634,13 @@ availableExerciseView pastExerciseUsages model exercise =
             [ E.alignTop
             , Border.solid
             , Border.width 1
-            , Border.color Color.darkGrey
+            , Border.color Color.midGrey
             , E.padding 5
             , E.alignRight
-            , Font.color Color.darkGrey
+            , Font.color Color.midGrey
             , Event.onMouseEnter (ShowExerciseDetailsPopup exercise.id)
             , Event.onMouseLeave HideExerciseDetailsPopup
-            , E.below <|
+            , E.onLeft <|
                 case model.showingPopupFor of
                     Just exIdWithPopup ->
                         if exercise.id == exIdWithPopup then
@@ -673,9 +669,17 @@ availableExerciseView pastExerciseUsages model exercise =
                     Nothing ->
                         "Nikdy"
             )
-        , Input.button (E.alignTop :: E.alignRight :: Common.buttonAttrs)
+        , Input.button
+            [ E.padding 5
+            , Border.color Color.darkGrey
+            , Border.solid
+            , Border.width 1
+            , Border.rounded 5
+            , E.alignRight
+            , E.alignTop
+            ]
             { onPress = Just (AddToRoutine exercise.id)
-            , label = E.text "»"
+            , label = E.el [ E.centerY ] (E.text "»")
             }
         ]
 
@@ -799,7 +803,13 @@ draggableExercise dndModel index exerciseInRoutine =
             String.fromInt exerciseInRoutine.draggableItemId
     in
     E.row [ E.width E.fill, E.paddingXY 5 0, E.spacing 5 ]
-        [ Input.button Common.buttonAttrs
+        [ Input.button
+            [ E.padding 5
+            , Border.color Color.darkGrey
+            , Border.solid
+            , Border.width 1
+            , Border.rounded 5
+            ]
             { onPress = Just (RemoveFromRoutine exerciseInRoutine)
             , label = E.text "«"
             }
