@@ -23,6 +23,7 @@ type Route
     | Routine RoutineId
     | RoutineEditor RoutineEditorRoute
     | Lessons
+    | Images
     | NotFound String
 
 
@@ -39,6 +40,7 @@ route =
         , P.map Tags (s "tag")
         , P.map Positions (s "position")
         , P.map Lessons (s "lesson")
+        , P.map Images (s "image")
 
         -- Exercises
         , P.map Exercises (s "exercise")
@@ -110,6 +112,9 @@ toHash r =
 
                 CopyRoutine routineId ->
                     "/routine/" ++ Id.toString routineId ++ "/copy"
+
+        Images ->
+            "/image"
 
         NotFound bad ->
             bad

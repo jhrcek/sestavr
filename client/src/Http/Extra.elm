@@ -2,6 +2,7 @@ module Http.Extra exposing
     ( ApiCall
     , Error(..)
     , delete
+    , deleteImage
     , errorToString
     , expectJson
     , expectWhatever
@@ -10,6 +11,7 @@ module Http.Extra exposing
 import Http exposing (Metadata, Response(..))
 import Id exposing (Id)
 import Json.Decode as Decode exposing (Decoder)
+import Url
 
 
 {-| Like Http.Error, but with BadStatus carrying full Metadata and response body
@@ -91,6 +93,23 @@ delete rec =
         , headers = []
         , url = rec.baseUrl ++ Id.toString rec.resourceId
         , expect = expectWhatever (rec.onResponse << Result.map (\() -> rec.resourceId))
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+deleteImage :
+    { imageFileName : String
+    , onResponse : ApiCall String -> msg
+    }
+    -> Cmd msg
+deleteImage rec =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/image/" ++ Url.percentEncode rec.imageFileName
+        , expect = expectWhatever (rec.onResponse << Result.map (\() -> rec.imageFileName))
         , body = Http.emptyBody
         , timeout = Nothing
         , tracker = Nothing

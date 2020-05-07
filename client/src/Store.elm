@@ -7,6 +7,7 @@ module Store exposing
     , createRoutine
     , createTag
     , deleteExercise
+    , deleteImage
     , deleteLesson
     , deletePosition
     , deleteRoutine
@@ -24,6 +25,7 @@ module Store exposing
     , updatePosition
     , updateRoutine
     , updateTag
+    , verifyImages
     )
 
 import Dict.Any
@@ -32,6 +34,7 @@ import Domain
         ( Exercise
         , ExerciseId
         , ExerciseIdTag
+        , ImageVerificationResult
         , Lesson
         , LessonId
         , LessonIdTag
@@ -77,6 +80,9 @@ type Msg
     | LessonsFetched (ApiCall (List Lesson))
     | LessonCreated (ApiCall Lesson)
     | LessonDeleted (ApiCall LessonId)
+      -- Image
+    | ImagesVerified (ApiCall ImageVerificationResult)
+    | ImageDeleted (ApiCall String)
 
 
 type alias Store =
@@ -85,6 +91,7 @@ type alias Store =
     , exercises : IdDict ExerciseIdTag Exercise
     , routines : IdDict RoutineIdTag Routine
     , lessons : IdDict LessonIdTag Lesson
+    , images : ImageVerificationResult
     }
 
 
@@ -95,6 +102,7 @@ init =
     , exercises = Id.emptyDict
     , routines = Id.emptyDict
     , lessons = Id.emptyDict
+    , images = Domain.emptyImageVerificationResult
     }
 
 
@@ -157,6 +165,12 @@ update msg =
 
         LessonDeleted result ->
             updateOrError result (\lessonId store -> { store | lessons = Dict.Any.remove lessonId store.lessons })
+
+        ImagesVerified result ->
+            updateOrError result (\imageVerificationResult store -> { store | images = imageVerificationResult })
+
+        ImageDeleted result ->
+            updateOrError result (\imageFileName store -> { store | images = Domain.removeUnusedImage imageFileName store.images })
 
 
 updateOrError : ApiCall a -> (a -> Store -> Store) -> Store -> ( Store, Maybe Ht2.Error )
@@ -381,4 +395,24 @@ deleteLesson lessonId =
         { baseUrl = "/lesson/"
         , resourceId = lessonId
         , onResponse = LessonDeleted
+        }
+
+
+
+-- IMAGE
+
+
+verifyImages : Cmd Msg
+verifyImages =
+    Http.get
+        { url = "/image/verify"
+        , expect = Ht2.expectJson ImagesVerified Domain.imageVerificationResultDecoder
+        }
+
+
+deleteImage : String -> Cmd Msg
+deleteImage imageFileName =
+    Ht2.deleteImage
+        { imageFileName = imageFileName
+        , onResponse = ImageDeleted
         }

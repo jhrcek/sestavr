@@ -2,6 +2,9 @@ module Domain exposing
     ( Exercise
     , ExerciseId
     , ExerciseIdTag
+    , ImageId
+    , ImageIdTag
+    , ImageVerificationResult
     , Lesson
     , LessonId
     , LessonIdTag
@@ -14,22 +17,26 @@ module Domain exposing
     , Tag
     , TagId
     , TagIdTag
+    , emptyImageVerificationResult
     , encodeExercise
     , encodeLesson
     , encodePosition
     , encodeRoutine
     , encodeTag
     , exerciseDecoder
+    , imageVerificationResultDecoder
     , lessonDecoder
     , positionDecoder
+    , removeUnusedImage
     , routineDecoder
     , tagDecoder
     )
 
-import Id exposing (Id)
+import Id exposing (Id, IdDict)
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
+import List.Extra as List
 import Time exposing (Posix)
 
 
@@ -237,11 +244,59 @@ encodeLesson lesson =
 
 
 
+-- IMAGE
+
+
+type ImageIdTag
+    = ImageIdTag
+
+
+type alias ImageId =
+    Id ImageIdTag
+
+
+type alias ImageVerificationResult =
+    { invalidLinks : IdDict ExerciseIdTag (List String)
+    , unusedImages : List String
+    , knownImages : List String
+    }
+
+
+emptyImageVerificationResult : ImageVerificationResult
+emptyImageVerificationResult =
+    ImageVerificationResult Id.emptyDict [] []
+
+
+removeUnusedImage : String -> ImageVerificationResult -> ImageVerificationResult
+removeUnusedImage imageFileName ivr =
+    { ivr
+        | unusedImages = List.remove imageFileName ivr.unusedImages
+        , knownImages = List.remove imageFileName ivr.knownImages
+    }
+
+
+imageVerificationResultDecoder : Decoder ImageVerificationResult
+imageVerificationResultDecoder =
+    Decode.map3 ImageVerificationResult
+        (Decode.field "invalidLinks" <|
+            Decode.map Id.dictFromList <|
+                Decode.list
+                    (Decode.map2 Tuple.pair
+                        (Decode.field "exerciseId" Id.decode)
+                        (Decode.field "images" (Decode.list Decode.string))
+                    )
+        )
+        (Decode.field "unusedImages" <| Decode.list Decode.string)
+        (Decode.field "knownImages" <| Decode.list Decode.string)
+
+
+
 -- The code below is to reduce the number of "unused" warnings
 
 
 type Tags
     = ExerciseIdTag_ ExerciseIdTag
+    | ImageIdTag_ ImageIdTag
     | LessonIdTag_ LessonIdTag
     | PositionIdTag_ PositionIdTag
     | RoutineIdTag_ RoutineIdTag
@@ -251,6 +306,7 @@ type Tags
 tags : List Tags
 tags =
     [ ExerciseIdTag_ ExerciseIdTag
+    , ImageIdTag_ ImageIdTag
     , LessonIdTag_ LessonIdTag
     , PositionIdTag_ PositionIdTag
     , RoutineIdTag_ RoutineIdTag

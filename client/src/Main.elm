@@ -28,6 +28,7 @@ import Id
 import Json.Decode as Decode exposing (Decoder)
 import Modal
 import Page.Exercise as Exercise
+import Page.Image as Image
 import Page.Lesson as Lesson
 import Page.Position as Position
 import Page.Routine as Routine
@@ -145,6 +146,9 @@ initPageModel model =
                 , modal = newModal
             }
 
+        Router.Images ->
+            { model | pageModel = ImagesModel }
+
         Router.NotFound what ->
             { model | pageModel = NotFoundModel what }
 
@@ -180,6 +184,7 @@ type PageModel
     | RoutineModel RoutineId LessonPlanner
       -- Routine model is kept in the main model
     | RoutineEditor
+    | ImagesModel
     | NotFoundModel String
 
 
@@ -218,6 +223,7 @@ type Msg
     | GotLessonPlannerValidationError String
     | CreateLesson Lesson
     | DeleteLesson LessonId
+    | DeleteImage String
     | CloseModal
     | CloseModalAndPerform Msg
     | ConfirmAction String Msg
@@ -244,6 +250,7 @@ init _ url key =
                 , Store.getPositions
                 , Store.getRoutines
                 , Store.getLessons
+                , Store.verifyImages
                 ]
         , Task.perform GotTime Time.now
         ]
@@ -350,6 +357,7 @@ viewBody model =
                     Exercise.viewEditor
                         model.store.positions
                         model.store.tags
+                        model.store.images
                         emodel
 
             TagModel tmodel ->
@@ -389,6 +397,9 @@ viewBody model =
                         model.today
                         model.routineModel
 
+            ImagesModel ->
+                Image.view imagesConfig model.store.images
+
             NotFoundModel what ->
                 E.text <| "Tady nic není : " ++ what
 
@@ -425,9 +436,16 @@ update msg model =
             , Cmd.none
             )
 
-        SetRoute route ->
+        SetRoute newRoute ->
             ( model
-            , goToRoute route
+            , if newRoute == Router.Images then
+                Cmd.batch
+                    [ Cmd.map StoreMsg Store.verifyImages
+                    , goToRoute newRoute
+                    ]
+
+              else
+                goToRoute newRoute
             )
 
         UrlRequest urlRequest ->
@@ -646,13 +664,18 @@ update msg model =
             , Cmd.map StoreMsg <| Store.deleteLesson lessonId
             )
 
-        NoOp ->
-            ( model, Cmd.none )
-
         SetRoutineEditor routineModel ->
             ( { model | routineModel = routineModel }
             , Cmd.none
             )
+
+        DeleteImage imageFileName ->
+            ( model
+            , Cmd.map StoreMsg <| Store.deleteImage imageFileName
+            )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 tagConfig : Tag.Config Msg
@@ -704,6 +727,12 @@ lessonPlannerConfig =
 lessonConfig : Lesson.Config Msg
 lessonConfig =
     { deleteLesson = ConfirmAction "Opravdu chceš odstranit tuto lekci?" << DeleteLesson
+    }
+
+
+imagesConfig : Image.Config Msg
+imagesConfig =
+    { deleteImage = ConfirmAction "Opravdu chceš odstranit tento obrázek?" << DeleteImage
     }
 
 
@@ -805,6 +834,7 @@ navigationLeft currentRoute =
         , menuItem currentRoute Router.Positions "Pozice"
         , menuItem currentRoute Router.Routines "Sestavy"
         , menuItem currentRoute Router.Lessons "Lekce"
+        , menuItem currentRoute Router.Images "Obrázky"
         ]
 
 

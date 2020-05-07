@@ -42,6 +42,7 @@ library
     , containers
     , directory
     , file-embed
+    , filepath
     , http-media
     , monad-logger
     , optparse-applicative

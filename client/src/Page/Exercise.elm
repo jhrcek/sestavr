@@ -22,6 +22,7 @@ import Domain
         ( Exercise
         , ExerciseId
         , ExerciseIdTag
+        , ImageVerificationResult
         , Position
         , PositionId
         , PositionIdTag
@@ -207,9 +208,10 @@ update config msg model =
 viewEditor :
     IdDict PositionIdTag Position
     -> IdDict TagIdTag Tag
+    -> ImageVerificationResult
     -> Model
     -> Element Msg
-viewEditor positions tags model =
+viewEditor positions tags imageVerificationResults model =
     let
         fieldWidth =
             E.width E.fill
@@ -250,6 +252,19 @@ viewEditor positions tags model =
             , label = Input.labelHidden "Popis"
             , spellcheck = False
             }
+        , case
+            model.exerciseId
+                |> Maybe.andThen
+                    (\exerciseId ->
+                        Dict.Any.get exerciseId imageVerificationResults.invalidLinks
+                    )
+          of
+            Just invalidImages ->
+                E.el [ Font.color Color.orange ]
+                    (E.text <| "Obkazované obrázky neexistují: " ++ String.join "," invalidImages)
+
+            Nothing ->
+                E.none
         , E.row [ E.spacing 30 ]
             [ positionRadios positions model.positionId
             , tagCheckboxes ToggleTagId 10 tags model.tags

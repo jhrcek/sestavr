@@ -25,6 +25,7 @@ module Model
       ( ExerciseTagExerciseId,
         RoutineExerciseRoutineId
       ),
+    ImageVerificationResult (..),
     Lesson,
     LessonId,
     Position,
@@ -56,7 +57,7 @@ module Model
 where
 
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson ((.=), FromJSON, ToJSON, object, toJSON)
 import qualified Data.List as List
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, getCurrentTime)
@@ -186,6 +187,31 @@ toRoutine rwe =
   Routine
     { routineTopic = topic rwe
     }
+
+data ImageVerificationResult = ImageVerificationResult
+  { -- | images being referenced in Exercises but without corresponding file in the images directory
+    invalidLinks :: [(ExerciseId, [FilePath])],
+    -- | image files in images directory, which are not linked from any exercise
+    unusedImages :: [FilePath],
+    knownImages :: [FilePath]
+  }
+  deriving (Generic)
+
+instance ToJSON ImageVerificationResult where
+  toJSON (ImageVerificationResult invalidLinks_ unusedImages_ knownImages_) =
+    object
+      [ "invalidLinks"
+          .= List.map
+            ( \(exId, imgs) ->
+                object
+                  [ "exerciseId" .= exId,
+                    "images" .= imgs
+                  ]
+            )
+            invalidLinks_,
+        "unusedImages" .= unusedImages_,
+        "knownImages" .= knownImages_
+      ]
 
 createDemoData :: IO ()
 createDemoData = runSqlite "sestavr.db" $ do

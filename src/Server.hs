@@ -15,15 +15,15 @@ where
 import Api (SestavrAPI, sestavrApi)
 import Config (Config (..))
 import Control.Exception.Safe (catch, throwM)
-import Control.Monad (unless)
+import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
 import Data.ByteString (ByteString, readFile)
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.FileEmbed (embedFile)
-import Data.Foldable (for_)
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
+import Data.Maybe (mapMaybe)
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Data.Text (Text)
@@ -39,7 +39,7 @@ import Database.Persist.Class
     replace,
     selectList,
   )
-import Database.Persist.Sql (SqlPersistM, fromSqlKey)
+import Database.Persist.Sql (SqlPersistM)
 import Database.Persist.Sqlite
   ( ConnectionPool,
     createSqlitePool,
@@ -62,6 +62,7 @@ import Model
     ExerciseId,
     ExerciseTag (..),
     ExerciseWithTags,
+    ImageVerificationResult (..),
     Lesson,
     LessonId,
     Position,
@@ -103,7 +104,8 @@ import Servant
     throwError,
   )
 import Servant.Server.StaticFiles (serveDirectoryWebApp)
-import System.Directory (listDirectory)
+import System.Directory (doesFileExist, listDirectory, removeFile)
+import System.FilePath.Posix ((</>))
 
 run :: Config -> IO ()
 run config = do
@@ -114,8 +116,6 @@ run config = do
 
   pool <- runStderrLoggingT $ createSqlitePool (Text.pack dbFile) poolSize
   runSqlPool (runMigration migrateAll) pool
-
-  verifyImages pool imagesDir
 
   let app = serveApp pool imagesDir
 
@@ -159,6 +159,9 @@ apiServer pool imagesDir =
     :<|> getLessons
     :<|> createLesson
     :<|> deleteLesson
+    -- Images
+    :<|> verifyImages
+    :<|> deleteImage
     -- Static files
     :<|> serveImages
   where
@@ -355,6 +358,15 @@ apiServer pool imagesDir =
     --
     deleteLesson :: LessonId -> Handler ()
     deleteLesson lessonId = runPool $ delete lessonId
+    -- IMAGES
+    verifyImages :: Handler ImageVerificationResult
+    verifyImages = runPool $ verifyImages_ imagesDir
+    --
+    deleteImage :: FilePath -> Handler ()
+    deleteImage imageName = liftIO $ do
+      let imagePath = imagesDir </> imageName
+      exists <- doesFileExist imagePath
+      when exists $ removeFile imagePath
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409 {errBody = detail <> "; " <> LBS.pack (show e)}
@@ -373,14 +385,10 @@ indexHtml = $(embedFile "client/dist/index.html")
 elmApp :: ByteString
 elmApp = $(embedFile "client/dist/main.js")
 
-{- Print out warnings about
-- images being referenced in Exercises but without corresponding file in the images directory
-- image files in images directory, which are not linked from any exercise
--}
-verifyImages :: ConnectionPool -> FilePath -> IO ()
-verifyImages pool imagesDir = do
-  imageFiles <- Set.fromList <$> listDirectory imagesDir
-  exercises <- runSqlPersistMPool (selectList [] [] :: SqlPersistM [Entity Exercise]) pool
+verifyImages_ :: FilePath -> SqlPersistM ImageVerificationResult
+verifyImages_ imagesDir = do
+  imageFiles <- fmap Set.fromList . liftIO $ listDirectory imagesDir
+  exercises <- selectList [] [] :: SqlPersistM [Entity Exercise]
   let allImageReferences =
         fmap
           ( \exerciseEntity ->
@@ -388,18 +396,17 @@ verifyImages pool imagesDir = do
                in (entityKey exerciseEntity, extractImageLinks exercise)
           )
           exercises
-      missingFiles =
-        fmap
-          ( \(key, refs) -> (key, refs `Set.difference` imageFiles)
+      invalidLinks_ =
+        mapMaybe
+          ( \(exId, refs) ->
+              let imgsMissingForExercise = Set.toList $ refs `Set.difference` imageFiles
+               in if null imgsMissingForExercise
+                    then Nothing
+                    else Just (exId, imgsMissingForExercise)
           )
           allImageReferences
-      unusedImages = imageFiles `Set.difference` foldMap snd allImageReferences
-  for_ missingFiles $ \(exKey, missing) ->
-    unless (Set.null missing)
-      $ putStrLn
-      $ "Exercise " ++ show (fromSqlKey exKey) ++ " refers to nonexistent images: " ++ show missing
-  for_ unusedImages $ \img ->
-    putStrLn $ "Image " ++ img ++ " is not used in any exercise"
+      unusedImages_ = Set.toList $ imageFiles `Set.difference` foldMap snd allImageReferences
+  pure $ ImageVerificationResult invalidLinks_ unusedImages_ (Set.toList imageFiles)
 
 extractImageLinks :: Exercise -> Set FilePath
 extractImageLinks exercise =

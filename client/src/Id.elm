@@ -5,6 +5,7 @@ module Id exposing
     , buildDict
     , buildSet
     , decode
+    , dictFromList
     , emptyDict
     , emptySet
     , encode
@@ -42,6 +43,11 @@ fromInt =
 buildDict : List (Resource tag r) -> IdDict tag (Resource tag r)
 buildDict =
     Dict.Any.fromList toInt << List.map (\r -> ( r.id, r ))
+
+
+dictFromList : List ( Id tag, a ) -> IdDict tag a
+dictFromList =
+    Dict.Any.fromList toInt
 
 
 toInt : Id tag -> Int
