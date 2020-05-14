@@ -329,27 +329,42 @@ view config exercises lessons routine lessonPlanner =
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 routine.topic
         , E.column
-            [ E.spacing 5 ]
-            [ E.text <| "Počet cviků: " ++ String.fromInt (List.length routine.exercises)
-            , E.text <| "Celková délka: " ++ String.fromInt (routineDurationMinutes routine) ++ " minut."
-            , E.column [ E.paddingXY 0 5 ] <|
-                List.indexedMap
-                    (\idx ( duration, exercise ) ->
-                        E.text <|
-                            String.fromInt (idx + 1)
-                                ++ ". "
-                                ++ exercise.name
-                                ++ ", "
-                                ++ String.fromInt duration
-                                ++ " min"
+            [ E.spacing 10 ]
+            [ E.text <| "Celková délka: " ++ String.fromInt (routineDurationMinutes routine) ++ " minut."
+            , routine.exercises
+                |> List.filterMap
+                    (\re ->
+                        Maybe.map (Tuple.pair re.duration) <|
+                            Dict.Any.get re.exerciseId exercises
                     )
-                <|
-                    List.filterMap
-                        (\re ->
-                            Maybe.map (Tuple.pair re.duration) <|
-                                Dict.Any.get re.exerciseId exercises
-                        )
-                        routine.exercises
+                |> splitInto30MinuteSegments
+                |> (\segments ->
+                        List.interweave
+                            (List.map
+                                (\segment ->
+                                    E.column [ E.spacing 5 ] <|
+                                        List.map routineExerciseView segment
+                                )
+                                segments
+                            )
+                            (List.range 1 (List.length segments - 1)
+                                |> List.map
+                                    (\x ->
+                                        E.el
+                                            [ E.centerX
+                                            , E.width (E.px 680)
+                                            , Background.color Color.lightGrey
+                                            , Font.color Color.white
+                                            ]
+                                        <|
+                                            E.el [ E.centerX ] <|
+                                                E.text <|
+                                                    String.fromInt (x * 30)
+                                                        ++ " minut"
+                                    )
+                            )
+                   )
+                |> E.column [ E.paddingXY 0 5, E.spacing 5 ]
             ]
         , E.row [ E.spacing 5, E.paddingXY 0 5 ]
             [ editRoutineButton routine
@@ -374,6 +389,46 @@ view config exercises lessons routine lessonPlanner =
                         )
         , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
         ]
+
+
+routineExerciseView : ( Int, Exercise ) -> Element msg
+routineExerciseView ( duration, exercise ) =
+    E.row [ Border.color Color.darkGrey, Border.width 1, E.spacing 5 ]
+        [ Exercise.imagePreview exercise
+        , E.link [ E.width (E.px 500) ]
+            { url = Router.href (Router.Exercise exercise.id)
+            , label = E.paragraph [] [ E.text exercise.name ]
+            }
+        , E.el [ E.width (E.px 70) ] (E.text <| String.fromInt duration ++ " min")
+        ]
+
+
+splitInto30MinuteSegments : List ( Int, Exercise ) -> List (List ( Int, Exercise ))
+splitInto30MinuteSegments exercisesWithDuration =
+    let
+        f ( duration, exercise ) ( segments, runningDuration, nextThirty ) =
+            case segments of
+                -- Can't happen due to way the accumulator is initialized
+                [] ->
+                    ( [], 0, 0 )
+
+                s0 :: other ->
+                    if runningDuration + duration <= nextThirty then
+                        ( (( duration, exercise ) :: s0) :: other
+                        , runningDuration + duration
+                        , nextThirty
+                        )
+
+                    else
+                        ( [ ( duration, exercise ) ] :: s0 :: other
+                        , runningDuration + duration
+                        , nextThirty + 30
+                        )
+    in
+    List.foldl f ( [ [] ], 0, 30 ) exercisesWithDuration
+        |> (\( segments, _, _ ) -> segments)
+        |> List.map List.reverse
+        |> List.reverse
 
 
 lessonsUsingRoutine : IdDict LessonIdTag Lesson -> Routine -> List Lesson

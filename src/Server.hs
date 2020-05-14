@@ -280,8 +280,8 @@ apiServer pool imagesDir =
     getRoutines = runPool $ do
       routinesToExercises <- selectList [] [] :: SqlPersistM [Entity RoutineExercise]
       routineEntities <- selectList [] [] :: SqlPersistM [Entity Routine]
-      let ridToRooutineExercises :: Map.Map RoutineId [RoutineExercise]
-          ridToRooutineExercises =
+      let ridToRoutineExercises :: Map.Map RoutineId [RoutineExercise]
+          ridToRoutineExercises =
             Map.fromListWith (<>) $
               fmap
                 ( \entity ->
@@ -294,7 +294,7 @@ apiServer pool imagesDir =
       pure $
         fmap
           ( \routineEntity ->
-              let res = Map.findWithDefault [] (entityKey routineEntity) ridToRooutineExercises
+              let res = Map.findWithDefault [] (entityKey routineEntity) ridToRoutineExercises
                in fromRoutine routineEntity res
           )
           routineEntities
