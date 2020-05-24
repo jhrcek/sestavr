@@ -358,6 +358,28 @@ view config exercises lessons routine lessonPlanner =
         , E.column
             [ E.spacing 10 ]
             [ E.text <| "Celková délka: " ++ String.fromInt (routineDurationMinutes routine) ++ " minut."
+            , E.row [ E.spacing 5, E.paddingXY 0 5 ]
+                [ editRoutineButton routine
+                , E.link Common.blueButton
+                    { url = Router.href <| Router.RoutineEditor <| Router.CopyRoutine routine.id
+                    , label = E.text "Kopírovat"
+                    }
+                , Input.button Common.coralButton
+                    { onPress = Just (config.deleteRoutine routine.id)
+                    , label = E.text "Odstranit"
+                    }
+                ]
+            , E.el [ E.paddingXY 0 5 ] <|
+                case lessonsUsingRoutine lessons routine of
+                    [] ->
+                        E.text "Tato sestava zatím nebyla použita v žádné lekci"
+
+                    ls ->
+                        E.column []
+                            (E.text "Tato sestava byla použita v lekcích"
+                                :: List.map (\lesson -> E.text <| Time.formatDateTime lesson.datetime) ls
+                            )
+            , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
             , routine.exercises
                 |> List.filterMap
                     (\re ->
@@ -393,28 +415,6 @@ view config exercises lessons routine lessonPlanner =
                    )
                 |> E.column [ E.paddingXY 0 5, E.spacing 5 ]
             ]
-        , E.row [ E.spacing 5, E.paddingXY 0 5 ]
-            [ editRoutineButton routine
-            , E.link Common.blueButton
-                { url = Router.href <| Router.RoutineEditor <| Router.CopyRoutine routine.id
-                , label = E.text "Kopírovat"
-                }
-            , Input.button Common.coralButton
-                { onPress = Just (config.deleteRoutine routine.id)
-                , label = E.text "Odstranit"
-                }
-            ]
-        , E.el [ E.paddingXY 0 5 ] <|
-            case lessonsUsingRoutine lessons routine of
-                [] ->
-                    E.text "Tato sestava zatím nebyla použita v žádné lekci"
-
-                ls ->
-                    E.column []
-                        (E.text "Tato sestava byla použita v lekcích"
-                            :: List.map (\lesson -> E.text <| Time.formatDateTime lesson.datetime) ls
-                        )
-        , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
         ]
 
 
