@@ -14,6 +14,7 @@ module Page.Routine exposing
     , view
     )
 
+import Calendar
 import Color
 import Command
 import Common
@@ -24,6 +25,8 @@ import Domain
         ( Exercise
         , ExerciseId
         , ExerciseIdTag
+        , Inspiration
+        , InspirationIdTag
         , Lesson
         , LessonIdTag
         , Position
@@ -62,6 +65,8 @@ type alias Model =
     , positionFilter : IdSet PositionIdTag
     , showingPopupFor : Maybe ExerciseId
     , hasUnsavedChanges : Bool
+    , showInspiration : Bool
+    , inspirationOffset : Int
     }
 
 
@@ -109,6 +114,8 @@ initEditor exercises routine =
     , positionFilter = Id.emptySet
     , showingPopupFor = Nothing
     , hasUnsavedChanges = False
+    , showInspiration = False
+    , inspirationOffset = 0
     }
 
 
@@ -134,6 +141,8 @@ emptyEditor =
     , positionFilter = Id.emptySet
     , showingPopupFor = Nothing
     , hasUnsavedChanges = False
+    , showInspiration = False
+    , inspirationOffset = 0
     }
 
 
@@ -155,6 +164,9 @@ type Msg
     | ShowExerciseDetailsPopup ExerciseId
     | HideExerciseDetailsPopup
     | ThrowAwayChanges
+    | PrevInspiration
+    | NextInspiration
+    | ToggleInspiration
     | DnD DnDList.Msg
 
 
@@ -266,6 +278,21 @@ update config exercises msg model =
         ThrowAwayChanges ->
             ( model
             , Command.perform config.throwAwayChanges
+            )
+
+        PrevInspiration ->
+            ( { model | inspirationOffset = model.inspirationOffset - 1 }
+            , Cmd.none
+            )
+
+        NextInspiration ->
+            ( { model | inspirationOffset = model.inspirationOffset + 1 }
+            , Cmd.none
+            )
+
+        ToggleInspiration ->
+            ( { model | showInspiration = not model.showInspiration }
+            , Cmd.none
             )
 
 
@@ -521,10 +548,11 @@ editor :
     -> IdDict PositionIdTag Position
     -> IdDict RoutineIdTag Routine
     -> IdDict LessonIdTag Lesson
+    -> IdDict InspirationIdTag Inspiration
     -> Posix
     -> Model
     -> Element Msg
-editor exercises tags positions routines lessons today model =
+editor exercises tags positions routines lessons inspirations today model =
     let
         pastExerciseUsages =
             getPastExerciseUsages today routines lessons
@@ -580,6 +608,7 @@ editor exercises tags positions routines lessons today model =
                         , placeholder = Nothing
                         , label = Input.labelLeft [ E.padding 5 ] (E.text "Téma")
                         }
+                    :: inspirationView inspirations today model.inspirationOffset model.showInspiration
                     :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
                     ++ [ E.el [ E.padding 5 ] <|
                             E.text <|
@@ -596,6 +625,63 @@ editor exercises tags positions routines lessons today model =
                 )
             ]
         ]
+
+
+inspirationView : IdDict InspirationIdTag Inspiration -> Posix -> Int -> Bool -> Element Msg
+inspirationView inspirations today offset showingInspiration =
+    if showingInspiration then
+        let
+            monthNum =
+                Calendar.monthToInt <| Time.toMonth Time.utc today
+
+            inspirationId =
+                (monthNum + offset - 1)
+                    |> modBy 12
+                    |> (+) 1
+                    |> Id.fromInt
+        in
+        Dict.Any.get inspirationId inspirations
+            |> Maybe.map
+                (\i ->
+                    E.column [ E.paddingXY 5 0 ]
+                        [ E.row [ E.spacing 5, E.width E.fill ]
+                            [ Input.button navButtonAttrs
+                                { onPress = Just PrevInspiration
+                                , label = E.el [ E.centerY ] (E.text "«")
+                                }
+                            , E.el [ Font.bold, E.padding 5 ] <| E.text <| "Inspirace na " ++ Time.toCzechMonth (Time.monthFromNumber i.monthNumber)
+                            , Input.button navButtonAttrs
+                                { onPress = Just NextInspiration
+                                , label = E.el [ E.centerY ] (E.text "»")
+                                }
+                            , Input.button (E.alignRight :: Common.blueButton)
+                                { onPress = Just ToggleInspiration
+                                , label = E.text "Skrýt Inspiraci"
+                                }
+                            ]
+                        , E.paragraph []
+                            [ Common.markdown i.description ]
+                        ]
+                )
+            |> Maybe.withDefault E.none
+
+    else
+        E.column [ E.paddingXY 5 0 ]
+            [ Input.button Common.blueButton
+                { onPress = Just ToggleInspiration
+                , label = E.text "Zobrazit inspiraci"
+                }
+            ]
+
+
+navButtonAttrs : List (E.Attribute msg)
+navButtonAttrs =
+    [ E.padding 5
+    , Border.color Color.darkGrey
+    , Border.solid
+    , Border.width 1
+    , Border.rounded 5
+    ]
 
 
 filtersColumn :
@@ -724,15 +810,7 @@ availableExerciseView pastExerciseUsages model exercise =
                     Nothing ->
                         "Nikdy"
             )
-        , Input.button
-            [ E.padding 5
-            , Border.color Color.darkGrey
-            , Border.solid
-            , Border.width 1
-            , Border.rounded 5
-            , E.alignRight
-            , E.alignTop
-            ]
+        , Input.button (E.alignRight :: E.alignTop :: navButtonAttrs)
             { onPress = Just (AddToRoutine exercise.id)
             , label = E.el [ E.centerY ] (E.text "»")
             }
@@ -858,13 +936,7 @@ draggableExercise dndModel index exerciseInRoutine =
             String.fromInt exerciseInRoutine.draggableItemId
     in
     E.row [ E.width E.fill, E.paddingXY 5 0, E.spacing 5 ]
-        [ Input.button
-            [ E.padding 5
-            , Border.color Color.darkGrey
-            , Border.solid
-            , Border.width 1
-            , Border.rounded 5
-            ]
+        [ Input.button navButtonAttrs
             { onPress = Just (RemoveFromRoutine exerciseInRoutine)
             , label = E.text "«"
             }

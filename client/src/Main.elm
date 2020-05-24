@@ -407,6 +407,7 @@ viewBody model =
                         model.store.positions
                         model.store.routines
                         model.store.lessons
+                        model.store.inspirations
                         model.today
                         model.routineModel
 

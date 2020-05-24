@@ -1,4 +1,11 @@
-module Page.Inspiration exposing (Config, Model, Msg, init, update, view)
+module Page.Inspiration exposing
+    ( Config
+    , Model
+    , Msg
+    , init
+    , update
+    , view
+    )
 
 import Command
 import Common
