@@ -5,6 +5,9 @@ module Domain exposing
     , ImageId
     , ImageIdTag
     , ImageVerificationResult
+    , Inspiration
+    , InspirationId
+    , InspirationIdTag
     , Lesson
     , LessonId
     , LessonIdTag
@@ -19,12 +22,14 @@ module Domain exposing
     , TagIdTag
     , emptyImageVerificationResult
     , encodeExercise
+    , encodeInspiration
     , encodeLesson
     , encodePosition
     , encodeRoutine
     , encodeTag
     , exerciseDecoder
     , imageVerificationResultDecoder
+    , inspirationDecoder
     , lessonDecoder
     , positionDecoder
     , removeUnusedImage
@@ -291,12 +296,49 @@ imageVerificationResultDecoder =
 
 
 
+-- INSPIRATION
+
+
+type InspirationIdTag
+    = InspirationIdTag
+
+
+type alias InspirationId =
+    Id InspirationIdTag
+
+
+type alias Inspiration =
+    { id : InspirationId
+    , monthNumber : Int
+    , description : String
+    }
+
+
+inspirationDecoder : Decoder Inspiration
+inspirationDecoder =
+    Decode.map3 Inspiration
+        (Decode.field "id" Id.decode)
+        (Decode.field "monthNumber" Decode.int)
+        (Decode.field "description" Decode.string)
+
+
+encodeInspiration : Inspiration -> Value
+encodeInspiration inspiration =
+    Encode.object
+        [ ( "id", Id.encode inspiration.id )
+        , ( "monthNumber", Encode.int inspiration.monthNumber )
+        , ( "description", Encode.string inspiration.description )
+        ]
+
+
+
 -- The code below is to reduce the number of "unused" warnings
 
 
 type Tags
     = ExerciseIdTag_ ExerciseIdTag
     | ImageIdTag_ ImageIdTag
+    | InspirationIdTag_ InspirationIdTag
     | LessonIdTag_ LessonIdTag
     | PositionIdTag_ PositionIdTag
     | RoutineIdTag_ RoutineIdTag
@@ -307,6 +349,7 @@ tags : List Tags
 tags =
     [ ExerciseIdTag_ ExerciseIdTag
     , ImageIdTag_ ImageIdTag
+    , InspirationIdTag_ InspirationIdTag
     , LessonIdTag_ LessonIdTag
     , PositionIdTag_ PositionIdTag
     , RoutineIdTag_ RoutineIdTag

@@ -13,6 +13,7 @@ module Store exposing
     , deleteRoutine
     , deleteTag
     , getExercises
+    , getInspirations
     , getLessons
     , getPositions
     , getRoutines
@@ -22,6 +23,7 @@ module Store exposing
     , routineSavedSuccess
     , update
     , updateExercise
+    , updateInspiration
     , updatePosition
     , updateRoutine
     , updateTag
@@ -35,6 +37,8 @@ import Domain
         , ExerciseId
         , ExerciseIdTag
         , ImageVerificationResult
+        , Inspiration
+        , InspirationIdTag
         , Lesson
         , LessonId
         , LessonIdTag
@@ -80,6 +84,9 @@ type Msg
     | LessonsFetched (ApiCall (List Lesson))
     | LessonCreated (ApiCall Lesson)
     | LessonDeleted (ApiCall LessonId)
+      -- Inspiration
+    | InspirationsFetched (ApiCall (List Inspiration))
+    | InspirationUpdated (ApiCall Inspiration)
       -- Image
     | ImagesVerified (ApiCall ImageVerificationResult)
     | ImageDeleted (ApiCall String)
@@ -91,6 +98,7 @@ type alias Store =
     , exercises : IdDict ExerciseIdTag Exercise
     , routines : IdDict RoutineIdTag Routine
     , lessons : IdDict LessonIdTag Lesson
+    , inspirations : IdDict InspirationIdTag Inspiration
     , images : ImageVerificationResult
     }
 
@@ -102,6 +110,7 @@ init =
     , exercises = Id.emptyDict
     , routines = Id.emptyDict
     , lessons = Id.emptyDict
+    , inspirations = Id.emptyDict
     , images = Domain.emptyImageVerificationResult
     }
 
@@ -171,6 +180,12 @@ update msg =
 
         ImageDeleted result ->
             updateOrError result (\imageFileName store -> { store | images = Domain.removeUnusedImage imageFileName store.images })
+
+        InspirationUpdated result ->
+            updateOrError result (\inspiration store -> { store | inspirations = Dict.Any.insert inspiration.id inspiration store.inspirations })
+
+        InspirationsFetched result ->
+            updateOrError result (\inspirations store -> { store | inspirations = Id.buildDict inspirations })
 
 
 updateOrError : ApiCall a -> (a -> Store -> Store) -> Store -> ( Store, Maybe Ht2.Error )
@@ -395,6 +410,27 @@ deleteLesson lessonId =
         { baseUrl = "/lesson/"
         , resourceId = lessonId
         , onResponse = LessonDeleted
+        }
+
+
+
+-- INSPIRATION
+
+
+getInspirations : Cmd Msg
+getInspirations =
+    Http.get
+        { url = "/inspiration"
+        , expect = Ht2.expectJson InspirationsFetched (Decode.list Domain.inspirationDecoder)
+        }
+
+
+updateInspiration : Inspiration -> Cmd Msg
+updateInspiration inspiration =
+    Http.post
+        { url = "/inspiration/" ++ Id.toString inspiration.id
+        , body = Http.jsonBody <| Domain.encodeInspiration inspiration
+        , expect = Ht2.expectWhatever (InspirationUpdated << Result.map (\() -> inspiration))
         }
 
 

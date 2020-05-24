@@ -2,8 +2,10 @@ module Common exposing
     ( blueButton
     , coralButton
     , heading1
+    , heading2
     , iconButton
     , linkAttrs
+    , markdown
     )
 
 import Color
@@ -12,6 +14,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Markdown exposing (defaultOptions)
 
 
 blueButton : List (Attribute msg)
@@ -60,6 +63,16 @@ heading1 text =
         (E.text text)
 
 
+heading2 : String -> Element msg
+heading2 text =
+    E.el
+        [ Font.size 24
+        , Font.bold
+        , E.paddingXY 0 10
+        ]
+        (E.text text)
+
+
 iconButton : msg -> String -> Element msg
 iconButton onPress label =
     Input.button
@@ -75,3 +88,17 @@ iconButton onPress label =
         { onPress = Just onPress
         , label = E.el [ E.centerY, E.centerX ] (E.text label)
         }
+
+
+markdown : String -> Element msg
+markdown =
+    E.html << Markdown.toHtmlWith noSanitization []
+
+
+noSanitization : Markdown.Options
+noSanitization =
+    { defaultOptions
+      -- Turning of sanitization to allow setting image dimensions via
+      -- <div class="image">![alt text](image.png)</div>
+        | sanitize = False
+    }

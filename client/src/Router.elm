@@ -24,6 +24,7 @@ type Route
     | RoutineEditor RoutineEditorRoute
     | Lessons
     | Images
+    | Inspirations
     | NotFound String
 
 
@@ -41,6 +42,7 @@ route =
         , P.map Positions (s "position")
         , P.map Lessons (s "lesson")
         , P.map Images (s "image")
+        , P.map Inspirations (s "inspiration")
 
         -- Exercises
         , P.map Exercises (s "exercise")
@@ -81,6 +83,9 @@ toHash r =
 
         Lessons ->
             "/lesson"
+
+        Inspirations ->
+            "/inspiration"
 
         Exercises ->
             "/exercise"

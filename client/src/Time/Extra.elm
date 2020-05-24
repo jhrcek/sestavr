@@ -3,6 +3,7 @@ module Time.Extra exposing
     , firstDayOfMonthWeekday
     , formatDate
     , formatDateTime
+    , monthFromNumber
     , nextMonthYear
     , prevMonthYear
     , toCzechMonth
@@ -14,6 +15,46 @@ module Time.Extra exposing
 import Array
 import Calendar
 import Time exposing (Month(..), Posix, Weekday(..))
+
+
+monthFromNumber : Int -> Month
+monthFromNumber monthNumber =
+    case monthNumber of
+        1 ->
+            Jan
+
+        2 ->
+            Feb
+
+        3 ->
+            Mar
+
+        4 ->
+            Apr
+
+        5 ->
+            May
+
+        6 ->
+            Jun
+
+        7 ->
+            Jul
+
+        8 ->
+            Aug
+
+        9 ->
+            Sep
+
+        10 ->
+            Oct
+
+        11 ->
+            Nov
+
+        _ ->
+            Dec
 
 
 toCzechMonth : Month -> String

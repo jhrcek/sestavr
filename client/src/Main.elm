@@ -9,6 +9,7 @@ import Domain
     exposing
         ( Exercise
         , ExerciseId
+        , Inspiration
         , Lesson
         , LessonId
         , Position
@@ -29,6 +30,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Modal
 import Page.Exercise as Exercise
 import Page.Image as Image
+import Page.Inspiration as Inspiration
 import Page.Lesson as Lesson
 import Page.Position as Position
 import Page.Routine as Routine
@@ -149,6 +151,9 @@ initPageModel model =
         Router.Images ->
             { model | pageModel = ImagesModel }
 
+        Router.Inspirations ->
+            { model | pageModel = InspirationModel Inspiration.init }
+
         Router.NotFound what ->
             { model | pageModel = NotFoundModel what }
 
@@ -174,6 +179,7 @@ type PageModel
     = HomeModel
     | TagModel Tag.Model
     | LessonModel
+    | InspirationModel Inspiration.Model
     | PositionModel Position.Model
       -- Exercise
     | ExerciseList
@@ -195,6 +201,9 @@ type Msg
     | StoreMsg Store.Msg
     | SetRoute Route
     | SetRoutineEditor Routine.Model
+      -- Inspiration
+    | InspirationMsg Inspiration.Msg
+    | UpdateInspiration Inspiration
       -- Tag
     | TagMsg Tag.Msg
     | CreateTag Tag
@@ -250,6 +259,7 @@ init _ url key =
                 , Store.getPositions
                 , Store.getRoutines
                 , Store.getLessons
+                , Store.getInspirations
                 , Store.verifyImages
                 ]
         , Task.perform GotTime Time.now
@@ -368,6 +378,9 @@ viewBody model =
                     model.store.lessons
                     model.store.routines
 
+            InspirationModel imodel ->
+                E.map InspirationMsg <| Inspiration.view model.store.inspirations imodel
+
             PositionModel pmodel ->
                 E.map PositionMsg <| Position.view model.store.positions pmodel
 
@@ -473,6 +486,21 @@ update msg model =
             , tagCmd
             )
 
+        InspirationMsg inspirationMsg ->
+            let
+                ( newPageModel, inspirationCmd ) =
+                    case model.pageModel of
+                        InspirationModel m ->
+                            Tuple.mapFirst InspirationModel <|
+                                Inspiration.update inspirationConfig inspirationMsg m
+
+                        other ->
+                            ( other, Cmd.none )
+            in
+            ( { model | pageModel = newPageModel }
+            , inspirationCmd
+            )
+
         PositionMsg positionMsg ->
             let
                 ( newPageModel, positionCmd ) =
@@ -540,6 +568,11 @@ update msg model =
         UpdateTag tag ->
             ( model
             , Cmd.map StoreMsg <| Store.updateTag tag
+            )
+
+        UpdateInspiration inspiration ->
+            ( model
+            , Cmd.map StoreMsg <| Store.updateInspiration inspiration
             )
 
         CreatePosition position ->
@@ -676,6 +709,12 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+inspirationConfig : Inspiration.Config Msg
+inspirationConfig =
+    { updateInspiration = UpdateInspiration
+    }
 
 
 tagConfig : Tag.Config Msg
@@ -834,6 +873,7 @@ navigationLeft currentRoute =
         , menuItem currentRoute Router.Positions "Pozice"
         , menuItem currentRoute Router.Routines "Sestavy"
         , menuItem currentRoute Router.Lessons "Lekce"
+        , menuItem currentRoute Router.Inspirations "Inspirace"
         , menuItem currentRoute Router.Images "Obrázky"
         ]
 

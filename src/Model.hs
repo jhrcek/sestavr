@@ -26,6 +26,8 @@ module Model
         RoutineExerciseRoutineId
       ),
     ImageVerificationResult (..),
+    Inspiration,
+    InspirationId,
     Lesson,
     LessonId,
     Position,
@@ -99,6 +101,10 @@ RoutineExercise json
 Lesson json
     routineId RoutineId
     datetime UTCTime
+Inspiration json
+    monthNumber Int
+    description Text
+    UniqueInspirationMonthNumber monthNumber
 |]
 
 -- This is to alleviate frontend from having to join TagIds from join table
@@ -327,4 +333,4 @@ createDemoData = runSqlite "sestavr.db" $ do
   currentTime <- liftIO getCurrentTime
   _ <- insert $ Lesson routine1Id currentTime
 
-  pure ()
+  mapM_ insert [Inspiration i "" | i <- [1 .. 12]]

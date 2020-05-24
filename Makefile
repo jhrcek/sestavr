@@ -1,5 +1,8 @@
 script=dist/main.js
 
+dev:
+	cd client && elm-live src/Main.elm -- --debug --output=$(script)
+
 front:
 	cd client && elm make src/Main.elm --optimize --output=$(script)
 

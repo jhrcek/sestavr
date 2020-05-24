@@ -61,6 +61,9 @@ type SestavrAPI =
     :<|> "lesson" :> Get '[JSON] [Entity Lesson]
     :<|> "lesson" :> ReqBody '[JSON] Lesson :> Post '[JSON] (Entity Lesson)
     :<|> "lesson" :> Capture "lessonId" LessonId :> Delete '[JSON] ()
+    -- Inspiration
+    :<|> "inspiration" :> Get '[JSON] [Entity Inspiration]
+    :<|> "inspiration" :> Capture "inspirationId" InspirationId :> ReqBody '[JSON] Inspiration :> Post '[JSON] ()
     -- Images
     :<|> "image" :> "verify" :> Get '[JSON] ImageVerificationResult
     :<|> "image" :> Capture "filename" FilePath :> Delete '[JSON] ()

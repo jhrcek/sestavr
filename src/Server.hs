@@ -63,6 +63,8 @@ import Model
     ExerciseTag (..),
     ExerciseWithTags,
     ImageVerificationResult (..),
+    Inspiration,
+    InspirationId,
     Lesson,
     LessonId,
     Position,
@@ -159,6 +161,9 @@ apiServer pool imagesDir =
     :<|> getLessons
     :<|> createLesson
     :<|> deleteLesson
+    -- Inspiration
+    :<|> getInspirations
+    :<|> updateInspiration
     -- Images
     :<|> verifyImages
     :<|> deleteImage
@@ -358,6 +363,13 @@ apiServer pool imagesDir =
     --
     deleteLesson :: LessonId -> Handler ()
     deleteLesson lessonId = runPool $ delete lessonId
+    -- INSPIRATION
+    getInspirations :: Handler [Entity Inspiration]
+    getInspirations = runPool $ selectList [] []
+    --
+    updateInspiration :: InspirationId -> Inspiration -> Handler ()
+    updateInspiration inspirationId inspiration =
+      runPool (replace inspirationId inspiration)
     -- IMAGES
     verifyImages :: Handler ImageVerificationResult
     verifyImages = runPool $ verifyImages_ imagesDir

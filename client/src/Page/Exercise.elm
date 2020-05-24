@@ -501,7 +501,8 @@ exerciseDetail config positions tags exercises exercise =
                     (E.el [ E.centerX, E.centerY ]
                         (E.text "- bez obrázku -")
                     )
-        , E.paragraph [] [ markdown exercise.description ]
+        , E.paragraph []
+            [ Common.markdown exercise.description ]
         ]
 
 
@@ -536,20 +537,6 @@ neighborExercise es e diff label =
                     }
             )
         |> Maybe.withDefault E.none
-
-
-markdown : String -> Element msg
-markdown =
-    E.html << Markdown.toHtmlWith noSanitization []
-
-
-noSanitization : Markdown.Options
-noSanitization =
-    { defaultOptions
-      -- Turning of sanitization to allow setting image dimensions via
-      -- <div class="image">![alt text](image.png)</div>
-        | sanitize = False
-    }
 
 
 imageSizeStyle : Html msg
