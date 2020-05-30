@@ -14,6 +14,7 @@ module Page.Routine exposing
     , view
     )
 
+import Browser.Dom as Dom
 import Calendar
 import Color
 import Command
@@ -52,6 +53,7 @@ import Page.Exercise as Exercise
 import Page.Routine.LessonPlanner as LessonPlanner exposing (LessonPlanner)
 import Router
 import Set.Any
+import Task
 import Time exposing (Posix)
 import Time.Extra as Time
 
@@ -67,6 +69,7 @@ type alias Model =
     , hasUnsavedChanges : Bool
     , showInspiration : Bool
     , inspirationOffset : Int
+    , isScrolling : Bool
     }
 
 
@@ -116,6 +119,7 @@ initEditor exercises routine =
     , hasUnsavedChanges = False
     , showInspiration = False
     , inspirationOffset = 0
+    , isScrolling = False
     }
 
 
@@ -143,6 +147,7 @@ emptyEditor =
     , hasUnsavedChanges = False
     , showInspiration = False
     , inspirationOffset = 0
+    , isScrolling = True
     }
 
 
@@ -168,6 +173,8 @@ type Msg
     | NextInspiration
     | ToggleInspiration
     | DnD DnDList.Msg
+    | StartAutoScroll Float
+    | SetViewPort Float Float Float Float
 
 
 update : Config msg -> IdDict ExerciseIdTag Exercise -> Msg -> Model -> ( Model, Cmd msg )
@@ -237,14 +244,77 @@ update config exercises msg model =
             let
                 ( dnd, routineExercises ) =
                     dndSystem.update dndMsg model.dnd model.routineExercises
+
+                ( isScrolling, maybeStartScrolling ) =
+                    case dndSystem.info dnd of
+                        Just { currentPosition, dragElement } ->
+                            if currentPosition.y < 10 then
+                                ( True
+                                , if model.isScrolling then
+                                    Cmd.none
+
+                                  else
+                                    {- Start scrolling UP when dragged element reaches the top of the viewport -}
+                                    Command.perform <| StartAutoScroll -20
+                                )
+
+                            else if currentPosition.y + 10 > dragElement.viewport.height then
+                                ( True
+                                , if model.isScrolling then
+                                    Cmd.none
+
+                                  else
+                                    {- Start scrolling DOWN when dragged element reaches the bottom of the viewport -}
+                                    Command.perform <| StartAutoScroll 20
+                                )
+
+                            else
+                                ( False, Cmd.none )
+
+                        Nothing ->
+                            ( False, Cmd.none )
             in
             ( markUnsaved
                 { model
                     | dnd = dnd
                     , routineExercises = routineExercises
+                    , isScrolling = isScrolling
                 }
-            , Cmd.map config.msg <| dndSystem.commands model.dnd
+            , Cmd.map config.msg <|
+                Cmd.batch
+                    [ maybeStartScrolling
+                    , dndSystem.commands model.dnd
+                    ]
             )
+
+        StartAutoScroll delta ->
+            ( { model | isScrolling = True }
+            , Task.perform
+                (\{ scene, viewport } ->
+                    config.msg <|
+                        SetViewPort delta (scene.height - viewport.height) viewport.x viewport.y
+                )
+                Dom.getViewport
+            )
+
+        SetViewPort delta maxViewPortY viewPortX viewPortY ->
+            if model.isScrolling then
+                let
+                    newViewPortY =
+                        clamp 0 maxViewPortY <| viewPortY + delta
+                in
+                if newViewPortY == viewPortY then
+                    ( { model | isScrolling = False }, Cmd.none )
+
+                else
+                    ( model
+                    , Task.perform
+                        (\_ -> config.msg <| SetViewPort delta maxViewPortY viewPortX newViewPortY)
+                        (Dom.setViewport viewPortX viewPortY)
+                    )
+
+            else
+                ( model, Cmd.none )
 
         SaveRoutine ->
             let
@@ -930,7 +1000,7 @@ setAny p set =
 
 
 draggableExercise : DnDList.Model -> Int -> ExerciseInRoutine -> Element Msg
-draggableExercise dndModel index exerciseInRoutine =
+draggableExercise dnd index exerciseInRoutine =
     let
         exId =
             String.fromInt exerciseInRoutine.draggableItemId
@@ -958,7 +1028,7 @@ draggableExercise dndModel index exerciseInRoutine =
             , label = Input.labelHidden "duration"
             }
         , draggableExerciseElement exerciseInRoutine <|
-            case dndSystem.info dndModel of
+            case dndSystem.info dnd of
                 Just { dragIndex } ->
                     if dragIndex /= index then
                         List.map E.htmlAttribute <| Attr.id exId :: dndSystem.dropEvents index exId
@@ -977,14 +1047,14 @@ draggableExerciseElement eir attrs =
 
 
 ghostView : DnDList.Model -> List ExerciseInRoutine -> Element Msg
-ghostView dndModel routineExercises =
-    dndSystem.info dndModel
+ghostView dnd routineExercises =
+    dndSystem.info dnd
         |> Maybe.andThen (\{ dragIndex } -> List.getAt dragIndex routineExercises)
         |> Maybe.map
             (\exerciseInRoutine ->
                 draggableExerciseElement exerciseInRoutine <|
                     List.map E.htmlAttribute <|
-                        dndSystem.ghostStyles dndModel
+                        dndSystem.ghostStyles dnd
             )
         |> Maybe.withDefault E.none
 

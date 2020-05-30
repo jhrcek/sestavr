@@ -38,7 +38,6 @@ import Element.Input as Input
 import Html exposing (Html)
 import Id exposing (IdDict, IdSet)
 import List.Extra as List
-import Markdown exposing (defaultOptions)
 import Router exposing (Route(..))
 import Set.Any
 
