@@ -1,5 +1,5 @@
 module Store exposing
-    ( Msg
+    ( Msg(..)
     , Store
     , createExercise
     , createLesson

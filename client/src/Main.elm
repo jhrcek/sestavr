@@ -429,6 +429,17 @@ update msg model =
             let
                 ( newStore, maybeError ) =
                     Store.update storeMsg model.store
+
+                maybeReinitializePageModel =
+                    case storeMsg of
+                        Store.RoutinesFetched _ ->
+                            initPageModel
+
+                        Store.ExercisesFetched _ ->
+                            initPageModel
+
+                        _ ->
+                            identity
             in
             ( { model
                 | store = newStore
@@ -440,6 +451,7 @@ update msg model =
                     else
                         model.routineModel
               }
+                |> maybeReinitializePageModel
             , Store.redirect storeMsg
                 |> Maybe.map goToRoute
                 |> Maybe.withDefault Cmd.none
