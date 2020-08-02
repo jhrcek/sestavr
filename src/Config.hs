@@ -70,11 +70,12 @@ ensureValid config = do
   let dbFile = configDbFile config
       createDemoData = configCreateDemoData config
   dbFileExists <- doesFileExist dbFile
-  when (createDemoData && dbFileExists) $ die $
-    unlines
-      [ "You asked me to initialize DB with demo data.",
-        "But the database file '" ++ dbFile ++ "' already exists.",
-        "Exiting, because I don't want to overwrite existing database"
-      ]
+  when (createDemoData && dbFileExists) $
+    die $
+      unlines
+        [ "You asked me to initialize DB with demo data.",
+          "But the database file '" ++ dbFile ++ "' already exists.",
+          "Exiting, because I don't want to overwrite existing database"
+        ]
   when createDemoData Model.createDemoData
   pure config

@@ -59,7 +59,7 @@ module Model
 where
 
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson ((.=), FromJSON, ToJSON, object, toJSON)
+import Data.Aeson (FromJSON, ToJSON, object, toJSON, (.=))
 import qualified Data.List as List
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, getCurrentTime)

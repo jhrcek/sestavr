@@ -24,8 +24,8 @@ import Data.FileEmbed (embedFile)
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import Data.Maybe (mapMaybe)
-import qualified Data.Set as Set
 import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Database.Persist ((==.))
@@ -95,8 +95,7 @@ import Model
   )
 import qualified Network.Wai.Handler.Warp as Warp
 import Servant
-  ( (:<|>) (..),
-    Application,
+  ( Application,
     Handler,
     Server,
     err404,
@@ -104,6 +103,7 @@ import Servant
     errBody,
     serve,
     throwError,
+    (:<|>) (..),
   )
 import Servant.Server.StaticFiles (serveDirectoryWebApp)
 import System.Directory (doesFileExist, listDirectory, removeFile)

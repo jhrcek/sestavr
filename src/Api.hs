@@ -16,11 +16,9 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Proxy (Proxy (Proxy))
 import Database.Persist.Types (Entity)
 import Model
-import Network.HTTP.Media ((//), MediaType)
+import Network.HTTP.Media (MediaType, (//))
 import Servant.API
-  ( (:<|>) (..),
-    (:>),
-    Accept,
+  ( Accept,
     Capture,
     Delete,
     Get,
@@ -31,6 +29,8 @@ import Servant.API
     ReqBody,
     contentType,
     mimeRender,
+    (:<|>) (..),
+    (:>),
   )
 
 type SestavrAPI =
