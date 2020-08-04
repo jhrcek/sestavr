@@ -553,10 +553,9 @@ tableView routines lessons model =
                 , E.padding 5
                 ]
 
-        datesWhenUsedInLessons : RoutineId -> List Posix
-        datesWhenUsedInLessons routineId =
-            Dict.Any.values lessons
-                |> List.filter (\lesson -> lesson.routineId == routineId)
+        datesWhenUsedInLessons : Routine -> List Posix
+        datesWhenUsedInLessons routine =
+            lessonsUsingRoutine lessons routine
                 |> List.map .datetime
                 |> List.sortBy Time.posixToMillis
                 |> List.reverse
@@ -590,7 +589,7 @@ tableView routines lessons model =
                         \routine ->
                             cell <|
                                 E.text <|
-                                    case datesWhenUsedInLessons routine.id of
+                                    case datesWhenUsedInLessons routine of
                                         [] ->
                                             "Nikdy"
 
