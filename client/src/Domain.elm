@@ -2,8 +2,6 @@ module Domain exposing
     ( Exercise
     , ExerciseId
     , ExerciseIdTag
-    , ImageId
-    , ImageIdTag
     , ImageVerificationResult
     , Inspiration
     , InspirationId
@@ -252,14 +250,6 @@ encodeLesson lesson =
 -- IMAGE
 
 
-type ImageIdTag
-    = ImageIdTag
-
-
-type alias ImageId =
-    Id ImageIdTag
-
-
 type alias ImageVerificationResult =
     { invalidLinks : IdDict ExerciseIdTag (List String)
     , unusedImages : List String
@@ -337,7 +327,6 @@ encodeInspiration inspiration =
 
 type Tags
     = ExerciseIdTag_ ExerciseIdTag
-    | ImageIdTag_ ImageIdTag
     | InspirationIdTag_ InspirationIdTag
     | LessonIdTag_ LessonIdTag
     | PositionIdTag_ PositionIdTag
@@ -348,7 +337,6 @@ type Tags
 tags : List Tags
 tags =
     [ ExerciseIdTag_ ExerciseIdTag
-    , ImageIdTag_ ImageIdTag
     , InspirationIdTag_ InspirationIdTag
     , LessonIdTag_ LessonIdTag
     , PositionIdTag_ PositionIdTag

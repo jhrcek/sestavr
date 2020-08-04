@@ -14,6 +14,9 @@ run: front
 
 install: mini
 	stack install --pedantic
+
+review:
+	cd client && elm-review
 clean:
 	rm client/$(script)
 	rm client/elm-stuff -rf
