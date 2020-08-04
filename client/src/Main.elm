@@ -385,7 +385,11 @@ viewBody model =
                 E.map PositionMsg <| Position.view model.store.positions pmodel
 
             RoutineList ->
-                E.map RoutineMsg <| Routine.listView model.store.routines model.routineModel
+                E.map RoutineMsg <|
+                    Routine.tableView
+                        model.store.routines
+                        model.store.lessons
+                        model.routineModel
 
             RoutineModel routineId lessonPlanner ->
                 case Dict.Any.get routineId model.store.routines of

@@ -7,8 +7,8 @@ module Page.Routine exposing
     , emptyEditor
     , initCopyEditor
     , initEditor
-    , listView
     , subscriptions
+    , tableView
     , update
     , validationErrorToString
     , view
@@ -534,8 +534,8 @@ lessonsUsingRoutine lessons routine =
         |> Dict.Any.values
 
 
-listView : IdDict RoutineIdTag Routine -> Model -> Element Msg
-listView routines model =
+tableView : IdDict RoutineIdTag Routine -> IdDict LessonIdTag Lesson -> Model -> Element Msg
+tableView routines lessons model =
     let
         createOrGoBackToEditedRoutine =
             if model.hasUnsavedChanges then
@@ -543,21 +543,71 @@ listView routines model =
 
             else
                 createRoutineButton
+
+        cell =
+            E.el
+                [ Border.solid
+                , Border.width 1
+                , Border.color Color.lightGrey
+                , E.height E.fill
+                , E.padding 5
+                ]
+
+        datesWhenUsedInLessons : RoutineId -> List Posix
+        datesWhenUsedInLessons routineId =
+            Dict.Any.values lessons
+                |> List.filter (\lesson -> lesson.routineId == routineId)
+                |> List.map .datetime
+                |> List.sortBy Time.posixToMillis
+                |> List.reverse
     in
-    Dict.Any.values routines
-        |> List.sortBy .topic
-        |> List.map routineLink
-        |> (\routineLinks -> createOrGoBackToEditedRoutine :: routineLinks)
-        |> (::) (Common.heading1 "Sestavy")
-        |> E.column []
+    E.column []
+        [ Common.heading1 "Sestavy"
+        , createOrGoBackToEditedRoutine
+        , E.table
+            [ Border.solid
+            , Border.width 1
+            , Border.color Color.lightGrey
+            ]
+            { data =
+                Dict.Any.values routines
+                    |> List.sortBy .topic
+            , columns =
+                [ { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Název"
+                  , width = E.shrink
+                  , view =
+                        \routine ->
+                            cell <|
+                                E.el [ E.alignLeft ] <|
+                                    E.link Common.linkAttrs
+                                        { url = Router.href (Router.Routine routine.id)
+                                        , label = E.text routine.topic
+                                        }
+                  }
+                , { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Naposledy použita"
+                  , width = E.fill
+                  , view =
+                        \routine ->
+                            cell <|
+                                E.text <|
+                                    case datesWhenUsedInLessons routine.id of
+                                        [] ->
+                                            "Nikdy"
 
+                                        a :: b :: c :: _ :: _ ->
+                                            [ a, b, c ]
+                                                |> List.map Time.formatDate
+                                                |> String.join ", "
+                                                |> (\txt -> txt ++ " ...")
 
-routineLink : Routine -> Element msg
-routineLink routine =
-    E.link Common.linkAttrs
-        { url = Router.href (Router.Routine routine.id)
-        , label = E.text routine.topic
-        }
+                                        oneTwoOrThree ->
+                                            oneTwoOrThree
+                                                |> List.map Time.formatDate
+                                                |> String.join ", "
+                  }
+                ]
+            }
+        ]
 
 
 editRoutineButton : Routine -> Element msg
