@@ -340,7 +340,7 @@ listView exercises =
         , Dict.Any.values exercises
             |> List.sortBy .name
             |> List.map exerciseMenuItem
-            |> E.column [ E.scrollbarY ]
+            |> E.column [ E.scrollbarY, E.height E.fill ]
         ]
 
 
