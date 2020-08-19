@@ -163,8 +163,7 @@ type Msg
     | TogglePositionId PositionId
     | ChangeDuration DraggableItemId String
     | ChangeTopic String
-    | ClearTags
-    | ClearPositions
+    | ClearTagAndPositionFilters
     | SaveRoutine
     | ShowExerciseDetailsPopup ExerciseId
     | HideExerciseDetailsPopup
@@ -230,13 +229,11 @@ update config exercises msg model =
             , Cmd.none
             )
 
-        ClearTags ->
-            ( { model | tagFilter = Id.emptySet }
-            , Cmd.none
-            )
-
-        ClearPositions ->
-            ( { model | positionFilter = Id.emptySet }
+        ClearTagAndPositionFilters ->
+            ( { model
+                | tagFilter = Id.emptySet
+                , positionFilter = Id.emptySet
+              }
             , Cmd.none
             )
 
@@ -820,20 +817,18 @@ filtersColumn tags positions exercises model filteredExercises =
         , Border.width 1
         ]
         [ E.column [ E.alignTop ]
-            [ Exercise.tagCheckboxes ToggleTagId 1000 tags model.tagFilter
-            , if Set.Any.isEmpty model.tagFilter then
-                E.none
+            [ if Set.Any.size model.tagFilter + Set.Any.size model.positionFilter > 0 then
+                E.el [ E.padding 5 ]
+                    (Input.button Common.blueButton
+                        { onPress = Just ClearTagAndPositionFilters
+                        , label = E.text "Zrušit filtry"
+                        }
+                    )
 
               else
-                Input.button Common.blueButton
-                    { onPress = Just ClearTags, label = E.text "Zrušit výběr" }
+                E.el [ Font.bold, E.padding 11 ] (E.text "Filtry")
+            , Exercise.tagCheckboxes ToggleTagId 1000 tags model.tagFilter
             , positionCheckboxes positions model.positionFilter
-            , if Set.Any.isEmpty model.positionFilter then
-                E.none
-
-              else
-                Input.button Common.blueButton
-                    { onPress = Just ClearPositions, label = E.text "Zrušit výběr" }
             , let
                 filteredCount =
                     List.length filteredExercises
