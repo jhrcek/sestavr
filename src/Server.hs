@@ -18,7 +18,7 @@ import Control.Exception.Safe (catch, throwM)
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
-import Data.ByteString (ByteString, readFile)
+import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.FileEmbed (embedFile)
 import qualified Data.List as List
