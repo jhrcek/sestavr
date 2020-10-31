@@ -24,7 +24,7 @@ clean:
 	stack clean
 
 format:
-	git ls-files '*.hs' | xargs ormolu --mode inplace
+	git ls-files '*.hs' | xargs fourmolu --mode inplace
 
 update_db:
 	rm -f sestavr.db && sqlite3 sestavr.db < ~/Dropbox/Share/Eva/sestavr.sql
