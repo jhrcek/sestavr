@@ -11,7 +11,7 @@ import Element as E exposing (Element)
 import Element.Border as Border
 import Id exposing (IdDict)
 import Router
-import Time exposing (Month(..))
+import Time
 import Time.Extra as Time
 
 

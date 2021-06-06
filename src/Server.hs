@@ -42,9 +42,7 @@ import Database.Persist.Sql (SqlPersistM)
 import Database.Persist.Sqlite (
     ConnectionPool,
     createSqlitePool,
-    runMigration,
     runSqlPersistMPool,
-    runSqlPool,
  )
 import Database.Persist.Types (Entity, entityKey, entityVal)
 import Database.Sqlite (
@@ -84,7 +82,6 @@ import Model (
     fromExercise,
     fromRoutine,
     getDurationMinutes,
-    migrateAll,
     routineExerciseRoutineId,
     routineId,
     rweExercises,
@@ -117,7 +114,7 @@ run config = do
         poolSize = configConnectionPoolSize config
 
     pool <- runStderrLoggingT $ createSqlitePool (Text.pack dbFile) poolSize
-    runSqlPool (runMigration migrateAll) pool
+    --runSqlPool (runMigration migrateAll) pool
 
     let app = serveApp pool imagesDir
 

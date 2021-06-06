@@ -8,7 +8,7 @@ module Router exposing
 
 import Domain exposing (ExerciseId, RoutineId)
 import Id
-import Url exposing (Protocol(..), Url)
+import Url exposing (Url)
 import Url.Parser as P exposing ((</>), Parser, int, s, top)
 
 

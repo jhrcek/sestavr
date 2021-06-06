@@ -22,7 +22,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Id
 import List.Extra as List
-import Time exposing (Month(..), Posix, Weekday(..))
+import Time exposing (Month, Posix)
 import Time.Extra as Time
 
 
