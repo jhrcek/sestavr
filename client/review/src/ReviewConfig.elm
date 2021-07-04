@@ -1,6 +1,7 @@
 module ReviewConfig exposing (config)
 
 import NoLeftPizza
+import NoUnoptimizedRecursion
 import NoUnused.CustomTypeConstructorArgs
 import NoUnused.CustomTypeConstructors
 import NoUnused.Dependencies
@@ -15,7 +16,8 @@ import Simplify
 
 config : List Rule
 config =
-    [ NoUnused.CustomTypeConstructors.rule []
+    [ NoUnoptimizedRecursion.rule (NoUnoptimizedRecursion.optOutWithComment "IGNORE TCO")
+    , NoUnused.CustomTypeConstructors.rule []
     , NoUnused.CustomTypeConstructorArgs.rule
     , NoUnused.Dependencies.rule
     , NoUnused.Exports.rule
@@ -26,4 +28,3 @@ config =
     , NoLeftPizza.rule NoLeftPizza.Redundant
     , Simplify.rule Simplify.defaults
     ]
-
