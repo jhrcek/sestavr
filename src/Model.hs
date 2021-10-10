@@ -119,7 +119,7 @@ data ExerciseWithTags = ExerciseWithTags
     , positionId :: PositionId
     , tagIds :: [TagId]
     }
-    deriving (Generic)
+    deriving stock (Generic)
 
 
 instance ToJSON ExerciseWithTags
@@ -160,7 +160,7 @@ data RoutineWithExercises = RoutineWithExercises
     , topic :: Text
     , rweExercises :: [ExerciseInRoutine]
     }
-    deriving (Generic)
+    deriving stock (Generic)
 
 
 instance ToJSON RoutineWithExercises
@@ -173,7 +173,7 @@ data ExerciseInRoutine = ExerciseInRoutine
     { eirExerciseId :: ExerciseId
     , eirDuration :: DurationMinutes
     }
-    deriving (Generic)
+    deriving stock (Generic)
 
 
 instance ToJSON ExerciseInRoutine
@@ -217,7 +217,7 @@ data ImageVerificationResult = ImageVerificationResult
       unusedImages :: [FilePath]
     , knownImages :: [FilePath]
     }
-    deriving (Generic)
+    deriving stock (Generic)
 
 
 instance ToJSON ImageVerificationResult where
