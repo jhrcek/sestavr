@@ -1,6 +1,10 @@
 script=dist/main.js
 
-dev:
+dev-server: front
+	stack build --flag sestavr:dev && \
+	stack exec sestavr-exe  -- --images-directory ~/Dropbox/Share/Eva/yoga_images/
+	
+dev-client:
 	cd client && elm-live src/Main.elm -- --debug --output=$(script)
 
 front:
@@ -9,8 +13,6 @@ front:
 mini: front
 	uglifyjs client/$(script) --compress 'pure_funcs="F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle --output client/$(script)
 
-run: front
-	stack run -- --images-directory ~/Dropbox/Share/Eva/yoga_images/
 
 install: mini
 	stack install --pedantic

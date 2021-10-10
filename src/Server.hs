@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -18,6 +19,10 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Logger (runStderrLoggingT)
 import Data.ByteString (ByteString)
+
+#ifdef DEV
+import Data.ByteString (readFile)
+#endif
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.FileEmbed (embedFile)
 import qualified Data.List as List
@@ -389,17 +394,17 @@ getIndex = pure indexHtml
 
 
 getElmApp :: Handler ByteString
-getElmApp =
-    -- liftIO $ Data.ByteString.readFile "client/dist/main.js"
-    pure elmApp
-
-
-indexHtml :: ByteString
-indexHtml = $(embedFile "client/dist/index.html")
-
+#ifdef DEV
+getElmApp = liftIO $ Data.ByteString.readFile "client/dist/main.js"
+#else
+getElmApp = pure elmApp
 
 elmApp :: ByteString
 elmApp = $(embedFile "client/dist/main.js")
+#endif
+
+indexHtml :: ByteString
+indexHtml = $(embedFile "client/dist/index.html")
 
 
 verifyImages_ :: FilePath -> SqlPersistM ImageVerificationResult

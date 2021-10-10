@@ -2,5 +2,5 @@ client/dist/main.js
 client/elm-stuff
 client/.idea
 client/review/elm-stuff
-sestavr.db
+sestavr.db*
 .stack-work/
