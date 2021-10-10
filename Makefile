@@ -27,6 +27,7 @@ clean:
 
 format:
 	git ls-files '*.hs' | xargs fourmolu --mode inplace
+	cabal-fmt -i sestavr.cabal
 
 update_db:
 	rm -f sestavr.db && sqlite3 sestavr.db < ~/Dropbox/Share/Eva/sestavr.sql

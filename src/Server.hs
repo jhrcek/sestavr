@@ -397,10 +397,7 @@ getElmApp :: Handler ByteString
 #ifdef DEV
 getElmApp = liftIO $ Data.ByteString.readFile "client/dist/main.js"
 #else
-getElmApp = pure elmApp
-
-elmApp :: ByteString
-elmApp = $(embedFile "client/dist/main.js")
+getElmApp = pure $(embedFile "client/dist/main.js")
 #endif
 
 indexHtml :: ByteString

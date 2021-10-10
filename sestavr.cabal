@@ -10,78 +10,81 @@ homepage:           https://github.com/jhrcek/sestavr#readme
 bug-reports:        https://github.com/jhrcek/sestavr/issues
 synopsis:           Web application for scheduling yoga lessons
 description:
-    Please see the README on GitHub at <https://github.com/jhrcek/sestavr#readme>
+  Please see the README on GitHub at <https://github.com/jhrcek/sestavr#readme>
 
 category:           Web
 build-type:         Simple
 extra-source-files:
-    README.md
-    ChangeLog.md
+  ChangeLog.md
+  README.md
 
 source-repository head
-    type:     git
-    location: https://github.com/jhrcek/sestavr
+  type:     git
+  location: https://github.com/jhrcek/sestavr
 
-Flag dev
-  Description: build development version which serves live-updatable static js file instead of hardwiring it
-  Default:     False
-  Manual:      True
+flag dev
+  description:
+    build development version which serves live-updatable static js file instead of hardwiring it
+
+  default:     False
+  manual:      True
 
 library
-    exposed-modules:
-        Api
-        Config
-        Model
-        Server
+  exposed-modules:
+    Api
+    Config
+    Model
+    Server
 
-    hs-source-dirs:   src
-    other-modules:    Paths_sestavr
-    autogen-modules:  Paths_sestavr
-    default-language: Haskell2010
-    ghc-options:      -Wall
-    if flag(dev) {
-       CPP-Options: -DDEV
-    }
-    build-depends:
-        aeson,
-        base >=4.7 && <5,
-        bytestring,
-        conduit,
-        containers,
-        directory,
-        file-embed,
-        filepath,
-        http-media,
-        monad-logger,
-        optparse-applicative,
-        persistent,
-        persistent-sqlite,
-        persistent-template,
-        safe-exceptions,
-        servant,
-        servant-server,
-        text,
-        time,
-        wai,
-        warp
+  hs-source-dirs:   src
+  other-modules:    Paths_sestavr
+  autogen-modules:  Paths_sestavr
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+  if flag(dev)
+    cpp-options: -DDEV
+
+  build-depends:
+    , aeson
+    , base                  >=4.7 && <5
+    , bytestring
+    , conduit
+    , containers
+    , directory
+    , file-embed
+    , filepath
+    , http-media
+    , monad-logger
+    , optparse-applicative
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , safe-exceptions
+    , servant
+    , servant-server
+    , text
+    , time
+    , wai
+    , warp
 
 executable sestavr-exe
-    main-is:          Main.hs
-    hs-source-dirs:   app
-    other-modules:    Paths_sestavr
-    default-language: Haskell2010
-    ghc-options:      -Wall -threaded -rtsopts -with-rtsopts=-N
-    build-depends:
-        base >=4.7 && <5,
-        sestavr
+  main-is:          Main.hs
+  hs-source-dirs:   app
+  other-modules:    Paths_sestavr
+  default-language: Haskell2010
+  ghc-options:      -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+    , base     >=4.7 && <5
+    , sestavr
 
 test-suite sestavr-test
-    type:             exitcode-stdio-1.0
-    main-is:          Spec.hs
-    hs-source-dirs:   test
-    other-modules:    Paths_sestavr
-    default-language: Haskell2010
-    ghc-options:      -Wall -threaded -rtsopts -with-rtsopts=-N
-    build-depends:
-        base >=4.7 && <5,
-        sestavr
+  type:             exitcode-stdio-1.0
+  main-is:          Spec.hs
+  hs-source-dirs:   test
+  other-modules:    Paths_sestavr
+  default-language: Haskell2010
+  ghc-options:      -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+    , base     >=4.7 && <5
+    , sestavr
