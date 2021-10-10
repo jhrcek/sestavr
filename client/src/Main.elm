@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Main exposing (Modal, Model, Msg, PageModel, main)
 
 import Browser exposing (Document, UrlRequest)
 import Browser.Events
@@ -110,8 +110,8 @@ initPageModel model =
                         |> ExerciseEditor
             }
 
-        Router.Routines ->
-            { model | pageModel = RoutineList }
+        Router.Routines mayExerciseId ->
+            { model | pageModel = RoutineList mayExerciseId }
 
         Router.Routine routineId ->
             { model | pageModel = RoutineModel routineId (LessonPlanner.init model.today routineId) }
@@ -186,7 +186,7 @@ type PageModel
     | ExerciseModel ExerciseId
     | ExerciseEditor Exercise.Model
       -- Routine
-    | RoutineList
+    | RoutineList (Maybe ExerciseId)
     | RoutineModel RoutineId LessonPlanner
       -- Routine model is kept in the main model
     | RoutineEditor
@@ -384,9 +384,10 @@ viewBody model =
             PositionModel pmodel ->
                 E.map PositionMsg <| Position.view model.store.positions pmodel
 
-            RoutineList ->
+            RoutineList maybeExerciseId ->
                 E.map RoutineMsg <|
                     Routine.tableView
+                        (Maybe.andThen (\exerciseId -> Dict.Any.get exerciseId model.store.exercises) maybeExerciseId)
                         model.store.routines
                         model.store.lessons
                         model.routineModel
@@ -658,7 +659,7 @@ update msg model =
             ( model
             , Cmd.batch
                 [ Cmd.map StoreMsg <| Store.deleteRoutine routineId
-                , goToRoute Router.Routines
+                , goToRoute (Router.Routines Nothing)
                 ]
             )
 
@@ -888,7 +889,7 @@ navigationLeft currentRoute =
         , menuItem currentRoute Router.Exercises "Cviky"
         , menuItem currentRoute Router.Tags "Tagy"
         , menuItem currentRoute Router.Positions "Pozice"
-        , menuItem currentRoute Router.Routines "Sestavy"
+        , menuItem currentRoute (Router.Routines Nothing) "Sestavy"
         , menuItem currentRoute Router.Lessons "Lekce"
         , menuItem currentRoute Router.Inspirations "Inspirace"
         , menuItem currentRoute Router.Images "Obrázky"

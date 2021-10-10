@@ -2,6 +2,7 @@ module Id exposing
     ( Id
     , IdDict
     , IdSet
+    , Resource
     , buildDict
     , buildSet
     , decode

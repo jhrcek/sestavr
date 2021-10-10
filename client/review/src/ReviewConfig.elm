@@ -1,6 +1,8 @@
 module ReviewConfig exposing (config)
 
 import NoLeftPizza
+import NoMissingTypeExpose
+import NoPrematureLetComputation
 import NoUnoptimizedRecursion
 import NoUnused.CustomTypeConstructorArgs
 import NoUnused.CustomTypeConstructors
@@ -27,4 +29,7 @@ config =
     , NoUnused.Variables.rule
     , NoLeftPizza.rule NoLeftPizza.Redundant
     , Simplify.rule Simplify.defaults
+    , NoMissingTypeExpose.rule
+    , NoPrematureLetComputation.rule
     ]
+

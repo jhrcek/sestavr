@@ -1,5 +1,6 @@
 module Page.Routine.LessonPlanner exposing
     ( Config
+    , DateTimePicker
     , LessonPlanner
     , Msg
     , init

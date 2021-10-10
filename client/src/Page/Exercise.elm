@@ -502,6 +502,12 @@ exerciseDetail config positions tags exercises exercise =
                     )
         , E.paragraph []
             [ Common.markdown exercise.description ]
+        , E.paragraph []
+            [ E.link Common.linkAttrs
+                { url = Router.href <| Router.Routines <| Just exercise.id
+                , label = E.text "Sestavy obsahující tento cvik"
+                }
+            ]
         ]
 
 

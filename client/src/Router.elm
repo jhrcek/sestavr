@@ -19,7 +19,8 @@ type Route
     | Exercises
     | Exercise ExerciseId
     | ExerciseEditor (Maybe ExerciseId)
-    | Routines
+      -- Just exerciseId = focus on subset of routines containing this exercise
+    | Routines (Maybe ExerciseId)
     | Routine RoutineId
     | RoutineEditor RoutineEditorRoute
     | Lessons
@@ -51,7 +52,8 @@ route =
         , P.map (ExerciseEditor << Just << Id.fromInt) (s "exercise" </> int </> s "edit")
 
         -- Routines
-        , P.map Routines (s "routine")
+        , P.map (Routines << Just << Id.fromInt) (s "routine-by-exercise" </> int)
+        , P.map (Routines Nothing) (s "routine")
         , P.map (Routine << Id.fromInt) (s "routine" </> int)
         , P.map (RoutineEditor NewRoutine) (s "routine" </> s "create")
         , P.map (RoutineEditor << EditRoutine << Id.fromInt) (s "routine" </> int </> s "edit")
@@ -101,8 +103,13 @@ toHash r =
                 Just exerciseId ->
                     "/exercise/" ++ Id.toString exerciseId ++ "/edit"
 
-        Routines ->
-            "/routine"
+        Routines maybeExerciseId ->
+            case maybeExerciseId of
+                Just exerciseId ->
+                    "/routine-by-exercise/" ++ Id.toString exerciseId
+
+                Nothing ->
+                    "/routine"
 
         Routine routineId ->
             "/routine/" ++ Id.toString routineId

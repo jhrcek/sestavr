@@ -1,5 +1,8 @@
 module Page.Routine exposing
     ( Config
+    , DraggableItemId
+    , Duration
+    , ExerciseInRoutine
     , Model
     , Msg
     , ValidationError(..)
@@ -531,9 +534,19 @@ lessonsUsingRoutine lessons routine =
         |> Dict.Any.values
 
 
-tableView : IdDict RoutineIdTag Routine -> IdDict LessonIdTag Lesson -> Model -> Element Msg
-tableView routines lessons model =
+tableView : Maybe Exercise -> IdDict RoutineIdTag Routine -> IdDict LessonIdTag Lesson -> Model -> Element Msg
+tableView maybeExercise routines lessons model =
     let
+        containsExercise : Routine -> Bool
+        containsExercise routine =
+            case maybeExercise of
+                Just exercise ->
+                    List.any (\routineExercise -> routineExercise.exerciseId == exercise.id)
+                        routine.exercises
+
+                Nothing ->
+                    True
+
         createOrGoBackToEditedRoutine =
             if model.hasUnsavedChanges then
                 returnToEditedRoutine model.routineRoute
@@ -558,7 +571,13 @@ tableView routines lessons model =
                 |> List.reverse
     in
     E.column []
-        [ Common.heading1 "Sestavy"
+        [ Common.heading1 <|
+            case maybeExercise of
+                Just exercise ->
+                    "Sestavy obsahující cvik \"" ++ exercise.name ++ "\""
+
+                Nothing ->
+                    "Sestavy"
         , createOrGoBackToEditedRoutine
         , E.table
             [ Border.solid
@@ -567,6 +586,7 @@ tableView routines lessons model =
             ]
             { data =
                 Dict.Any.values routines
+                    |> List.filter containsExercise
                     |> List.sortBy .topic
             , columns =
                 [ { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Název"
@@ -637,7 +657,7 @@ returnToEditedRoutine routineRoute =
 backToRoutineListLink : Element msg
 backToRoutineListLink =
     E.link Common.linkAttrs
-        { url = Router.href Router.Routines
+        { url = Router.href (Router.Routines Nothing)
         , label = E.text "« Zpět na seznam sestav"
         }
 
@@ -1010,7 +1030,15 @@ exerciseUsagePopup exercise exerciseUsages =
                 E.text "Naposledy použito"
                     :: List.map
                         (\{ lesson, routineTopic } ->
-                            E.text <| Time.formatDateTime lesson.datetime ++ " - " ++ routineTopic
+                            E.text <|
+                                Time.formatDateTime lesson.datetime
+                                    ++ " - "
+                                    ++ (if String.length routineTopic > 28 then
+                                            String.left 25 routineTopic ++ "…"
+
+                                        else
+                                            routineTopic
+                                       )
                         )
                         (List.sortBy
                             (negate << Time.posixToMillis << .datetime << .lesson)
@@ -1178,6 +1206,6 @@ updateOrCreate config model =
 backToList : Element msg
 backToList =
     E.link Common.linkAttrs
-        { url = Router.href Router.Routines
+        { url = Router.href (Router.Routines Nothing)
         , label = E.text "« Zpět na seznam sestav"
         }

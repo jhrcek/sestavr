@@ -8,7 +8,7 @@ module Http.Extra exposing
     , expectWhatever
     )
 
-import Http exposing (Metadata, Response(..))
+import Http exposing (Response(..))
 import Id exposing (Id)
 import Json.Decode as Decode exposing (Decoder)
 import Url
@@ -20,7 +20,7 @@ type Error
     = BadUrl String
     | Timeout
     | NetworkError
-    | BadStatus Metadata String
+    | BadStatus String
     | BadBody String
 
 
@@ -50,8 +50,8 @@ fromResponse bodyDecoder response =
         NetworkError_ ->
             Err NetworkError
 
-        BadStatus_ metadata body ->
-            Err (BadStatus metadata body)
+        BadStatus_ _ body ->
+            Err (BadStatus body)
 
         GoodStatus_ _ body ->
             case Decode.decodeString bodyDecoder body of
@@ -74,7 +74,7 @@ errorToString error =
         NetworkError ->
             "Problém se sítí"
 
-        BadStatus _ body ->
+        BadStatus body ->
             body
 
         BadBody body ->
