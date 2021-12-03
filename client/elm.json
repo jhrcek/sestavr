@@ -19,8 +19,8 @@
             "elm-explorations/markdown": "1.0.0",
             "mdgriffith/elm-ui": "1.1.8",
             "rtfeldman/elm-iso8601-date-strings": "1.1.4",
-            "turboMaCk/any-dict": "2.4.0",
-            "turboMaCk/any-set": "1.4.0"
+            "turboMaCk/any-dict": "2.6.0",
+            "turboMaCk/any-set": "1.5.0"
         },
         "indirect": {
             "elm/bytes": "1.0.8",
