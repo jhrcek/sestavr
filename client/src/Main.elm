@@ -152,7 +152,7 @@ initPageModel model =
             { model | pageModel = ImagesModel }
 
         Router.Inspirations ->
-            { model | pageModel = InspirationModel Inspiration.init }
+            { model | pageModel = InspirationModel (Inspiration.init model.today) }
 
         Router.NotFound what ->
             { model | pageModel = NotFoundModel what }

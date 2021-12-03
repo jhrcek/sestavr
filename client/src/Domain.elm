@@ -13,6 +13,7 @@ module Domain exposing
     , PositionId
     , PositionIdTag
     , Routine
+    , RoutineExercise
     , RoutineId
     , RoutineIdTag
     , Tag

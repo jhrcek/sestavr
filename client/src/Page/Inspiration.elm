@@ -10,11 +10,14 @@ module Page.Inspiration exposing
 import Command
 import Common
 import Dict.Any
-import Domain exposing (Inspiration, InspirationIdTag)
+import Domain exposing (Inspiration, InspirationId, InspirationIdTag)
 import Element as E exposing (Element)
 import Element.Border as Border
+import Element.Events as Event
 import Element.Input as Input
 import Id exposing (IdDict)
+import List.Extra as List
+import Time exposing (Posix)
 import Time.Extra as Time
 
 
@@ -25,19 +28,32 @@ type alias Config msg =
 
 type alias Model =
     { editedInspiration : Maybe Inspiration
+    , monthToggles : IdDict InspirationIdTag Bool
+    , currentMonth : InspirationId
     }
 
 
 type Msg
     = SetDescription String
     | EditInspiration Inspiration
+    | ToggleMonth InspirationId
     | CancelEdit
     | SaveEdit
 
 
-init : Model
-init =
-    { editedInspiration = Nothing }
+init : Posix -> Model
+init today =
+    let
+        currentMonth =
+            Time.monthToInt <| Time.toMonth Time.utc today
+    in
+    { editedInspiration = Nothing
+    , currentMonth = Id.fromInt currentMonth
+    , monthToggles =
+        List.range 1 12
+            |> List.map (\monthNum -> ( Id.fromInt monthNum, monthNum == currentMonth ))
+            |> Id.dictFromList
+    }
 
 
 update : Config msg -> Msg -> Model -> ( Model, Cmd msg )
@@ -53,6 +69,11 @@ update config msg model =
 
         CancelEdit ->
             ( { model | editedInspiration = Nothing }
+            , Cmd.none
+            )
+
+        ToggleMonth inspirationId ->
+            ( { model | monthToggles = Dict.Any.update inspirationId (Maybe.map not) model.monthToggles }
             , Cmd.none
             )
 
@@ -78,21 +99,38 @@ setDescription description inspiration =
 
 view : IdDict InspirationIdTag Inspiration -> Model -> Element Msg
 view inspirations model =
+    -- Rotate inspiration months so that current month is at the top
+    let
+        rotatedInspirations =
+            case
+                Dict.Any.values inspirations
+                    |> List.splitWhen (\inspiration -> inspiration.id == model.currentMonth)
+            of
+                Just ( before, after ) ->
+                    after ++ before
+
+                Nothing ->
+                    []
+    in
     E.column [ E.width E.fill ]
         [ Common.heading1 "Inspirace"
-        , Dict.Any.values inspirations
+        , rotatedInspirations
             |> List.map
                 (\i ->
+                    let
+                        isOpened =
+                            Dict.Any.get i.id model.monthToggles |> Maybe.withDefault False
+                    in
                     case model.editedInspiration of
                         Nothing ->
-                            viewInspiration i
+                            viewInspiration isOpened i
 
                         Just editedInspiration ->
                             if i.id == editedInspiration.id then
                                 inspirationEditor editedInspiration
 
                             else
-                                viewInspiration i
+                                viewInspiration isOpened i
                 )
             |> E.column
                 [ E.width E.fill
@@ -101,17 +139,39 @@ view inspirations model =
         ]
 
 
-viewInspiration : Inspiration -> Element Msg
-viewInspiration inspiration =
-    inspirationColumn
-        [ Common.heading2 <| Time.toCzechMonth <| Time.monthFromNumber inspiration.monthNumber
-        , E.paragraph []
-            [ Common.markdown inspiration.description ]
-        , Input.button Common.blueButton
-            { onPress = Just (EditInspiration inspiration)
-            , label = E.text "Upravit"
-            }
-        ]
+viewInspiration : Bool -> Inspiration -> Element Msg
+viewInspiration isOpened inspiration =
+    let
+        monthTitle =
+            (if isOpened then
+                " ▾ "
+
+             else
+                " ▸ "
+            )
+                ++ Time.toCzechMonth (Time.monthFromNumber inspiration.monthNumber)
+
+        heading =
+            E.el
+                [ E.width E.fill
+                , Event.onClick <| ToggleMonth inspiration.id
+                ]
+                (Common.heading2 monthTitle)
+
+        body =
+            if isOpened then
+                [ E.paragraph []
+                    [ Common.markdown inspiration.description ]
+                , Input.button Common.blueButton
+                    { onPress = Just (EditInspiration inspiration)
+                    , label = E.text "Upravit"
+                    }
+                ]
+
+            else
+                []
+    in
+    inspirationColumn (heading :: body)
 
 
 inspirationEditor : Inspiration -> Element Msg
@@ -122,8 +182,8 @@ inspirationEditor inspiration =
             [ E.width E.fill
             , E.height
                 (E.fill
-                    |> E.minimum 200
-                    |> E.maximum 400
+                    |> E.minimum 400
+                    |> E.maximum 600
                 )
             ]
             { onChange = SetDescription
@@ -150,6 +210,7 @@ inspirationColumn =
     E.column
         [ E.width E.fill
         , Border.width 1
+        , Border.rounded 5
         , E.padding 5
         , E.spacing 5
         ]
