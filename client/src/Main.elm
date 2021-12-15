@@ -27,6 +27,7 @@ import Html.Events
 import Http.Extra as Ht2
 import Id
 import Json.Decode as Decode exposing (Decoder)
+import List.Extra as List
 import Modal
 import Page.Exercise as Exercise
 import Page.Image as Image
@@ -395,10 +396,29 @@ viewBody model =
             RoutineModel routineId lessonPlanner ->
                 case Dict.Any.get routineId model.store.routines of
                     Just routine ->
+                        let
+                            -- For prev/next navigation
+                            ( maybeBeforeRoutineId, maybeAfterRoutineId ) =
+                                case
+                                    Dict.Any.values model.store.routines
+                                        |> List.sortBy .topic
+                                        |> List.map .id
+                                        |> List.splitWhen (\rId -> rId == routineId)
+                                of
+                                    Just ( routinesBefore, routinesRest ) ->
+                                        ( List.last routinesBefore
+                                        , List.getAt 1 routinesRest
+                                        )
+
+                                    Nothing ->
+                                        ( Nothing, Nothing )
+                        in
                         Routine.view routineConfig
                             model.store.exercises
                             model.store.lessons
                             routine
+                            maybeBeforeRoutineId
+                            maybeAfterRoutineId
                             lessonPlanner
 
                     Nothing ->

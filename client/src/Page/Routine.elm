@@ -419,9 +419,11 @@ view :
     -> IdDict ExerciseIdTag Exercise
     -> IdDict LessonIdTag Lesson
     -> Routine
+    -> Maybe RoutineId
+    -> Maybe RoutineId
     -> LessonPlanner
     -> Element msg
-view config exercises lessons routine lessonPlanner =
+view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanner =
     E.column []
         [ E.el [ E.paddingEach { top = 0, right = 0, bottom = 10, left = 0 } ] backToList
         , Common.heading1 routine.topic
@@ -438,6 +440,26 @@ view config exercises lessons routine lessonPlanner =
                     { onPress = Just (config.deleteRoutine routine.id)
                     , label = E.text "Odstranit"
                     }
+                ]
+            , E.row [ E.spacing 5 ]
+                [ case mPrevRoutineId of
+                    Just prevRoutineId ->
+                        E.link Common.blueButton
+                            { url = Router.href <| Router.Routine prevRoutineId
+                            , label = E.text "Předchozí"
+                            }
+
+                    Nothing ->
+                        E.none
+                , case mNextRoutineId of
+                    Just nextRoutineId ->
+                        E.link Common.blueButton
+                            { url = Router.href <| Router.Routine nextRoutineId
+                            , label = E.text "Další"
+                            }
+
+                    Nothing ->
+                        E.none
                 ]
             , E.el [ E.paddingXY 0 5 ] <|
                 case lessonsUsingRoutine lessons routine of
