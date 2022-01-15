@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE EmptyDataDecls #-}
@@ -120,12 +121,7 @@ data ExerciseWithTags = ExerciseWithTags
     , tagIds :: [TagId]
     }
     deriving stock (Generic)
-
-
-instance ToJSON ExerciseWithTags
-
-
-instance FromJSON ExerciseWithTags
+    deriving anyclass (ToJSON, FromJSON)
 
 
 fromExercise :: Entity Exercise -> [TagId] -> ExerciseWithTags
@@ -161,12 +157,7 @@ data RoutineWithExercises = RoutineWithExercises
     , rweExercises :: [ExerciseInRoutine]
     }
     deriving stock (Generic)
-
-
-instance ToJSON RoutineWithExercises
-
-
-instance FromJSON RoutineWithExercises
+    deriving anyclass (ToJSON, FromJSON)
 
 
 data ExerciseInRoutine = ExerciseInRoutine
@@ -174,12 +165,7 @@ data ExerciseInRoutine = ExerciseInRoutine
     , eirDuration :: DurationMinutes
     }
     deriving stock (Generic)
-
-
-instance ToJSON ExerciseInRoutine
-
-
-instance FromJSON ExerciseInRoutine
+    deriving anyclass (ToJSON, FromJSON)
 
 
 newtype DurationMinutes = DurationMinutes {getDurationMinutes :: Int}
