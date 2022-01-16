@@ -64,7 +64,7 @@ import Time.Extra as Time
 type alias Model =
     { routineRoute : Router.RoutineEditorRoute
     , topic : String
-    , routineExercises : List ItemInRoutine
+    , routineItems : List ItemInRoutine
     , dnd : DnDList.Model
     , tagFilter : IdSet TagIdTag
     , positionFilter : IdSet PositionIdTag
@@ -101,7 +101,7 @@ type alias Config msg =
 initEditor : IdDict ExerciseIdTag Exercise -> Routine -> Model
 initEditor exercises routine =
     let
-        routineExercises =
+        routineItems =
             routine.exercises
                 |> List.filterMap (\re -> Dict.Any.get re.exerciseId exercises |> Maybe.map (Tuple.pair re))
                 |> List.indexedMap
@@ -113,7 +113,7 @@ initEditor exercises routine =
                     )
     in
     { routineRoute = Router.EditRoutine routine.id
-    , routineExercises = routineExercises
+    , routineItems = routineItems
     , topic = routine.topic
     , dnd = dndSystem.model
     , tagFilter = Id.emptySet
@@ -141,7 +141,7 @@ initCopyEditor exercises routine =
 emptyEditor : Model
 emptyEditor =
     { routineRoute = Router.NewRoutine
-    , routineExercises = []
+    , routineItems = []
     , topic = ""
     , dnd = dndSystem.model
     , tagFilter = Id.emptySet
@@ -185,12 +185,12 @@ update config exercises msg model =
         AddToRoutine exerciseId ->
             ( markUnsaved
                 { model
-                    | routineExercises =
+                    | routineItems =
                         (Dict.Any.get exerciseId exercises
                             |> Maybe.map addExercise
                             |> Maybe.withDefault identity
                         )
-                            model.routineExercises
+                            model.routineItems
                 }
             , Cmd.none
             )
@@ -198,9 +198,9 @@ update config exercises msg model =
         RemoveFromRoutine itemInRoutine ->
             ( markUnsaved
                 { model
-                    | routineExercises =
+                    | routineItems =
                         List.filter (\eir -> eir /= itemInRoutine)
-                            model.routineExercises
+                            model.routineItems
                 }
             , Cmd.none
             )
@@ -218,16 +218,16 @@ update config exercises msg model =
         ChangeDuration draggableItemId durationString ->
             ( markUnsaved
                 { model
-                    | routineExercises =
+                    | routineItems =
                         case parseDuration durationString of
                             Nothing ->
-                                model.routineExercises
+                                model.routineItems
 
                             Just newDuration ->
                                 List.updateIf
                                     (\itemInRoutine -> itemInRoutine.draggableItemId == draggableItemId)
                                     (\exerciseIntRoutine -> { exerciseIntRoutine | duration = newDuration })
-                                    model.routineExercises
+                                    model.routineItems
                 }
             , Cmd.none
             )
@@ -242,8 +242,8 @@ update config exercises msg model =
 
         DnD dndMsg ->
             let
-                ( dnd, routineExercises ) =
-                    dndSystem.update dndMsg model.dnd model.routineExercises
+                ( dnd, routineItems ) =
+                    dndSystem.update dndMsg model.dnd model.routineItems
 
                 ( isScrolling, maybeStartScrolling ) =
                     case dndSystem.info dnd of
@@ -277,7 +277,7 @@ update config exercises msg model =
             ( markUnsaved
                 { model
                     | dnd = dnd
-                    , routineExercises = routineExercises
+                    , routineItems = routineItems
                     , isScrolling = isScrolling
                 }
             , Cmd.map config.msg <|
@@ -484,7 +484,7 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
                             (List.map
                                 (\segment ->
                                     E.column [ E.spacing 5 ] <|
-                                        List.map routineExerciseView segment
+                                        List.map routineItemView segment
                                 )
                                 segments
                             )
@@ -510,8 +510,8 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
         ]
 
 
-routineExerciseView : ( Int, Exercise ) -> Element msg
-routineExerciseView ( duration, exercise ) =
+routineItemView : ( Int, Exercise ) -> Element msg
+routineItemView ( duration, exercise ) =
     E.row [ Border.color Color.darkGrey, Border.width 1, E.spacing 5 ]
         [ Exercise.imagePreview exercise
         , E.link [ E.width (E.px 500) ]
@@ -563,7 +563,7 @@ tableView maybeExercise routines lessons model =
         containsExercise routine =
             case maybeExercise of
                 Just exercise ->
-                    List.any (\routineExercise -> routineExercise.exerciseId == exercise.id)
+                    List.any (\routineItem -> routineItem.exerciseId == exercise.id)
                         routine.exercises
 
                 Nothing ->
@@ -754,7 +754,7 @@ editor exercises tags positions routines lessons inspirations today model =
                     List.map (availableExerciseView pastExerciseUsages model) filteredExercises
                 ]
             , E.column
-                (E.inFront (ghostView model.dnd model.routineExercises) :: E.spacing 5 :: colAttrs)
+                (E.inFront (ghostView model.dnd model.routineItems) :: E.spacing 5 :: colAttrs)
                 (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
                     :: Input.text
                         [ E.width (E.px 250)
@@ -767,11 +767,11 @@ editor exercises tags positions routines lessons inspirations today model =
                         , label = Input.labelLeft [ E.padding 5 ] (E.text "Téma")
                         }
                     :: inspirationView inspirations today model.inspirationOffset model.showInspiration
-                    :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
+                    :: List.indexedMap (draggableExercise model.dnd) model.routineItems
                     ++ [ E.el [ E.padding 5 ] <|
                             E.text <|
                                 "Celková délka "
-                                    ++ String.fromInt (exercisesDurationMinutes model.routineExercises)
+                                    ++ String.fromInt (exercisesDurationMinutes model.routineItems)
                                     ++ " min"
                        , if model.hasUnsavedChanges then
                             E.row [ E.padding 5, E.spacing 5 ]
@@ -995,7 +995,7 @@ getPastExerciseUsages today routines lessons =
                 lessonExercises =
                     case Dict.Any.get lesson.routineId routines of
                         Just routine ->
-                            List.map (\routineExercise -> ( routineExercise.exerciseId, routine.topic )) routine.exercises
+                            List.map (\routineItem -> ( routineItem.exerciseId, routine.topic )) routine.exercises
 
                         Nothing ->
                             []
@@ -1141,9 +1141,9 @@ draggableExerciseElement eir attrs =
 
 
 ghostView : DnDList.Model -> List ItemInRoutine -> Element Msg
-ghostView dnd routineExercises =
+ghostView dnd routineItems =
     dndSystem.info dnd
-        |> Maybe.andThen (\{ dragIndex } -> List.getAt dragIndex routineExercises)
+        |> Maybe.andThen (\{ dragIndex } -> List.getAt dragIndex routineItems)
         |> Maybe.map
             (\itemInRoutine ->
                 draggableExerciseElement itemInRoutine <|
@@ -1192,7 +1192,7 @@ updateOrCreate config model =
     )
         |> Result.andThen
             (\validTopic ->
-                case model.routineExercises of
+                case model.routineItems of
                     [] ->
                         Err EmptyListOfExercises
 

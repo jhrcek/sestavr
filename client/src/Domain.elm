@@ -13,9 +13,9 @@ module Domain exposing
     , PositionId
     , PositionIdTag
     , Routine
-    , RoutineExercise
     , RoutineId
     , RoutineIdTag
+    , RoutineItem
     , Tag
     , TagId
     , TagIdTag
@@ -169,11 +169,11 @@ type alias RoutineId =
 type alias Routine =
     { id : RoutineId
     , topic : String
-    , exercises : List RoutineExercise
+    , exercises : List RoutineItem
     }
 
 
-type alias RoutineExercise =
+type alias RoutineItem =
     { exerciseId : ExerciseId
     , duration : Int
     }
@@ -184,12 +184,12 @@ routineDecoder =
     Decode.map3 Routine
         (Decode.field "routineId" Id.decode)
         (Decode.field "topic" Decode.string)
-        (Decode.field "rweExercises" (Decode.list routineExerciseDecoder))
+        (Decode.field "rweExercises" (Decode.list routineItemDecoder))
 
 
-routineExerciseDecoder : Decoder RoutineExercise
-routineExerciseDecoder =
-    Decode.map2 RoutineExercise
+routineItemDecoder : Decoder RoutineItem
+routineItemDecoder =
+    Decode.map2 RoutineItem
         (Decode.field "eirItemId" Id.decode)
         (Decode.field "eirDuration" Decode.int)
 
@@ -199,12 +199,12 @@ encodeRoutine routine =
     Encode.object
         [ ( "routineId", Id.encode routine.id )
         , ( "topic", Encode.string routine.topic )
-        , ( "rweExercises", Encode.list encodeRoutineExercise routine.exercises )
+        , ( "rweExercises", Encode.list encodeRoutineItem routine.exercises )
         ]
 
 
-encodeRoutineExercise : RoutineExercise -> Value
-encodeRoutineExercise re =
+encodeRoutineItem : RoutineItem -> Value
+encodeRoutineItem re =
     Encode.object
         [ ( "eirItemId", Id.encode re.exerciseId )
         , ( "eirDuration", Encode.int re.duration )

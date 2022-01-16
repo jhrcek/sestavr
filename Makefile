@@ -27,6 +27,7 @@ clean:
 
 format:
 	git ls-files '*.hs' | xargs fourmolu --mode inplace
+	git ls-files '*.elm' | xargs elm-format --yes
 	cabal-fmt -i sestavr.cabal
 
 update_db:

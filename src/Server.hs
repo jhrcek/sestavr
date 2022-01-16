@@ -58,7 +58,7 @@ import Database.Sqlite (
 import Model (
     EntityField (
         ExerciseTagExerciseId,
-        RoutineExerciseRoutineId
+        RoutineItemRoutineId
     ),
     Exercise,
     ExerciseId,
@@ -67,14 +67,14 @@ import Model (
     ImageVerificationResult (..),
     Inspiration,
     InspirationId,
+    ItemInRoutineId (..),
     Lesson,
     LessonId,
     Position,
     PositionId,
     Routine,
-    RoutineExercise (..),
     RoutineId,
-    RoutineItemId (..),
+    RoutineItem (..),
     RoutineWithExercises,
     Tag,
     TagId,
@@ -88,8 +88,8 @@ import Model (
     fromExercise,
     fromRoutine,
     getDurationMinutes,
-    routineExerciseRoutineId,
     routineId,
+    routineItemRoutineId,
     rweExercises,
     tagIds,
     toExercise,
@@ -288,15 +288,15 @@ apiServer pool imagesDir =
     -- ROUTINE
     getRoutines :: Handler [RoutineWithExercises]
     getRoutines = runPool $ do
-        routinesToExercises <- selectList [] [] :: SqlPersistM [Entity RoutineExercise]
+        routinesToExercises <- selectList [] [] :: SqlPersistM [Entity RoutineItem]
         routineEntities <- selectList [] [] :: SqlPersistM [Entity Routine]
-        let ridToRoutineExercises :: Map.Map RoutineId [RoutineExercise]
-            ridToRoutineExercises =
+        let ridToRoutineItems :: Map.Map RoutineId [RoutineItem]
+            ridToRoutineItems =
                 Map.fromListWith (<>) $
                     fmap
                         ( \entity ->
                             let val = entityVal entity
-                             in ( routineExerciseRoutineId val
+                             in ( routineItemRoutineId val
                                 , [val]
                                 )
                         )
@@ -304,7 +304,7 @@ apiServer pool imagesDir =
         pure $
             fmap
                 ( \routineEntity ->
-                    let res = Map.findWithDefault [] (entityKey routineEntity) ridToRoutineExercises
+                    let res = Map.findWithDefault [] (entityKey routineEntity) ridToRoutineItems
                      in fromRoutine routineEntity res
                 )
                 routineEntities
@@ -321,12 +321,12 @@ apiServer pool imagesDir =
                         let (mExerciseId, mCommentId) = case eirItemId e of
                                 RiExercise eid -> (Just eid, Nothing)
                                 RiComment cid -> (Nothing, Just cid)
-                         in RoutineExercise
-                                { routineExerciseRoutineId = rid
-                                , routineExerciseExerciseId = mExerciseId
-                                , routineExerciseCommentId = mCommentId
-                                , routineExerciseDurationMin = getDurationMinutes $ eirDuration e
-                                , routineExerciseOrder = index
+                         in RoutineItem
+                                { routineItemRoutineId = rid
+                                , routineItemExerciseId = mExerciseId
+                                , routineItemCommentId = mCommentId
+                                , routineItemDurationMin = getDurationMinutes $ eirDuration e
+                                , routineItemOrder = index
                                 }
                     )
                     exs
@@ -340,19 +340,19 @@ apiServer pool imagesDir =
                 exs = rweExercises rwe
             runPool $ do
                 replace rid routine
-                deleteWhere [RoutineExerciseRoutineId ==. rid]
+                deleteWhere [RoutineItemRoutineId ==. rid]
                 insertMany_ $
                     zipWith
                         ( \e index ->
                             let (mExerciseId, mCommentId) = case eirItemId e of
                                     RiExercise eid -> (Just eid, Nothing)
                                     RiComment cid -> (Nothing, Just cid)
-                             in RoutineExercise
-                                    { routineExerciseRoutineId = rid
-                                    , routineExerciseExerciseId = mExerciseId
-                                    , routineExerciseCommentId = mCommentId
-                                    , routineExerciseDurationMin = getDurationMinutes $ eirDuration e
-                                    , routineExerciseOrder = index
+                             in RoutineItem
+                                    { routineItemRoutineId = rid
+                                    , routineItemExerciseId = mExerciseId
+                                    , routineItemCommentId = mCommentId
+                                    , routineItemDurationMin = getDurationMinutes $ eirDuration e
+                                    , routineItemOrder = index
                                     }
                         )
                         exs
@@ -363,7 +363,7 @@ apiServer pool imagesDir =
     deleteRoutine rid =
         runPool
             ( do
-                deleteWhere [RoutineExerciseRoutineId ==. rid]
+                deleteWhere [RoutineItemRoutineId ==. rid]
                 delete rid
             )
             `handleConstraintError` "This routine can't be deleted, because it's used in some lesson"
