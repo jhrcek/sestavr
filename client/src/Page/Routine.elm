@@ -2,7 +2,6 @@ module Page.Routine exposing
     ( Config
     , DraggableItemId
     , Duration
-    , ItemInRoutine
     , Model
     , Msg
     , ValidationError(..)
@@ -79,11 +78,14 @@ type alias Model =
 
 type alias ItemInRoutine =
     { draggableItemId : DraggableItemId
-
-    -- TODO this should be sum of Exercise / Comment
-    , exercise : Exercise
+    , itemPayload : ItemPayload
     , duration : Duration
     }
+
+
+type ItemPayload
+    = ItemPayloadExercise Exercise
+    | ItemPayloadComment String
 
 
 type alias DraggableItemId =
@@ -107,20 +109,20 @@ initEditor exercises routine =
         routineItems =
             routine.items
                 |> List.filterMap
-                    (\re ->
-                        case re.itemPayload of
-                            IExerciseId eid ->
-                                Dict.Any.get eid exercises |> Maybe.map (Tuple.pair re)
+                    (\item ->
+                        Maybe.map (Tuple.pair item.duration) <|
+                            case item.itemPayload of
+                                IExerciseId eid ->
+                                    Maybe.map ItemPayloadExercise <| Dict.Any.get eid exercises
 
-                            -- TODO comment
-                            IComment comment ->
-                                Nothing
+                                IComment comment ->
+                                    Just (ItemPayloadComment comment)
                     )
                 |> List.indexedMap
-                    (\index ( re, exercise ) ->
+                    (\index ( duration, payload ) ->
                         { draggableItemId = index
-                        , exercise = exercise
-                        , duration = Duration re.duration
+                        , itemPayload = payload
+                        , duration = Duration duration
                         }
                     )
     in
@@ -413,7 +415,13 @@ addExercise : Exercise -> List ItemInRoutine -> List ItemInRoutine
 addExercise exercise list =
     List.indexedMap
         (\idx eir -> { eir | draggableItemId = idx })
-        (list ++ [ { draggableItemId = 0, exercise = exercise, duration = Duration 3 } ])
+        (list
+            ++ [ { draggableItemId = 0
+                 , itemPayload = ItemPayloadExercise exercise
+                 , duration = Duration 3
+                 }
+               ]
+        )
 
 
 exercisesDurationMinutes : List ItemInRoutine -> Int
@@ -486,15 +494,14 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
             , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
             , routine.items
                 |> List.filterMap
-                    (\re ->
-                        Maybe.map (Tuple.pair re.duration) <|
-                            case re.itemPayload of
+                    (\item ->
+                        Maybe.map (Tuple.pair item.duration) <|
+                            case item.itemPayload of
                                 IExerciseId eid ->
-                                    Dict.Any.get eid exercises
+                                    Maybe.map ItemPayloadExercise <| Dict.Any.get eid exercises
 
-                                -- TODO comment
                                 IComment comment ->
-                                    Nothing
+                                    Just <| ItemPayloadComment comment
                     )
                 |> splitInto30MinuteSegments
                 |> (\segments ->
@@ -528,20 +535,26 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
         ]
 
 
-routineItemView : ( Int, Exercise ) -> Element msg
-routineItemView ( duration, exercise ) =
-    E.row [ Border.color Color.darkGrey, Border.width 1, E.spacing 5 ]
-        [ Exercise.imagePreview exercise
-        , E.link [ E.width (E.px 500) ]
-            { url = Router.href (Router.Exercise exercise.id)
-            , label = E.paragraph [] [ E.text exercise.name ]
-            }
-        , E.el [ E.width (E.px 70) ] (E.text <| String.fromInt duration ++ " min")
-        ]
+routineItemView : ( Int, ItemPayload ) -> Element msg
+routineItemView ( duration, itemPayload ) =
+    case itemPayload of
+        ItemPayloadExercise exercise ->
+            E.row [ Border.color Color.darkGrey, Border.width 1, E.spacing 5 ]
+                [ Exercise.imagePreview exercise
+                , E.link [ E.width (E.px 500) ]
+                    { url = Router.href (Router.Exercise exercise.id)
+                    , label = E.paragraph [] [ E.text exercise.name ]
+                    }
+                , E.el [ E.width (E.px 70) ] (E.text <| String.fromInt duration ++ " min")
+                ]
+
+        ItemPayloadComment comment ->
+            -- TODO more featureful comment editor
+            E.text comment
 
 
-splitInto30MinuteSegments : List ( Int, Exercise ) -> List (List ( Int, Exercise ))
-splitInto30MinuteSegments exercisesWithDuration =
+splitInto30MinuteSegments : List ( Int, ItemPayload ) -> List (List ( Int, ItemPayload ))
+splitInto30MinuteSegments itemsWithDuration =
     let
         f ( duration, exercise ) ( segments, runningDuration, nextThirty ) =
             case segments of
@@ -562,7 +575,7 @@ splitInto30MinuteSegments exercisesWithDuration =
                         , nextThirty + 30
                         )
     in
-    List.foldl f ( [ [] ], 0, 30 ) exercisesWithDuration
+    List.foldl f ( [ [] ], 0, 30 ) itemsWithDuration
         |> (\( segments, _, _ ) -> segments)
         |> List.map List.reverse
         |> List.reverse
@@ -1019,8 +1032,7 @@ getPastExerciseUsages today routines lessons =
                                         IExerciseId eid ->
                                             Just ( eid, routine.topic )
 
-                                        -- TODO comment
-                                        IComment comment ->
+                                        IComment _ ->
                                             Nothing
                                 )
                                 routine.items
@@ -1164,8 +1176,15 @@ draggableExercise dnd index itemInRoutine =
 
 
 draggableExerciseElement : ItemInRoutine -> List (E.Attribute Msg) -> Element Msg
-draggableExerciseElement eir attrs =
-    E.el attrs (E.text eir.exercise.name)
+draggableExerciseElement iir attrs =
+    E.el attrs <|
+        E.text <|
+            case iir.itemPayload of
+                ItemPayloadExercise exercise ->
+                    exercise.name
+
+                ItemPayloadComment comment ->
+                    comment
 
 
 ghostView : DnDList.Model -> List ItemInRoutine -> Element Msg
@@ -1224,7 +1243,7 @@ updateOrCreate config model =
                     [] ->
                         Err EmptyListOfExercises
 
-                    nonemptyListOfExercises ->
+                    nonemptyListOfItems ->
                         let
                             ( request, id ) =
                                 case model.routineRoute of
@@ -1244,12 +1263,17 @@ updateOrCreate config model =
                                 , items =
                                     List.map
                                         (\itemInRoutine ->
-                                            -- TODO comment
-                                            { itemPayload = IExerciseId itemInRoutine.exercise.id
+                                            { itemPayload =
+                                                case itemInRoutine.itemPayload of
+                                                    ItemPayloadExercise exercise ->
+                                                        IExerciseId exercise.id
+
+                                                    ItemPayloadComment comment ->
+                                                        IComment comment
                                             , duration = durationToInt itemInRoutine.duration
                                             }
                                         )
-                                        nonemptyListOfExercises
+                                        nonemptyListOfItems
                                 }
             )
 

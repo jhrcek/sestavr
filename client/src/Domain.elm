@@ -170,8 +170,6 @@ type alias RoutineId =
 type alias Routine =
     { id : RoutineId
     , topic : String
-
-    -- TODO rename to items
     , items : List RoutineItem
     }
 
