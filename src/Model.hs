@@ -39,14 +39,14 @@ module Model (
     RoutineId,
     RoutineItem (..),
     Routine,
-    ItemInRoutineId (..),
+    ItemPayload (..),
     RoutineItemId,
     Tag,
     TagId,
     ExerciseWithTags,
     createDemoData,
     eirDuration,
-    eirItemId,
+    eirPayload,
     exerciseDescription,
     exerciseId,
     exerciseImage,
@@ -94,18 +94,17 @@ ExerciseTag json
     exerciseId ExerciseId
     tagId TagId
     Primary exerciseId tagId
-Comment json
-    comment Text
 Routine json
     topic Text
 RoutineItem json
     routineId RoutineId
-    -- | Item is either exercise or comment. Exactly one of these 2 must be non NULL
-    exerciseId (Maybe ExerciseId)
-    commentId (Maybe CommentId)
+    -- | If ExerciseId is NULL, we consider this item to be comment
+    exerciseId ExerciseId Maybe
+    comment Text
     durationMin Int
     order Int
-    UniqueExerciseRoutineOrder exerciseId commentId routineId order
+    -- !force to allow nullable attribute in constraint
+    UniqueExerciseRoutineOrder exerciseId comment routineId order !force 
 Lesson json
     routineId RoutineId
     datetime UTCTime
@@ -167,16 +166,16 @@ data RoutineWithExercises = RoutineWithExercises
 
 
 data ItemInRoutine = ItemInRoutine
-    { eirItemId :: ItemInRoutineId
+    { eirPayload :: ItemPayload
     , eirDuration :: DurationMinutes
     }
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
 
-data ItemInRoutineId
-    = RiExercise ExerciseId
-    | RiComment CommentId
+data ItemPayload
+    = IExerciseId ExerciseId
+    | IComment Text
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
@@ -194,12 +193,11 @@ fromRoutine entity res =
             , topic = routineTopic routine
             , rweExercises =
                 ( \re ->
-                    let itemId = case (routineItemExerciseId re, routineItemCommentId re) of
-                            (Just exerciseId, Nothing) -> RiExercise exerciseId
-                            (Nothing, Just commentId) -> RiComment commentId
-                            _ -> error "DB precondition violated for RoutineItem"
+                    let itemPayload = case routineItemExerciseId re of
+                            Just exerciseId -> IExerciseId exerciseId
+                            Nothing -> IComment (routineItemComment re)
                      in ItemInRoutine
-                            itemId
+                            itemPayload
                             (DurationMinutes $ routineItemDurationMin re)
                 )
                     <$> List.sortOn routineItemOrder res
@@ -348,11 +346,9 @@ createDemoData = runSqlite "sestavr.db" $ do
 
     routine1Id <- insert $ Routine "Moje první sestava"
 
-    commentId <- insert $ Comment "Some comment"
-
-    _ <- insert $ RoutineItem routine1Id (Just childId) Nothing 5 1
-    _ <- insert $ RoutineItem routine1Id (Just boatId) Nothing 1 2
-    _ <- insert $ RoutineItem routine1Id Nothing (Just commentId) 0 3
+    _ <- insert $ RoutineItem routine1Id (Just childId) "" 5 1
+    _ <- insert $ RoutineItem routine1Id (Just boatId) "" 1 2
+    _ <- insert $ RoutineItem routine1Id Nothing "Some comment" 0 3
 
     currentTime <- liftIO getCurrentTime
     _ <- insert $ Lesson routine1Id currentTime

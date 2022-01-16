@@ -6,7 +6,7 @@ module Domain exposing
     , Inspiration
     , InspirationId
     , InspirationIdTag
-    , ItemInRoutineId(..)
+    , ItemPayload(..)
     , Lesson
     , LessonId
     , LessonIdTag
@@ -156,19 +156,6 @@ encodeExercise exercise =
 
 
 
--- COMMENT
-
-
-type CommentIdTag
-    = CommentIdTag
-
-
-type alias CommentId =
-    Id CommentIdTag
-
-
-
--- TODO comment
 -- ROUTINE
 
 
@@ -185,51 +172,52 @@ type alias Routine =
     , topic : String
 
     -- TODO rename to items
-    , exercises : List RoutineItem
+    , items : List RoutineItem
     }
 
 
-type ItemInRoutineId
-    = RiExercise ExerciseId
-    | RiComment CommentId
+type ItemPayload
+    = IExerciseId ExerciseId
+    | IComment String
 
 
 type alias RoutineItem =
-    { itemId : ItemInRoutineId
+    { itemPayload : ItemPayload
     , duration : Int
     }
 
 
-itemInRoutineIdDecoder : Decoder ItemInRoutineId
-itemInRoutineIdDecoder =
+itemPayloadDecoder : Decoder ItemPayload
+itemPayloadDecoder =
     Decode.field "tag" Decode.string
         |> Decode.andThen
             (\tag ->
-                case tag of
-                    "RiExercise" ->
-                        Decode.field "contents" <| Decode.map RiExercise Id.decode
+                Decode.field "contents" <|
+                    case tag of
+                        "IExerciseId" ->
+                            Decode.map IExerciseId Id.decode
 
-                    "RiComment" ->
-                        Decode.field "contents" <| Decode.map RiComment Id.decode
+                        "IComment" ->
+                            Decode.map IComment Decode.string
 
-                    bad ->
-                        Decode.fail <| "Unexpected ItemInRoutineId tag: " ++ bad
+                        bad ->
+                            Decode.fail <| "Unexpected ItemPayload tag: " ++ bad
             )
 
 
-encodeItemInRoutineId : ItemInRoutineId -> Value
-encodeItemInRoutineId i =
+encodeItemPayload : ItemPayload -> Value
+encodeItemPayload i =
     case i of
-        RiExercise eid ->
+        IExerciseId eid ->
             Encode.object
-                [ ( "tag", Encode.string "RiExercise" )
+                [ ( "tag", Encode.string "IExerciseId" )
                 , ( "contents", Id.encode eid )
                 ]
 
-        RiComment cid ->
+        IComment commentText ->
             Encode.object
-                [ ( "tag", Encode.string "RiComment" )
-                , ( "contents", Id.encode cid )
+                [ ( "tag", Encode.string "IComment" )
+                , ( "contents", Encode.string commentText )
                 ]
 
 
@@ -244,7 +232,7 @@ routineDecoder =
 routineItemDecoder : Decoder RoutineItem
 routineItemDecoder =
     Decode.map2 RoutineItem
-        (Decode.field "eirItemId" itemInRoutineIdDecoder)
+        (Decode.field "eirPayload" itemPayloadDecoder)
         (Decode.field "eirDuration" Decode.int)
 
 
@@ -253,14 +241,14 @@ encodeRoutine routine =
     Encode.object
         [ ( "routineId", Id.encode routine.id )
         , ( "topic", Encode.string routine.topic )
-        , ( "rweExercises", Encode.list encodeRoutineItem routine.exercises )
+        , ( "rweExercises", Encode.list encodeRoutineItem routine.items )
         ]
 
 
 encodeRoutineItem : RoutineItem -> Value
 encodeRoutineItem re =
     Encode.object
-        [ ( "eirItemId", encodeItemInRoutineId re.itemId )
+        [ ( "eirPayload", encodeItemPayload re.itemPayload )
         , ( "eirDuration", Encode.int re.duration )
         ]
 
@@ -387,7 +375,6 @@ type Tags
     | PositionIdTag_ PositionIdTag
     | RoutineIdTag_ RoutineIdTag
     | TagIdTag_ TagIdTag
-    | CommentIdTag_ CommentIdTag
 
 
 tags : List Tags
@@ -398,5 +385,4 @@ tags =
     , PositionIdTag_ PositionIdTag
     , RoutineIdTag_ RoutineIdTag
     , TagIdTag_ TagIdTag
-    , CommentIdTag_ CommentIdTag
     ]

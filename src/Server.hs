@@ -68,7 +68,7 @@ import Model (
     Inspiration,
     InspirationId,
     ItemInRoutine,
-    ItemInRoutineId (..),
+    ItemPayload (..),
     Lesson,
     LessonId,
     Position,
@@ -80,7 +80,7 @@ import Model (
     Tag,
     TagId,
     eirDuration,
-    eirItemId,
+    eirPayload,
     exerciseDescription,
     exerciseId,
     exerciseImage,
@@ -369,13 +369,13 @@ apiServer pool imagesDir =
 
 mkRoutineItem :: RoutineId -> ItemInRoutine -> Int -> RoutineItem
 mkRoutineItem rid e index =
-    let (mExerciseId, mCommentId) = case eirItemId e of
-            RiExercise eid -> (Just eid, Nothing)
-            RiComment cid -> (Nothing, Just cid)
+    let (mExerciseId, comment) = case eirPayload e of
+            IExerciseId eid -> (Just eid, "")
+            IComment cmt -> (Nothing, cmt)
      in RoutineItem
             { routineItemRoutineId = rid
             , routineItemExerciseId = mExerciseId
-            , routineItemCommentId = mCommentId
+            , routineItemComment = comment
             , routineItemDurationMin = getDurationMinutes $ eirDuration e
             , routineItemOrder = index
             }

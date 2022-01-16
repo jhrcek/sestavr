@@ -31,7 +31,7 @@ import Domain
         , ExerciseIdTag
         , Inspiration
         , InspirationIdTag
-        , ItemInRoutineId(..)
+        , ItemPayload(..)
         , Lesson
         , LessonIdTag
         , Position
@@ -105,15 +105,15 @@ initEditor : IdDict ExerciseIdTag Exercise -> Routine -> Model
 initEditor exercises routine =
     let
         routineItems =
-            routine.exercises
+            routine.items
                 |> List.filterMap
                     (\re ->
-                        case re.itemId of
-                            RiExercise eid ->
+                        case re.itemPayload of
+                            IExerciseId eid ->
                                 Dict.Any.get eid exercises |> Maybe.map (Tuple.pair re)
 
                             -- TODO comment
-                            RiComment cid ->
+                            IComment comment ->
                                 Nothing
                     )
                 |> List.indexedMap
@@ -423,7 +423,7 @@ exercisesDurationMinutes =
 
 routineDurationMinutes : Routine -> Int
 routineDurationMinutes routine =
-    routine.exercises |> List.map .duration |> List.sum
+    routine.items |> List.map .duration |> List.sum
 
 
 view :
@@ -484,16 +484,16 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
                                 :: List.map (\lesson -> E.text <| Time.formatDateTime lesson.datetime) ls
                             )
             , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
-            , routine.exercises
+            , routine.items
                 |> List.filterMap
                     (\re ->
                         Maybe.map (Tuple.pair re.duration) <|
-                            case re.itemId of
-                                RiExercise eid ->
+                            case re.itemPayload of
+                                IExerciseId eid ->
                                     Dict.Any.get eid exercises
 
                                 -- TODO comment
-                                RiComment cid ->
+                                IComment comment ->
                                     Nothing
                     )
                 |> splitInto30MinuteSegments
@@ -581,8 +581,8 @@ tableView maybeExercise routines lessons model =
         containsExercise routine =
             case maybeExercise of
                 Just exercise ->
-                    List.any (\routineItem -> routineItem.itemId == RiExercise exercise.id)
-                        routine.exercises
+                    List.any (\routineItem -> routineItem.itemPayload == IExerciseId exercise.id)
+                        routine.items
 
                 Nothing ->
                     True
@@ -1015,15 +1015,15 @@ getPastExerciseUsages today routines lessons =
                         Just routine ->
                             List.filterMap
                                 (\routineItem ->
-                                    case routineItem.itemId of
-                                        RiExercise eid ->
+                                    case routineItem.itemPayload of
+                                        IExerciseId eid ->
                                             Just ( eid, routine.topic )
 
                                         -- TODO comment
-                                        RiComment cid ->
+                                        IComment comment ->
                                             Nothing
                                 )
-                                routine.exercises
+                                routine.items
 
                         Nothing ->
                             []
@@ -1241,11 +1241,11 @@ updateOrCreate config model =
                             request
                                 { id = id
                                 , topic = validTopic
-                                , exercises =
+                                , items =
                                     List.map
                                         (\itemInRoutine ->
                                             -- TODO comment
-                                            { itemId = RiExercise itemInRoutine.exercise.id
+                                            { itemPayload = IExerciseId itemInRoutine.exercise.id
                                             , duration = durationToInt itemInRoutine.duration
                                             }
                                         )
