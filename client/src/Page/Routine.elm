@@ -174,7 +174,8 @@ subscriptions model =
 
 
 type Msg
-    = AddToRoutine ExerciseId
+    = AddExercise ExerciseId
+    | AddComment
     | RemoveFromRoutine ItemInRoutine
     | ToggleTagId TagId
     | TogglePositionId PositionId
@@ -196,7 +197,7 @@ type Msg
 update : Config msg -> IdDict ExerciseIdTag Exercise -> Msg -> Model -> ( Model, Cmd msg )
 update config exercises msg model =
     case msg of
-        AddToRoutine exerciseId ->
+        AddExercise exerciseId ->
             ( markUnsaved
                 { model
                     | routineItems =
@@ -209,11 +210,17 @@ update config exercises msg model =
             , Cmd.none
             )
 
+        AddComment ->
+            ( markUnsaved
+                { model | routineItems = addComment model.routineItems }
+            , Cmd.none
+            )
+
         RemoveFromRoutine itemInRoutine ->
             ( markUnsaved
                 { model
                     | routineItems =
-                        List.filter (\eir -> eir /= itemInRoutine)
+                        List.filter (\item -> item /= itemInRoutine)
                             model.routineItems
                 }
             , Cmd.none
@@ -414,11 +421,24 @@ durationToInt duration =
 addExercise : Exercise -> List ItemInRoutine -> List ItemInRoutine
 addExercise exercise list =
     List.indexedMap
-        (\idx eir -> { eir | draggableItemId = idx })
+        (\idx item -> { item | draggableItemId = idx })
         (list
             ++ [ { draggableItemId = 0
                  , itemPayload = ItemPayloadExercise exercise
                  , duration = Duration 3
+                 }
+               ]
+        )
+
+
+addComment : List ItemInRoutine -> List ItemInRoutine
+addComment list =
+    List.indexedMap
+        (\idx item -> { item | draggableItemId = idx })
+        (list
+            ++ [ { draggableItemId = 0
+                 , itemPayload = ItemPayloadComment "kokos"
+                 , duration = Duration 0
                  }
                ]
         )
@@ -715,6 +735,14 @@ backToRoutineListLink =
         }
 
 
+addCommentButton : Element Msg
+addCommentButton =
+    Input.button Common.blueButton
+        { onPress = Just AddComment
+        , label = E.text "Přidat komentář"
+        }
+
+
 saveButton : Element Msg
 saveButton =
     Input.button Common.blueButton
@@ -799,7 +827,8 @@ editor exercises tags positions routines lessons inspirations today model =
                         }
                     :: inspirationView inspirations today model.inspirationOffset model.showInspiration
                     :: List.indexedMap (draggableExercise model.dnd) model.routineItems
-                    ++ [ E.el [ E.padding 5 ] <|
+                    ++ [ addCommentButton
+                       , E.el [ E.padding 5 ] <|
                             E.text <|
                                 "Celková délka "
                                     ++ String.fromInt (exercisesDurationMinutes model.routineItems)
@@ -998,7 +1027,7 @@ availableExerciseView pastExerciseUsages model exercise =
                         "Nikdy"
             )
         , Input.button (E.alignRight :: E.alignTop :: navButtonAttrs)
-            { onPress = Just (AddToRoutine exercise.id)
+            { onPress = Just (AddExercise exercise.id)
             , label = E.el [ E.centerY ] (E.text "»")
             }
         ]
