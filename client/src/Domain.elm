@@ -190,7 +190,7 @@ routineDecoder =
 routineExerciseDecoder : Decoder RoutineExercise
 routineExerciseDecoder =
     Decode.map2 RoutineExercise
-        (Decode.field "eirExerciseId" Id.decode)
+        (Decode.field "eirItemId" Id.decode)
         (Decode.field "eirDuration" Decode.int)
 
 
@@ -206,7 +206,7 @@ encodeRoutine routine =
 encodeRoutineExercise : RoutineExercise -> Value
 encodeRoutineExercise re =
     Encode.object
-        [ ( "eirExerciseId", Id.encode re.exerciseId )
+        [ ( "eirItemId", Id.encode re.exerciseId )
         , ( "eirDuration", Encode.int re.duration )
         ]
 

@@ -74,11 +74,12 @@ import Model (
     Routine,
     RoutineExercise (..),
     RoutineId,
+    RoutineItemId (..),
     RoutineWithExercises,
     Tag,
     TagId,
     eirDuration,
-    eirExerciseId,
+    eirItemId,
     exerciseDescription,
     exerciseId,
     exerciseImage,
@@ -317,12 +318,16 @@ apiServer pool imagesDir =
             insertMany_ $
                 zipWith
                     ( \e index ->
-                        RoutineExercise
-                            { routineExerciseRoutineId = rid
-                            , routineExerciseExerciseId = eirExerciseId e
-                            , routineExerciseDurationMin = getDurationMinutes $ eirDuration e
-                            , routineExerciseOrder = index
-                            }
+                        let (mExerciseId, mCommentId) = case eirItemId e of
+                                RiExercise eid -> (Just eid, Nothing)
+                                RiComment cid -> (Nothing, Just cid)
+                         in RoutineExercise
+                                { routineExerciseRoutineId = rid
+                                , routineExerciseExerciseId = mExerciseId
+                                , routineExerciseCommentId = mCommentId
+                                , routineExerciseDurationMin = getDurationMinutes $ eirDuration e
+                                , routineExerciseOrder = index
+                                }
                     )
                     exs
                     [0 ..]
@@ -339,12 +344,16 @@ apiServer pool imagesDir =
                 insertMany_ $
                     zipWith
                         ( \e index ->
-                            RoutineExercise
-                                { routineExerciseRoutineId = rid
-                                , routineExerciseExerciseId = eirExerciseId e
-                                , routineExerciseDurationMin = getDurationMinutes $ eirDuration e
-                                , routineExerciseOrder = index
-                                }
+                            let (mExerciseId, mCommentId) = case eirItemId e of
+                                    RiExercise eid -> (Just eid, Nothing)
+                                    RiComment cid -> (Nothing, Just cid)
+                             in RoutineExercise
+                                    { routineExerciseRoutineId = rid
+                                    , routineExerciseExerciseId = mExerciseId
+                                    , routineExerciseCommentId = mCommentId
+                                    , routineExerciseDurationMin = getDurationMinutes $ eirDuration e
+                                    , routineExerciseOrder = index
+                                    }
                         )
                         exs
                         [0 ..]

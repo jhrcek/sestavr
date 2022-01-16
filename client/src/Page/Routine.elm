@@ -2,7 +2,7 @@ module Page.Routine exposing
     ( Config
     , DraggableItemId
     , Duration
-    , ExerciseInRoutine
+    , ItemInRoutine
     , Model
     , Msg
     , ValidationError(..)
@@ -64,7 +64,7 @@ import Time.Extra as Time
 type alias Model =
     { routineRoute : Router.RoutineEditorRoute
     , topic : String
-    , routineExercises : List ExerciseInRoutine
+    , routineExercises : List ItemInRoutine
     , dnd : DnDList.Model
     , tagFilter : IdSet TagIdTag
     , positionFilter : IdSet PositionIdTag
@@ -76,7 +76,7 @@ type alias Model =
     }
 
 
-type alias ExerciseInRoutine =
+type alias ItemInRoutine =
     { draggableItemId : DraggableItemId
     , exercise : Exercise
     , duration : Duration
@@ -161,7 +161,7 @@ subscriptions model =
 
 type Msg
     = AddToRoutine ExerciseId
-    | RemoveFromRoutine ExerciseInRoutine
+    | RemoveFromRoutine ItemInRoutine
     | ToggleTagId TagId
     | TogglePositionId PositionId
     | ChangeDuration DraggableItemId String
@@ -195,11 +195,11 @@ update config exercises msg model =
             , Cmd.none
             )
 
-        RemoveFromRoutine exerciseInRoutine ->
+        RemoveFromRoutine itemInRoutine ->
             ( markUnsaved
                 { model
                     | routineExercises =
-                        List.filter (\eir -> eir /= exerciseInRoutine)
+                        List.filter (\eir -> eir /= itemInRoutine)
                             model.routineExercises
                 }
             , Cmd.none
@@ -225,7 +225,7 @@ update config exercises msg model =
 
                             Just newDuration ->
                                 List.updateIf
-                                    (\exerciseInRoutine -> exerciseInRoutine.draggableItemId == draggableItemId)
+                                    (\itemInRoutine -> itemInRoutine.draggableItemId == draggableItemId)
                                     (\exerciseIntRoutine -> { exerciseIntRoutine | duration = newDuration })
                                     model.routineExercises
                 }
@@ -397,14 +397,14 @@ durationToInt duration =
             x
 
 
-addExercise : Exercise -> List ExerciseInRoutine -> List ExerciseInRoutine
+addExercise : Exercise -> List ItemInRoutine -> List ItemInRoutine
 addExercise exercise list =
     List.indexedMap
         (\idx eir -> { eir | draggableItemId = idx })
         (list ++ [ { draggableItemId = 0, exercise = exercise, duration = Duration 3 } ])
 
 
-exercisesDurationMinutes : List ExerciseInRoutine -> Int
+exercisesDurationMinutes : List ItemInRoutine -> Int
 exercisesDurationMinutes =
     List.map (.duration >> durationToInt) >> List.sum
 
@@ -1093,15 +1093,15 @@ setAny p set =
     Set.Any.foldl (\a acc -> p a || acc) False set
 
 
-draggableExercise : DnDList.Model -> Int -> ExerciseInRoutine -> Element Msg
-draggableExercise dnd index exerciseInRoutine =
+draggableExercise : DnDList.Model -> Int -> ItemInRoutine -> Element Msg
+draggableExercise dnd index itemInRoutine =
     let
         exId =
-            String.fromInt exerciseInRoutine.draggableItemId
+            String.fromInt itemInRoutine.draggableItemId
     in
     E.row [ E.width E.fill, E.paddingXY 5 0, E.spacing 5 ]
         [ Input.button navButtonAttrs
-            { onPress = Just (RemoveFromRoutine exerciseInRoutine)
+            { onPress = Just (RemoveFromRoutine itemInRoutine)
             , label = E.text "«"
             }
         , Input.text
@@ -1110,9 +1110,9 @@ draggableExercise dnd index exerciseInRoutine =
             , E.padding 4
             , E.htmlAttribute (Attr.type_ "number")
             ]
-            { onChange = ChangeDuration exerciseInRoutine.draggableItemId
+            { onChange = ChangeDuration itemInRoutine.draggableItemId
             , text =
-                case exerciseInRoutine.duration of
+                case itemInRoutine.duration of
                     Duration minutes ->
                         String.fromInt minutes
 
@@ -1121,7 +1121,7 @@ draggableExercise dnd index exerciseInRoutine =
             , placeholder = Nothing
             , label = Input.labelHidden "duration"
             }
-        , draggableExerciseElement exerciseInRoutine <|
+        , draggableExerciseElement itemInRoutine <|
             case dndSystem.info dnd of
                 Just { dragIndex } ->
                     if dragIndex /= index then
@@ -1135,25 +1135,25 @@ draggableExercise dnd index exerciseInRoutine =
         ]
 
 
-draggableExerciseElement : ExerciseInRoutine -> List (E.Attribute Msg) -> Element Msg
+draggableExerciseElement : ItemInRoutine -> List (E.Attribute Msg) -> Element Msg
 draggableExerciseElement eir attrs =
     E.el attrs (E.text eir.exercise.name)
 
 
-ghostView : DnDList.Model -> List ExerciseInRoutine -> Element Msg
+ghostView : DnDList.Model -> List ItemInRoutine -> Element Msg
 ghostView dnd routineExercises =
     dndSystem.info dnd
         |> Maybe.andThen (\{ dragIndex } -> List.getAt dragIndex routineExercises)
         |> Maybe.map
-            (\exerciseInRoutine ->
-                draggableExerciseElement exerciseInRoutine <|
+            (\itemInRoutine ->
+                draggableExerciseElement itemInRoutine <|
                     List.map E.htmlAttribute <|
                         dndSystem.ghostStyles dnd
             )
         |> Maybe.withDefault E.none
 
 
-dndConfig : DnDList.Config ExerciseInRoutine
+dndConfig : DnDList.Config ItemInRoutine
 dndConfig =
     { beforeUpdate = \_ _ list -> list
     , movement = DnDList.Vertical
@@ -1162,7 +1162,7 @@ dndConfig =
     }
 
 
-dndSystem : DnDList.System ExerciseInRoutine Msg
+dndSystem : DnDList.System ItemInRoutine Msg
 dndSystem =
     DnDList.create dndConfig DnD
 
@@ -1215,9 +1215,9 @@ updateOrCreate config model =
                                 , topic = validTopic
                                 , exercises =
                                     List.map
-                                        (\exerciseInRoutine ->
-                                            { exerciseId = exerciseInRoutine.exercise.id
-                                            , duration = durationToInt exerciseInRoutine.duration
+                                        (\itemInRoutine ->
+                                            { exerciseId = itemInRoutine.exercise.id
+                                            , duration = durationToInt itemInRoutine.duration
                                             }
                                         )
                                         nonemptyListOfExercises

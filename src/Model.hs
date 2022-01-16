@@ -38,13 +38,14 @@ module Model (
     RoutineId,
     RoutineExercise (..),
     Routine,
+    RoutineItemId (..),
     RoutineExerciseId,
     Tag,
     TagId,
     ExerciseWithTags,
     createDemoData,
     eirDuration,
-    eirExerciseId,
+    eirItemId,
     exerciseDescription,
     exerciseId,
     exerciseImage,
@@ -92,14 +93,19 @@ ExerciseTag json
     exerciseId ExerciseId
     tagId TagId
     Primary exerciseId tagId
+Comment json
+    comment Text
 Routine json
     topic Text
+-- TODO rename to RoutineItem
 RoutineExercise json
     routineId RoutineId
-    exerciseId ExerciseId
+    -- | Item is either exercise or comment. Exactly one of these 2 must be non NULL
+    exerciseId (Maybe ExerciseId)
+    commentId (Maybe CommentId)
     durationMin Int
     order Int
-    UniqueExerciseRoutineOrder exerciseId routineId order
+    UniqueExerciseRoutineOrder exerciseId commentId routineId order
 Lesson json
     routineId RoutineId
     datetime UTCTime
@@ -154,16 +160,23 @@ toExercise ewt =
 data RoutineWithExercises = RoutineWithExercises
     { routineId :: RoutineId
     , topic :: Text
-    , rweExercises :: [ExerciseInRoutine]
+    , rweExercises :: [ItemInRoutine]
     }
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
 
-data ExerciseInRoutine = ExerciseInRoutine
-    { eirExerciseId :: ExerciseId
+data ItemInRoutine = ItemInRoutine
+    { eirItemId :: RoutineItemId
     , eirDuration :: DurationMinutes
     }
+    deriving stock (Generic)
+    deriving anyclass (ToJSON, FromJSON)
+
+
+data RoutineItemId
+    = RiExercise ExerciseId
+    | RiComment CommentId
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
@@ -181,9 +194,13 @@ fromRoutine entity res =
             , topic = routineTopic routine
             , rweExercises =
                 ( \re ->
-                    ExerciseInRoutine
-                        (routineExerciseExerciseId re)
-                        (DurationMinutes $ routineExerciseDurationMin re)
+                    let itemId = case (routineExerciseExerciseId re, routineExerciseCommentId re) of
+                            (Just exerciseId, Nothing) -> RiExercise exerciseId
+                            (Nothing, Just commentId) -> RiComment commentId
+                            _ -> error "DB precondition violated for RoutineItem"
+                     in ItemInRoutine
+                            itemId
+                            (DurationMinutes $ routineExerciseDurationMin re)
                 )
                     <$> List.sortOn routineExerciseOrder res
             }
@@ -331,8 +348,11 @@ createDemoData = runSqlite "sestavr.db" $ do
 
     routine1Id <- insert $ Routine "Moje první sestava"
 
-    _ <- insert $ RoutineExercise routine1Id childId 5 2
-    _ <- insert $ RoutineExercise routine1Id boatId 1 3
+    commentId <- insert $ Comment "Some comment"
+
+    _ <- insert $ RoutineExercise routine1Id (Just childId) Nothing 5 1
+    _ <- insert $ RoutineExercise routine1Id (Just boatId) Nothing 1 2
+    _ <- insert $ RoutineExercise routine1Id Nothing (Just commentId) 0 3
 
     currentTime <- liftIO getCurrentTime
     _ <- insert $ Lesson routine1Id currentTime
