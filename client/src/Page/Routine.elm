@@ -73,6 +73,7 @@ type alias Model =
     , showInspiration : Bool
     , inspirationOffset : Int
     , isScrolling : Bool
+    , editedComment : Maybe ( DraggableItemId, String )
     }
 
 
@@ -137,6 +138,7 @@ initEditor exercises routine =
     , showInspiration = False
     , inspirationOffset = 0
     , isScrolling = False
+    , editedComment = Nothing
     }
 
 
@@ -165,6 +167,7 @@ emptyEditor =
     , showInspiration = False
     , inspirationOffset = 0
     , isScrolling = True
+    , editedComment = Nothing
     }
 
 
@@ -180,6 +183,9 @@ type Msg
     | ToggleTagId TagId
     | TogglePositionId PositionId
     | ChangeDuration DraggableItemId String
+    | StartCommentEdit DraggableItemId String
+    | SetEditedComment String
+    | SaveEditedComment
     | ChangeTopic String
     | ClearTagAndPositionFilters
     | SaveRoutine
@@ -247,9 +253,41 @@ update config exercises msg model =
                             Just newDuration ->
                                 List.updateIf
                                     (\itemInRoutine -> itemInRoutine.draggableItemId == draggableItemId)
-                                    (\exerciseIntRoutine -> { exerciseIntRoutine | duration = newDuration })
+                                    (\itemInRoutine -> { itemInRoutine | duration = newDuration })
                                     model.routineItems
                 }
+            , Cmd.none
+            )
+
+        StartCommentEdit draggableItemId origCommentText ->
+            ( { model | editedComment = Just ( draggableItemId, origCommentText ) }
+            , Cmd.none
+            )
+
+        SetEditedComment newComment ->
+            ( case model.editedComment of
+                Just ( draggableItemId, _ ) ->
+                    { model | editedComment = Just ( draggableItemId, newComment ) }
+
+                Nothing ->
+                    model
+            , Cmd.none
+            )
+
+        SaveEditedComment ->
+            ( case model.editedComment of
+                Just ( draggableItemId, comment ) ->
+                    markUnsaved
+                        { model
+                            | routineItems =
+                                List.updateIf
+                                    (\itemInRoutine -> itemInRoutine.draggableItemId == draggableItemId)
+                                    (\itemInRoutine -> { itemInRoutine | itemPayload = ItemPayloadComment comment })
+                                    model.routineItems
+                        }
+
+                Nothing ->
+                    model
             , Cmd.none
             )
 
@@ -826,9 +864,9 @@ editor exercises tags positions routines lessons inspirations today model =
                         , label = Input.labelLeft [ E.padding 5 ] (E.text "Téma")
                         }
                     :: inspirationView inspirations today model.inspirationOffset model.showInspiration
+                    :: E.el [ E.padding 5 ] addCommentButton
                     :: List.indexedMap (draggableExercise model.dnd) model.routineItems
-                    ++ [ addCommentButton
-                       , E.el [ E.padding 5 ] <|
+                    ++ [ E.el [ E.padding 5 ] <|
                             E.text <|
                                 "Celková délka "
                                     ++ String.fromInt (exercisesDurationMinutes model.routineItems)
