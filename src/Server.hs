@@ -67,6 +67,7 @@ import Model (
     ImageVerificationResult (..),
     Inspiration,
     InspirationId,
+    ItemInRoutine,
     ItemInRoutineId (..),
     Lesson,
     LessonId,
@@ -316,21 +317,7 @@ apiServer pool imagesDir =
         runPool $ do
             rid <- insert routine
             insertMany_ $
-                zipWith
-                    ( \e index ->
-                        let (mExerciseId, mCommentId) = case eirItemId e of
-                                RiExercise eid -> (Just eid, Nothing)
-                                RiComment cid -> (Nothing, Just cid)
-                         in RoutineItem
-                                { routineItemRoutineId = rid
-                                , routineItemExerciseId = mExerciseId
-                                , routineItemCommentId = mCommentId
-                                , routineItemDurationMin = getDurationMinutes $ eirDuration e
-                                , routineItemOrder = index
-                                }
-                    )
-                    exs
-                    [0 ..]
+                zipWith (mkRoutineItem rid) exs [0 ..]
             pure $ rwe{routineId = rid}
     --
     updateRoutine :: RoutineId -> RoutineWithExercises -> Handler RoutineWithExercises
@@ -342,21 +329,7 @@ apiServer pool imagesDir =
                 replace rid routine
                 deleteWhere [RoutineItemRoutineId ==. rid]
                 insertMany_ $
-                    zipWith
-                        ( \e index ->
-                            let (mExerciseId, mCommentId) = case eirItemId e of
-                                    RiExercise eid -> (Just eid, Nothing)
-                                    RiComment cid -> (Nothing, Just cid)
-                             in RoutineItem
-                                    { routineItemRoutineId = rid
-                                    , routineItemExerciseId = mExerciseId
-                                    , routineItemCommentId = mCommentId
-                                    , routineItemDurationMin = getDurationMinutes $ eirDuration e
-                                    , routineItemOrder = index
-                                    }
-                        )
-                        exs
-                        [0 ..]
+                    zipWith (mkRoutineItem rid) exs [0 ..]
                 pure rwe
     --
     deleteRoutine :: RoutineId -> Handler ()
@@ -392,6 +365,20 @@ apiServer pool imagesDir =
         let imagePath = imagesDir </> imageName
         exists <- doesFileExist imagePath
         when exists $ removeFile imagePath
+
+
+mkRoutineItem :: RoutineId -> ItemInRoutine -> Int -> RoutineItem
+mkRoutineItem rid e index =
+    let (mExerciseId, mCommentId) = case eirItemId e of
+            RiExercise eid -> (Just eid, Nothing)
+            RiComment cid -> (Nothing, Just cid)
+     in RoutineItem
+            { routineItemRoutineId = rid
+            , routineItemExerciseId = mExerciseId
+            , routineItemCommentId = mCommentId
+            , routineItemDurationMin = getDurationMinutes $ eirDuration e
+            , routineItemOrder = index
+            }
 
 
 throw409 :: SqliteException -> LBS.ByteString -> Handler a

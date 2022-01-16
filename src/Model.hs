@@ -30,6 +30,7 @@ module Model (
     ImageVerificationResult (..),
     Inspiration,
     InspirationId,
+    ItemInRoutine,
     Lesson,
     LessonId,
     Position,

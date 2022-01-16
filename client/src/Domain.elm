@@ -6,6 +6,7 @@ module Domain exposing
     , Inspiration
     , InspirationId
     , InspirationIdTag
+    , ItemInRoutineId(..)
     , Lesson
     , LessonId
     , LessonIdTag
@@ -155,6 +156,19 @@ encodeExercise exercise =
 
 
 
+-- COMMENT
+
+
+type CommentIdTag
+    = CommentIdTag
+
+
+type alias CommentId =
+    Id CommentIdTag
+
+
+
+-- TODO comment
 -- ROUTINE
 
 
@@ -169,14 +183,54 @@ type alias RoutineId =
 type alias Routine =
     { id : RoutineId
     , topic : String
+
+    -- TODO rename to items
     , exercises : List RoutineItem
     }
 
 
+type ItemInRoutineId
+    = RiExercise ExerciseId
+    | RiComment CommentId
+
+
 type alias RoutineItem =
-    { exerciseId : ExerciseId
+    { itemId : ItemInRoutineId
     , duration : Int
     }
+
+
+itemInRoutineIdDecoder : Decoder ItemInRoutineId
+itemInRoutineIdDecoder =
+    Decode.field "tag" Decode.string
+        |> Decode.andThen
+            (\tag ->
+                case tag of
+                    "RiExercise" ->
+                        Decode.field "contents" <| Decode.map RiExercise Id.decode
+
+                    "RiComment" ->
+                        Decode.field "contents" <| Decode.map RiComment Id.decode
+
+                    bad ->
+                        Decode.fail <| "Unexpected ItemInRoutineId tag: " ++ bad
+            )
+
+
+encodeItemInRoutineId : ItemInRoutineId -> Value
+encodeItemInRoutineId i =
+    case i of
+        RiExercise eid ->
+            Encode.object
+                [ ( "tag", Encode.string "RiExercise" )
+                , ( "contents", Id.encode eid )
+                ]
+
+        RiComment cid ->
+            Encode.object
+                [ ( "tag", Encode.string "RiComment" )
+                , ( "contents", Id.encode cid )
+                ]
 
 
 routineDecoder : Decoder Routine
@@ -190,7 +244,7 @@ routineDecoder =
 routineItemDecoder : Decoder RoutineItem
 routineItemDecoder =
     Decode.map2 RoutineItem
-        (Decode.field "eirItemId" Id.decode)
+        (Decode.field "eirItemId" itemInRoutineIdDecoder)
         (Decode.field "eirDuration" Decode.int)
 
 
@@ -206,7 +260,7 @@ encodeRoutine routine =
 encodeRoutineItem : RoutineItem -> Value
 encodeRoutineItem re =
     Encode.object
-        [ ( "eirItemId", Id.encode re.exerciseId )
+        [ ( "eirItemId", encodeItemInRoutineId re.itemId )
         , ( "eirDuration", Encode.int re.duration )
         ]
 
@@ -333,6 +387,7 @@ type Tags
     | PositionIdTag_ PositionIdTag
     | RoutineIdTag_ RoutineIdTag
     | TagIdTag_ TagIdTag
+    | CommentIdTag_ CommentIdTag
 
 
 tags : List Tags
@@ -343,4 +398,5 @@ tags =
     , PositionIdTag_ PositionIdTag
     , RoutineIdTag_ RoutineIdTag
     , TagIdTag_ TagIdTag
+    , CommentIdTag_ CommentIdTag
     ]

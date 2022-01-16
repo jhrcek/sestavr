@@ -31,6 +31,7 @@ import Domain
         , ExerciseIdTag
         , Inspiration
         , InspirationIdTag
+        , ItemInRoutineId(..)
         , Lesson
         , LessonIdTag
         , Position
@@ -78,6 +79,8 @@ type alias Model =
 
 type alias ItemInRoutine =
     { draggableItemId : DraggableItemId
+
+    -- TODO this should be sum of Exercise / Comment
     , exercise : Exercise
     , duration : Duration
     }
@@ -103,7 +106,16 @@ initEditor exercises routine =
     let
         routineItems =
             routine.exercises
-                |> List.filterMap (\re -> Dict.Any.get re.exerciseId exercises |> Maybe.map (Tuple.pair re))
+                |> List.filterMap
+                    (\re ->
+                        case re.itemId of
+                            RiExercise eid ->
+                                Dict.Any.get eid exercises |> Maybe.map (Tuple.pair re)
+
+                            -- TODO comment
+                            RiComment cid ->
+                                Nothing
+                    )
                 |> List.indexedMap
                     (\index ( re, exercise ) ->
                         { draggableItemId = index
@@ -476,7 +488,13 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
                 |> List.filterMap
                     (\re ->
                         Maybe.map (Tuple.pair re.duration) <|
-                            Dict.Any.get re.exerciseId exercises
+                            case re.itemId of
+                                RiExercise eid ->
+                                    Dict.Any.get eid exercises
+
+                                -- TODO comment
+                                RiComment cid ->
+                                    Nothing
                     )
                 |> splitInto30MinuteSegments
                 |> (\segments ->
@@ -563,7 +581,7 @@ tableView maybeExercise routines lessons model =
         containsExercise routine =
             case maybeExercise of
                 Just exercise ->
-                    List.any (\routineItem -> routineItem.exerciseId == exercise.id)
+                    List.any (\routineItem -> routineItem.itemId == RiExercise exercise.id)
                         routine.exercises
 
                 Nothing ->
@@ -995,7 +1013,17 @@ getPastExerciseUsages today routines lessons =
                 lessonExercises =
                     case Dict.Any.get lesson.routineId routines of
                         Just routine ->
-                            List.map (\routineItem -> ( routineItem.exerciseId, routine.topic )) routine.exercises
+                            List.filterMap
+                                (\routineItem ->
+                                    case routineItem.itemId of
+                                        RiExercise eid ->
+                                            Just ( eid, routine.topic )
+
+                                        -- TODO comment
+                                        RiComment cid ->
+                                            Nothing
+                                )
+                                routine.exercises
 
                         Nothing ->
                             []
@@ -1216,7 +1244,8 @@ updateOrCreate config model =
                                 , exercises =
                                     List.map
                                         (\itemInRoutine ->
-                                            { exerciseId = itemInRoutine.exercise.id
+                                            -- TODO comment
+                                            { itemId = RiExercise itemInRoutine.exercise.id
                                             , duration = durationToInt itemInRoutine.duration
                                             }
                                         )
