@@ -191,7 +191,12 @@ viewPositions positions maybeEdited =
                         case maybeEdited of
                             Just editedPosition ->
                                 if position.id == editedPosition.id then
-                                    Input.text [ E.width (E.px 100), E.height E.fill, E.padding 5 ]
+                                    Input.text
+                                        [ E.width (E.px 100)
+                                        , E.height E.fill
+                                        , E.padding 5
+                                        , E.htmlAttribute (Html.Attributes.id editedPositionInputId)
+                                        ]
                                         { onChange = EditedNameChanged
                                         , text = editedPosition.name
                                         , placeholder = Nothing

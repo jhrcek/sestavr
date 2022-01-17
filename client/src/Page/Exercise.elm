@@ -7,6 +7,7 @@ module Page.Exercise exposing
     , imagePreview
     , initEditor
     , listWithDetail
+    , previewImageSize
     , tagCheckboxes
     , update
     , validationErrorToString
