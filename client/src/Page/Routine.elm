@@ -1325,14 +1325,14 @@ draggableExerciseElement iir attrs =
 
         ItemPayloadComment comment ->
             E.el attrs <|
-                E.row [ E.spacing 2 ]
+                E.row [ E.spacing 5 ]
                     [ E.text comment
                     , Common.iconButton (CommentStartEditing iir.draggableItemId) "🖉"
                     , Common.iconButton (CommentDelete iir.draggableItemId) "🗑"
                     ]
 
         ItemPayloadEditedComment _ editedValue ->
-            E.row [ E.spacing 2 ]
+            E.row [ E.spacing 5 ]
                 [ Input.text
                     [ E.width (E.px 300)
                     , E.height E.fill
