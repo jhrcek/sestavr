@@ -332,7 +332,7 @@ listView : IdDict ExerciseIdTag Exercise -> Element msg
 listView exercises =
     E.column
         [ -- TODO figure out how to do this without enable vertical scrollbar without hardcoding height
-          E.height (E.px 800)
+          E.height (E.px 1000)
         , E.width (E.px 450)
         , E.alignTop
         ]

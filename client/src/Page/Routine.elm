@@ -726,15 +726,6 @@ tableView maybeExercise routines lessons model =
             else
                 createRoutineButton
 
-        cell =
-            E.el
-                [ Border.solid
-                , Border.width 1
-                , Border.color Color.lightGrey
-                , E.height E.fill
-                , E.padding 5
-                ]
-
         datesWhenUsedInLessons : Routine -> List Posix
         datesWhenUsedInLessons routine =
             lessonsUsingRoutine lessons routine
@@ -760,6 +751,16 @@ tableView maybeExercise routines lessons model =
                 E.text "Tento cvik dosud nebyl použit v žádné sestavě"
 
             nonEmptyRoutines ->
+                let
+                    cell =
+                        E.el
+                            [ Border.solid
+                            , Border.width 1
+                            , Border.color Color.lightGrey
+                            , E.height E.fill
+                            , E.padding 5
+                            ]
+                in
                 E.table
                     [ Border.solid
                     , Border.width 1
@@ -914,7 +915,7 @@ editor exercises tags positions routines lessons inspirations today model =
             [ filtersColumn tags positions exercises model filteredExercises
             , E.column colAttrs
                 [ E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
-                , E.column [ E.scrollbarY, E.height (E.px 900) ] <|
+                , E.column [ E.scrollbarY, E.height (E.px 1000) ] <|
                     List.map (availableExerciseView pastExerciseUsages model) filteredExercises
                 ]
             , E.column
