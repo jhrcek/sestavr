@@ -921,7 +921,7 @@ editor exercises tags positions routines lessons inspirations today model =
                 (E.inFront (ghostView model.dnd model.routineItems) :: E.spacing 5 :: colAttrs)
                 (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
                     :: Input.text
-                        [ E.width (E.px 250)
+                        [ E.width (E.px 600)
                         , E.height (E.px 30)
                         , E.padding 4
                         ]
