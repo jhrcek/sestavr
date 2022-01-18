@@ -32,4 +32,3 @@ config =
     , NoMissingTypeExpose.rule
     , NoPrematureLetComputation.rule
     ]
-

@@ -6,6 +6,7 @@ module Domain exposing
     , Inspiration
     , InspirationId
     , InspirationIdTag
+    , ItemPayload(..)
     , Lesson
     , LessonId
     , LessonIdTag
@@ -13,9 +14,9 @@ module Domain exposing
     , PositionId
     , PositionIdTag
     , Routine
-    , RoutineExercise
     , RoutineId
     , RoutineIdTag
+    , RoutineItem
     , Tag
     , TagId
     , TagIdTag
@@ -169,14 +170,53 @@ type alias RoutineId =
 type alias Routine =
     { id : RoutineId
     , topic : String
-    , exercises : List RoutineExercise
+    , items : List RoutineItem
     }
 
 
-type alias RoutineExercise =
-    { exerciseId : ExerciseId
+type ItemPayload
+    = IExerciseId ExerciseId
+    | IComment String
+
+
+type alias RoutineItem =
+    { itemPayload : ItemPayload
     , duration : Int
     }
+
+
+itemPayloadDecoder : Decoder ItemPayload
+itemPayloadDecoder =
+    Decode.field "tag" Decode.string
+        |> Decode.andThen
+            (\tag ->
+                Decode.field "contents" <|
+                    case tag of
+                        "IExerciseId" ->
+                            Decode.map IExerciseId Id.decode
+
+                        "IComment" ->
+                            Decode.map IComment Decode.string
+
+                        bad ->
+                            Decode.fail <| "Unexpected ItemPayload tag: " ++ bad
+            )
+
+
+encodeItemPayload : ItemPayload -> Value
+encodeItemPayload i =
+    case i of
+        IExerciseId eid ->
+            Encode.object
+                [ ( "tag", Encode.string "IExerciseId" )
+                , ( "contents", Id.encode eid )
+                ]
+
+        IComment commentText ->
+            Encode.object
+                [ ( "tag", Encode.string "IComment" )
+                , ( "contents", Encode.string commentText )
+                ]
 
 
 routineDecoder : Decoder Routine
@@ -184,13 +224,13 @@ routineDecoder =
     Decode.map3 Routine
         (Decode.field "routineId" Id.decode)
         (Decode.field "topic" Decode.string)
-        (Decode.field "rweExercises" (Decode.list routineExerciseDecoder))
+        (Decode.field "rweExercises" (Decode.list routineItemDecoder))
 
 
-routineExerciseDecoder : Decoder RoutineExercise
-routineExerciseDecoder =
-    Decode.map2 RoutineExercise
-        (Decode.field "eirExerciseId" Id.decode)
+routineItemDecoder : Decoder RoutineItem
+routineItemDecoder =
+    Decode.map2 RoutineItem
+        (Decode.field "eirPayload" itemPayloadDecoder)
         (Decode.field "eirDuration" Decode.int)
 
 
@@ -199,14 +239,14 @@ encodeRoutine routine =
     Encode.object
         [ ( "routineId", Id.encode routine.id )
         , ( "topic", Encode.string routine.topic )
-        , ( "rweExercises", Encode.list encodeRoutineExercise routine.exercises )
+        , ( "rweExercises", Encode.list encodeRoutineItem routine.items )
         ]
 
 
-encodeRoutineExercise : RoutineExercise -> Value
-encodeRoutineExercise re =
+encodeRoutineItem : RoutineItem -> Value
+encodeRoutineItem re =
     Encode.object
-        [ ( "eirExerciseId", Id.encode re.exerciseId )
+        [ ( "eirPayload", encodeItemPayload re.itemPayload )
         , ( "eirDuration", Encode.int re.duration )
         ]
 

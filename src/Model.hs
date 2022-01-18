@@ -25,26 +25,28 @@ module Model (
     ExerciseTag (..),
     EntityField (
         ExerciseTagExerciseId,
-        RoutineExerciseRoutineId
+        RoutineItemRoutineId
     ),
     ImageVerificationResult (..),
     Inspiration,
     InspirationId,
+    ItemInRoutine,
     Lesson,
     LessonId,
     Position,
     PositionId,
     RoutineWithExercises,
     RoutineId,
-    RoutineExercise (..),
+    RoutineItem (..),
     Routine,
-    RoutineExerciseId,
+    ItemPayload (..),
+    RoutineItemId,
     Tag,
     TagId,
     ExerciseWithTags,
     createDemoData,
     eirDuration,
-    eirExerciseId,
+    eirPayload,
     exerciseDescription,
     exerciseId,
     exerciseImage,
@@ -94,12 +96,15 @@ ExerciseTag json
     Primary exerciseId tagId
 Routine json
     topic Text
-RoutineExercise json
+RoutineItem json
     routineId RoutineId
-    exerciseId ExerciseId
+    -- | If ExerciseId is NULL, we consider this item to be comment
+    exerciseId ExerciseId Maybe
+    comment Text
     durationMin Int
     order Int
-    UniqueExerciseRoutineOrder exerciseId routineId order
+    -- !force to allow nullable attribute in constraint
+    UniqueExerciseRoutineOrder exerciseId comment routineId order !force 
 Lesson json
     routineId RoutineId
     datetime UTCTime
@@ -150,20 +155,27 @@ toExercise ewt =
         }
 
 
--- This is to alleviate frontend from having to join Exercises from RoutineExercises join table
+-- This is to alleviate frontend from having to join Exercises from RoutineItems join table
 data RoutineWithExercises = RoutineWithExercises
     { routineId :: RoutineId
     , topic :: Text
-    , rweExercises :: [ExerciseInRoutine]
+    , rweExercises :: [ItemInRoutine]
     }
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
 
-data ExerciseInRoutine = ExerciseInRoutine
-    { eirExerciseId :: ExerciseId
+data ItemInRoutine = ItemInRoutine
+    { eirPayload :: ItemPayload
     , eirDuration :: DurationMinutes
     }
+    deriving stock (Generic)
+    deriving anyclass (ToJSON, FromJSON)
+
+
+data ItemPayload
+    = IExerciseId ExerciseId
+    | IComment Text
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
@@ -172,7 +184,7 @@ newtype DurationMinutes = DurationMinutes {getDurationMinutes :: Int}
     deriving (ToJSON, FromJSON) via Int
 
 
-fromRoutine :: Entity Routine -> [RoutineExercise] -> RoutineWithExercises
+fromRoutine :: Entity Routine -> [RoutineItem] -> RoutineWithExercises
 fromRoutine entity res =
     let routine = entityVal entity
         routineId = entityKey entity
@@ -181,11 +193,14 @@ fromRoutine entity res =
             , topic = routineTopic routine
             , rweExercises =
                 ( \re ->
-                    ExerciseInRoutine
-                        (routineExerciseExerciseId re)
-                        (DurationMinutes $ routineExerciseDurationMin re)
+                    let itemPayload = case routineItemExerciseId re of
+                            Just exerciseId -> IExerciseId exerciseId
+                            Nothing -> IComment (routineItemComment re)
+                     in ItemInRoutine
+                            itemPayload
+                            (DurationMinutes $ routineItemDurationMin re)
                 )
-                    <$> List.sortOn routineExerciseOrder res
+                    <$> List.sortOn routineItemOrder res
             }
 
 
@@ -331,8 +346,9 @@ createDemoData = runSqlite "sestavr.db" $ do
 
     routine1Id <- insert $ Routine "Moje první sestava"
 
-    _ <- insert $ RoutineExercise routine1Id childId 5 2
-    _ <- insert $ RoutineExercise routine1Id boatId 1 3
+    _ <- insert $ RoutineItem routine1Id (Just childId) "" 5 1
+    _ <- insert $ RoutineItem routine1Id (Just boatId) "" 1 2
+    _ <- insert $ RoutineItem routine1Id Nothing "Some comment" 0 3
 
     currentTime <- liftIO getCurrentTime
     _ <- insert $ Lesson routine1Id currentTime

@@ -791,6 +791,7 @@ routineConfig =
     , validationError = GotRoutineValidationError
     , lessonPlannerMsg = LessonPlannerMsg
     , throwAwayChanges = ConfirmAction "Opravdu chceš zahodit neuložené změny?" ThrowAwayRoutineEditorChanges
+    , noop = NoOp
     }
 
 

@@ -2,7 +2,8 @@ module Page.Routine exposing
     ( Config
     , DraggableItemId
     , Duration
-    , ExerciseInRoutine
+    , ItemInRoutine
+    , ItemPayload
     , Model
     , Msg
     , ValidationError(..)
@@ -31,6 +32,7 @@ import Domain
         , ExerciseIdTag
         , Inspiration
         , InspirationIdTag
+        , ItemPayload(..)
         , Lesson
         , LessonIdTag
         , Position
@@ -64,7 +66,7 @@ import Time.Extra as Time
 type alias Model =
     { routineRoute : Router.RoutineEditorRoute
     , topic : String
-    , routineExercises : List ExerciseInRoutine
+    , routineItems : List ItemInRoutine
     , dnd : DnDList.Model
     , tagFilter : IdSet TagIdTag
     , positionFilter : IdSet PositionIdTag
@@ -76,11 +78,17 @@ type alias Model =
     }
 
 
-type alias ExerciseInRoutine =
+type alias ItemInRoutine =
     { draggableItemId : DraggableItemId
-    , exercise : Exercise
+    , itemPayload : ItemPayload
     , duration : Duration
     }
+
+
+type ItemPayload
+    = ItemPayloadExercise Exercise
+    | ItemPayloadComment String
+    | ItemPayloadEditedComment String String
 
 
 type alias DraggableItemId =
@@ -95,25 +103,35 @@ type alias Config msg =
     , validationError : ValidationError -> msg
     , lessonPlannerMsg : LessonPlanner.Msg -> msg
     , throwAwayChanges : msg
+    , noop : msg
     }
 
 
 initEditor : IdDict ExerciseIdTag Exercise -> Routine -> Model
 initEditor exercises routine =
     let
-        routineExercises =
-            routine.exercises
-                |> List.filterMap (\re -> Dict.Any.get re.exerciseId exercises |> Maybe.map (Tuple.pair re))
+        routineItems =
+            routine.items
+                |> List.filterMap
+                    (\item ->
+                        Maybe.map (Tuple.pair item.duration) <|
+                            case item.itemPayload of
+                                IExerciseId eid ->
+                                    Maybe.map ItemPayloadExercise <| Dict.Any.get eid exercises
+
+                                IComment comment ->
+                                    Just (ItemPayloadComment comment)
+                    )
                 |> List.indexedMap
-                    (\index ( re, exercise ) ->
+                    (\index ( duration, payload ) ->
                         { draggableItemId = index
-                        , exercise = exercise
-                        , duration = Duration re.duration
+                        , itemPayload = payload
+                        , duration = Duration duration
                         }
                     )
     in
     { routineRoute = Router.EditRoutine routine.id
-    , routineExercises = routineExercises
+    , routineItems = routineItems
     , topic = routine.topic
     , dnd = dndSystem.model
     , tagFilter = Id.emptySet
@@ -141,7 +159,7 @@ initCopyEditor exercises routine =
 emptyEditor : Model
 emptyEditor =
     { routineRoute = Router.NewRoutine
-    , routineExercises = []
+    , routineItems = []
     , topic = ""
     , dnd = dndSystem.model
     , tagFilter = Id.emptySet
@@ -160,11 +178,16 @@ subscriptions model =
 
 
 type Msg
-    = AddToRoutine ExerciseId
-    | RemoveFromRoutine ExerciseInRoutine
+    = AddExercise ExerciseId
+    | AddComment
+    | RemoveFromRoutine ItemInRoutine
     | ToggleTagId TagId
     | TogglePositionId PositionId
     | ChangeDuration DraggableItemId String
+    | CommentStartEditing DraggableItemId
+    | CommentUpdateText DraggableItemId String
+    | CommentSaveEdits DraggableItemId
+    | CommentDelete DraggableItemId
     | ChangeTopic String
     | ClearTagAndPositionFilters
     | SaveRoutine
@@ -182,25 +205,32 @@ type Msg
 update : Config msg -> IdDict ExerciseIdTag Exercise -> Msg -> Model -> ( Model, Cmd msg )
 update config exercises msg model =
     case msg of
-        AddToRoutine exerciseId ->
+        AddExercise exerciseId ->
             ( markUnsaved
                 { model
-                    | routineExercises =
+                    | routineItems =
                         (Dict.Any.get exerciseId exercises
                             |> Maybe.map addExercise
                             |> Maybe.withDefault identity
                         )
-                            model.routineExercises
+                            model.routineItems
                 }
             , Cmd.none
             )
 
-        RemoveFromRoutine exerciseInRoutine ->
+        AddComment ->
+            ( markUnsaved
+                { model | routineItems = addComment model.routineItems }
+            , Dom.focus newCommentInputId
+                |> Task.attempt (always config.noop)
+            )
+
+        RemoveFromRoutine itemInRoutine ->
             ( markUnsaved
                 { model
-                    | routineExercises =
-                        List.filter (\eir -> eir /= exerciseInRoutine)
-                            model.routineExercises
+                    | routineItems =
+                        List.filter (\item -> item /= itemInRoutine)
+                            model.routineItems
                 }
             , Cmd.none
             )
@@ -216,18 +246,86 @@ update config exercises msg model =
             )
 
         ChangeDuration draggableItemId durationString ->
+            ( case parseDuration durationString of
+                Nothing ->
+                    model
+
+                Just newDuration ->
+                    markUnsaved
+                        { model
+                            | routineItems =
+                                List.updateIf
+                                    (\itemInRoutine -> itemInRoutine.draggableItemId == draggableItemId)
+                                    (\itemInRoutine -> { itemInRoutine | duration = newDuration })
+                                    model.routineItems
+                        }
+            , Cmd.none
+            )
+
+        CommentStartEditing draggableItemId ->
             ( markUnsaved
                 { model
-                    | routineExercises =
-                        case parseDuration durationString of
-                            Nothing ->
-                                model.routineExercises
+                    | routineItems =
+                        List.updateIf
+                            (\itemInRoutine -> itemInRoutine.draggableItemId == draggableItemId)
+                            (\itemInRoutine ->
+                                case itemInRoutine.itemPayload of
+                                    ItemPayloadComment origComment ->
+                                        { itemInRoutine | itemPayload = ItemPayloadEditedComment origComment origComment }
 
-                            Just newDuration ->
-                                List.updateIf
-                                    (\exerciseInRoutine -> exerciseInRoutine.draggableItemId == draggableItemId)
-                                    (\exerciseIntRoutine -> { exerciseIntRoutine | duration = newDuration })
-                                    model.routineExercises
+                                    _ ->
+                                        itemInRoutine
+                            )
+                            model.routineItems
+                }
+            , Cmd.none
+            )
+
+        CommentSaveEdits draggableItemId ->
+            ( markUnsaved
+                { model
+                    | routineItems =
+                        List.updateIf
+                            (\itemInRoutine -> itemInRoutine.draggableItemId == draggableItemId)
+                            (\itemInRoutine ->
+                                case itemInRoutine.itemPayload of
+                                    ItemPayloadEditedComment _ newComment ->
+                                        { itemInRoutine | itemPayload = ItemPayloadComment newComment }
+
+                                    _ ->
+                                        itemInRoutine
+                            )
+                            model.routineItems
+                }
+            , Cmd.none
+            )
+
+        CommentUpdateText draggableItemId newComment ->
+            ( markUnsaved
+                { model
+                    | routineItems =
+                        List.updateIf
+                            (\itemInRoutine -> itemInRoutine.draggableItemId == draggableItemId)
+                            (\itemInRoutine ->
+                                case itemInRoutine.itemPayload of
+                                    ItemPayloadEditedComment orig _ ->
+                                        { itemInRoutine | itemPayload = ItemPayloadEditedComment orig newComment }
+
+                                    _ ->
+                                        itemInRoutine
+                            )
+                            model.routineItems
+                }
+            , Cmd.none
+            )
+
+        CommentDelete draggableItemId ->
+            ( markUnsaved
+                { model
+                    | routineItems =
+                        List.filter
+                            (\itemInRoutine -> itemInRoutine.draggableItemId /= draggableItemId)
+                            model.routineItems
                 }
             , Cmd.none
             )
@@ -242,8 +340,8 @@ update config exercises msg model =
 
         DnD dndMsg ->
             let
-                ( dnd, routineExercises ) =
-                    dndSystem.update dndMsg model.dnd model.routineExercises
+                ( dnd, routineItems ) =
+                    dndSystem.update dndMsg model.dnd model.routineItems
 
                 ( isScrolling, maybeStartScrolling ) =
                     case dndSystem.info dnd of
@@ -277,7 +375,7 @@ update config exercises msg model =
             ( markUnsaved
                 { model
                     | dnd = dnd
-                    , routineExercises = routineExercises
+                    , routineItems = routineItems
                     , isScrolling = isScrolling
                 }
             , Cmd.map config.msg <|
@@ -397,21 +495,40 @@ durationToInt duration =
             x
 
 
-addExercise : Exercise -> List ExerciseInRoutine -> List ExerciseInRoutine
+addExercise : Exercise -> List ItemInRoutine -> List ItemInRoutine
 addExercise exercise list =
     List.indexedMap
-        (\idx eir -> { eir | draggableItemId = idx })
-        (list ++ [ { draggableItemId = 0, exercise = exercise, duration = Duration 3 } ])
+        (\idx item -> { item | draggableItemId = idx })
+        (list
+            ++ [ { draggableItemId = 0
+                 , itemPayload = ItemPayloadExercise exercise
+                 , duration = Duration 3
+                 }
+               ]
+        )
 
 
-exercisesDurationMinutes : List ExerciseInRoutine -> Int
+addComment : List ItemInRoutine -> List ItemInRoutine
+addComment list =
+    List.indexedMap
+        (\idx item -> { item | draggableItemId = idx })
+        (list
+            ++ [ { draggableItemId = 0
+                 , itemPayload = ItemPayloadEditedComment "" ""
+                 , duration = Duration 0
+                 }
+               ]
+        )
+
+
+exercisesDurationMinutes : List ItemInRoutine -> Int
 exercisesDurationMinutes =
     List.map (.duration >> durationToInt) >> List.sum
 
 
 routineDurationMinutes : Routine -> Int
 routineDurationMinutes routine =
-    routine.exercises |> List.map .duration |> List.sum
+    routine.items |> List.map .duration |> List.sum
 
 
 view :
@@ -472,11 +589,16 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
                                 :: List.map (\lesson -> E.text <| Time.formatDateTime lesson.datetime) ls
                             )
             , E.map config.lessonPlannerMsg <| LessonPlanner.view lessonPlanner
-            , routine.exercises
+            , routine.items
                 |> List.filterMap
-                    (\re ->
-                        Maybe.map (Tuple.pair re.duration) <|
-                            Dict.Any.get re.exerciseId exercises
+                    (\item ->
+                        Maybe.map (Tuple.pair item.duration) <|
+                            case item.itemPayload of
+                                IExerciseId eid ->
+                                    Maybe.map ItemPayloadExercise <| Dict.Any.get eid exercises
+
+                                IComment comment ->
+                                    Just <| ItemPayloadComment comment
                     )
                 |> splitInto30MinuteSegments
                 |> (\segments ->
@@ -484,7 +606,7 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
                             (List.map
                                 (\segment ->
                                     E.column [ E.spacing 5 ] <|
-                                        List.map routineExerciseView segment
+                                        List.map routineItemView segment
                                 )
                                 segments
                             )
@@ -510,20 +632,48 @@ view config exercises lessons routine mPrevRoutineId mNextRoutineId lessonPlanne
         ]
 
 
-routineExerciseView : ( Int, Exercise ) -> Element msg
-routineExerciseView ( duration, exercise ) =
+routineItemView : ( Int, ItemPayload ) -> Element msg
+routineItemView ( duration, itemPayload ) =
+    case itemPayload of
+        ItemPayloadExercise exercise ->
+            E.row [ Border.color Color.darkGrey, Border.width 1, E.spacing 5 ]
+                [ Exercise.imagePreview exercise
+                , E.link [ E.width (E.px 500) ]
+                    { url = Router.href (Router.Exercise exercise.id)
+                    , label = E.paragraph [] [ E.text exercise.name ]
+                    }
+                , E.el [ E.width (E.px 70) ] (E.text <| String.fromInt duration ++ " min")
+                ]
+
+        ItemPayloadComment comment ->
+            commentItemView duration comment
+
+        ItemPayloadEditedComment origComment _ ->
+            commentItemView duration origComment
+
+
+commentItemView : Int -> String -> Element msg
+commentItemView duration comment =
     E.row [ Border.color Color.darkGrey, Border.width 1, E.spacing 5 ]
-        [ Exercise.imagePreview exercise
-        , E.link [ E.width (E.px 500) ]
-            { url = Router.href (Router.Exercise exercise.id)
-            , label = E.paragraph [] [ E.text exercise.name ]
-            }
+        [ commentBubble
+        , E.el [ E.width (E.px 500) ] (E.text comment)
         , E.el [ E.width (E.px 70) ] (E.text <| String.fromInt duration ++ " min")
         ]
 
 
-splitInto30MinuteSegments : List ( Int, Exercise ) -> List (List ( Int, Exercise ))
-splitInto30MinuteSegments exercisesWithDuration =
+commentBubble : Element msg
+commentBubble =
+    E.el
+        [ E.width (E.px Exercise.previewImageSize)
+        , E.height (E.px Exercise.previewImageSize)
+        , Font.color Color.black
+        , Font.size 60
+        ]
+        (E.el [ E.centerX, E.centerY ] (E.text "🗨"))
+
+
+splitInto30MinuteSegments : List ( Int, ItemPayload ) -> List (List ( Int, ItemPayload ))
+splitInto30MinuteSegments itemsWithDuration =
     let
         f ( duration, exercise ) ( segments, runningDuration, nextThirty ) =
             case segments of
@@ -544,7 +694,7 @@ splitInto30MinuteSegments exercisesWithDuration =
                         , nextThirty + 30
                         )
     in
-    List.foldl f ( [ [] ], 0, 30 ) exercisesWithDuration
+    List.foldl f ( [ [] ], 0, 30 ) itemsWithDuration
         |> (\( segments, _, _ ) -> segments)
         |> List.map List.reverse
         |> List.reverse
@@ -563,8 +713,8 @@ tableView maybeExercise routines lessons model =
         containsExercise routine =
             case maybeExercise of
                 Just exercise ->
-                    List.any (\routineExercise -> routineExercise.exerciseId == exercise.id)
-                        routine.exercises
+                    List.any (\routineItem -> routineItem.itemPayload == IExerciseId exercise.id)
+                        routine.items
 
                 Nothing ->
                     True
@@ -575,15 +725,6 @@ tableView maybeExercise routines lessons model =
 
             else
                 createRoutineButton
-
-        cell =
-            E.el
-                [ Border.solid
-                , Border.width 1
-                , Border.color Color.lightGrey
-                , E.height E.fill
-                , E.padding 5
-                ]
 
         datesWhenUsedInLessons : Routine -> List Posix
         datesWhenUsedInLessons routine =
@@ -601,50 +742,66 @@ tableView maybeExercise routines lessons model =
                 Nothing ->
                     "Sestavy"
         , createOrGoBackToEditedRoutine
-        , E.table
-            [ Border.solid
-            , Border.width 1
-            , Border.color Color.lightGrey
-            ]
-            { data =
-                Dict.Any.values routines
-                    |> List.filter containsExercise
-                    |> List.sortBy .topic
-            , columns =
-                [ { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Název"
-                  , width = E.shrink
-                  , view =
-                        \routine ->
-                            cell <|
-                                E.el [ E.alignLeft ] <|
-                                    E.link Common.linkAttrs
-                                        { url = Router.href (Router.Routine routine.id)
-                                        , label = E.text routine.topic
-                                        }
-                  }
-                , { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Naposledy použita"
-                  , width = E.fill
-                  , view =
-                        \routine ->
-                            cell <|
-                                E.text <|
-                                    case datesWhenUsedInLessons routine of
-                                        [] ->
-                                            "Nikdy"
+        , case
+            Dict.Any.values routines
+                |> List.filter containsExercise
+                |> List.sortBy .topic
+          of
+            [] ->
+                E.text "Tento cvik dosud nebyl použit v žádné sestavě"
 
-                                        a :: b :: c :: _ :: _ ->
-                                            [ a, b, c ]
-                                                |> List.map Time.formatDate
-                                                |> String.join ", "
-                                                |> (\txt -> txt ++ " ...")
+            nonEmptyRoutines ->
+                let
+                    cell =
+                        E.el
+                            [ Border.solid
+                            , Border.width 1
+                            , Border.color Color.lightGrey
+                            , E.height E.fill
+                            , E.padding 5
+                            ]
+                in
+                E.table
+                    [ Border.solid
+                    , Border.width 1
+                    , Border.color Color.lightGrey
+                    ]
+                    { data = nonEmptyRoutines
+                    , columns =
+                        [ { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Název"
+                          , width = E.shrink
+                          , view =
+                                \routine ->
+                                    cell <|
+                                        E.el [ E.alignLeft ] <|
+                                            E.link Common.linkAttrs
+                                                { url = Router.href (Router.Routine routine.id)
+                                                , label = E.text routine.topic
+                                                }
+                          }
+                        , { header = cell <| E.el [ E.centerY, E.centerX ] <| E.text "Naposledy použita"
+                          , width = E.fill
+                          , view =
+                                \routine ->
+                                    cell <|
+                                        E.text <|
+                                            case datesWhenUsedInLessons routine of
+                                                [] ->
+                                                    "Nikdy"
 
-                                        oneTwoOrThree ->
-                                            oneTwoOrThree
-                                                |> List.map Time.formatDate
-                                                |> String.join ", "
-                  }
-                ]
-            }
+                                                a :: b :: c :: _ :: _ ->
+                                                    [ a, b, c ]
+                                                        |> List.map Time.formatDate
+                                                        |> String.join ", "
+                                                        |> (\txt -> txt ++ " ...")
+
+                                                oneTwoOrThree ->
+                                                    oneTwoOrThree
+                                                        |> List.map Time.formatDate
+                                                        |> String.join ", "
+                          }
+                        ]
+                    }
         ]
 
 
@@ -681,6 +838,14 @@ backToRoutineListLink =
     E.link Common.linkAttrs
         { url = Router.href (Router.Routines Nothing)
         , label = E.text "« Zpět na seznam sestav"
+        }
+
+
+addCommentButton : Element Msg
+addCommentButton =
+    Input.button Common.blueButton
+        { onPress = Just AddComment
+        , label = E.text "Přidat komentář"
         }
 
 
@@ -750,14 +915,14 @@ editor exercises tags positions routines lessons inspirations today model =
             [ filtersColumn tags positions exercises model filteredExercises
             , E.column colAttrs
                 [ E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
-                , E.column [ E.scrollbarY, E.height (E.px 900) ] <|
+                , E.column [ E.scrollbarY, E.height E.fill ] <|
                     List.map (availableExerciseView pastExerciseUsages model) filteredExercises
                 ]
             , E.column
-                (E.inFront (ghostView model.dnd model.routineExercises) :: E.spacing 5 :: colAttrs)
+                (E.inFront (ghostView model.dnd model.routineItems) :: E.spacing 5 :: colAttrs)
                 (E.el [ Font.bold, E.padding 5 ] (E.text "Sestava")
                     :: Input.text
-                        [ E.width (E.px 250)
+                        [ E.width (E.px 600)
                         , E.height (E.px 30)
                         , E.padding 4
                         ]
@@ -767,11 +932,12 @@ editor exercises tags positions routines lessons inspirations today model =
                         , label = Input.labelLeft [ E.padding 5 ] (E.text "Téma")
                         }
                     :: inspirationView inspirations today model.inspirationOffset model.showInspiration
-                    :: List.indexedMap (draggableExercise model.dnd) model.routineExercises
-                    ++ [ E.el [ E.padding 5 ] <|
+                    :: List.indexedMap (draggableExercise model.dnd) model.routineItems
+                    ++ [ E.el [ E.padding 5 ] addCommentButton
+                       , E.el [ E.padding 5 ] <|
                             E.text <|
                                 "Celková délka "
-                                    ++ String.fromInt (exercisesDurationMinutes model.routineExercises)
+                                    ++ String.fromInt (exercisesDurationMinutes model.routineItems)
                                     ++ " min"
                        , if model.hasUnsavedChanges then
                             E.row [ E.padding 5, E.spacing 5 ]
@@ -967,7 +1133,7 @@ availableExerciseView pastExerciseUsages model exercise =
                         "Nikdy"
             )
         , Input.button (E.alignRight :: E.alignTop :: navButtonAttrs)
-            { onPress = Just (AddToRoutine exercise.id)
+            { onPress = Just (AddExercise exercise.id)
             , label = E.el [ E.centerY ] (E.text "»")
             }
         ]
@@ -995,7 +1161,16 @@ getPastExerciseUsages today routines lessons =
                 lessonExercises =
                     case Dict.Any.get lesson.routineId routines of
                         Just routine ->
-                            List.map (\routineExercise -> ( routineExercise.exerciseId, routine.topic )) routine.exercises
+                            List.filterMap
+                                (\routineItem ->
+                                    case routineItem.itemPayload of
+                                        IExerciseId eid ->
+                                            Just ( eid, routine.topic )
+
+                                        IComment _ ->
+                                            Nothing
+                                )
+                                routine.items
 
                         Nothing ->
                             []
@@ -1093,26 +1268,34 @@ setAny p set =
     Set.Any.foldl (\a acc -> p a || acc) False set
 
 
-draggableExercise : DnDList.Model -> Int -> ExerciseInRoutine -> Element Msg
-draggableExercise dnd index exerciseInRoutine =
+draggableExercise : DnDList.Model -> Int -> ItemInRoutine -> Element Msg
+draggableExercise dnd index itemInRoutine =
     let
         exId =
-            String.fromInt exerciseInRoutine.draggableItemId
+            String.fromInt itemInRoutine.draggableItemId
     in
     E.row [ E.width E.fill, E.paddingXY 5 0, E.spacing 5 ]
-        [ Input.button navButtonAttrs
-            { onPress = Just (RemoveFromRoutine exerciseInRoutine)
-            , label = E.text "«"
-            }
+        [ case itemInRoutine.itemPayload of
+            ItemPayloadExercise _ ->
+                Input.button navButtonAttrs
+                    { onPress = Just (RemoveFromRoutine itemInRoutine)
+                    , label = E.text "«"
+                    }
+
+            ItemPayloadComment _ ->
+                E.el [ E.width (E.px 23) ] E.none
+
+            ItemPayloadEditedComment _ _ ->
+                E.el [ E.width (E.px 23) ] E.none
         , Input.text
             [ E.width (E.px 50)
             , E.height (E.px 30)
             , E.padding 4
             , E.htmlAttribute (Attr.type_ "number")
             ]
-            { onChange = ChangeDuration exerciseInRoutine.draggableItemId
+            { onChange = ChangeDuration itemInRoutine.draggableItemId
             , text =
-                case exerciseInRoutine.duration of
+                case itemInRoutine.duration of
                     Duration minutes ->
                         String.fromInt minutes
 
@@ -1121,7 +1304,7 @@ draggableExercise dnd index exerciseInRoutine =
             , placeholder = Nothing
             , label = Input.labelHidden "duration"
             }
-        , draggableExerciseElement exerciseInRoutine <|
+        , draggableExerciseElement itemInRoutine <|
             case dndSystem.info dnd of
                 Just { dragIndex } ->
                     if dragIndex /= index then
@@ -1135,25 +1318,53 @@ draggableExercise dnd index exerciseInRoutine =
         ]
 
 
-draggableExerciseElement : ExerciseInRoutine -> List (E.Attribute Msg) -> Element Msg
-draggableExerciseElement eir attrs =
-    E.el attrs (E.text eir.exercise.name)
+draggableExerciseElement : ItemInRoutine -> List (E.Attribute Msg) -> Element Msg
+draggableExerciseElement iir attrs =
+    case iir.itemPayload of
+        ItemPayloadExercise exercise ->
+            E.el attrs <| E.text exercise.name
+
+        ItemPayloadComment comment ->
+            E.el attrs <|
+                E.row [ E.spacing 5 ]
+                    [ E.text comment
+                    , Common.iconButton (CommentStartEditing iir.draggableItemId) "🖉"
+                    , Common.iconButton (CommentDelete iir.draggableItemId) "🗑"
+                    ]
+
+        ItemPayloadEditedComment _ editedValue ->
+            E.row [ E.spacing 5 ]
+                [ Input.text
+                    [ E.width (E.px 300)
+                    , E.height E.fill
+                    , E.padding 5
+                    , E.htmlAttribute (Attr.id newCommentInputId)
+                    ]
+                    { onChange = CommentUpdateText iir.draggableItemId
+                    , text = editedValue
+                    , placeholder = Nothing
+                    , label = Input.labelHidden "Komentář"
+                    }
+
+                -- TODO save comment on Enter
+                , Common.iconButton (CommentSaveEdits iir.draggableItemId) "💾"
+                ]
 
 
-ghostView : DnDList.Model -> List ExerciseInRoutine -> Element Msg
-ghostView dnd routineExercises =
+ghostView : DnDList.Model -> List ItemInRoutine -> Element Msg
+ghostView dnd routineItems =
     dndSystem.info dnd
-        |> Maybe.andThen (\{ dragIndex } -> List.getAt dragIndex routineExercises)
+        |> Maybe.andThen (\{ dragIndex } -> List.getAt dragIndex routineItems)
         |> Maybe.map
-            (\exerciseInRoutine ->
-                draggableExerciseElement exerciseInRoutine <|
+            (\itemInRoutine ->
+                draggableExerciseElement itemInRoutine <|
                     List.map E.htmlAttribute <|
                         dndSystem.ghostStyles dnd
             )
         |> Maybe.withDefault E.none
 
 
-dndConfig : DnDList.Config ExerciseInRoutine
+dndConfig : DnDList.Config ItemInRoutine
 dndConfig =
     { beforeUpdate = \_ _ list -> list
     , movement = DnDList.Vertical
@@ -1162,7 +1373,7 @@ dndConfig =
     }
 
 
-dndSystem : DnDList.System ExerciseInRoutine Msg
+dndSystem : DnDList.System ItemInRoutine Msg
 dndSystem =
     DnDList.create dndConfig DnD
 
@@ -1192,11 +1403,11 @@ updateOrCreate config model =
     )
         |> Result.andThen
             (\validTopic ->
-                case model.routineExercises of
+                case model.routineItems of
                     [] ->
                         Err EmptyListOfExercises
 
-                    nonemptyListOfExercises ->
+                    nonemptyListOfItems ->
                         let
                             ( request, id ) =
                                 case model.routineRoute of
@@ -1213,14 +1424,23 @@ updateOrCreate config model =
                             request
                                 { id = id
                                 , topic = validTopic
-                                , exercises =
+                                , items =
                                     List.map
-                                        (\exerciseInRoutine ->
-                                            { exerciseId = exerciseInRoutine.exercise.id
-                                            , duration = durationToInt exerciseInRoutine.duration
+                                        (\itemInRoutine ->
+                                            { itemPayload =
+                                                case itemInRoutine.itemPayload of
+                                                    ItemPayloadExercise exercise ->
+                                                        IExerciseId exercise.id
+
+                                                    ItemPayloadComment comment ->
+                                                        IComment comment
+
+                                                    ItemPayloadEditedComment origComment _ ->
+                                                        IComment origComment
+                                            , duration = durationToInt itemInRoutine.duration
                                             }
                                         )
-                                        nonemptyListOfExercises
+                                        nonemptyListOfItems
                                 }
             )
 
@@ -1231,3 +1451,8 @@ backToList =
         { url = Router.href (Router.Routines Nothing)
         , label = E.text "« Zpět na seznam sestav"
         }
+
+
+newCommentInputId : String
+newCommentInputId =
+    "position-input"
