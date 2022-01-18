@@ -915,7 +915,7 @@ editor exercises tags positions routines lessons inspirations today model =
             [ filtersColumn tags positions exercises model filteredExercises
             , E.column colAttrs
                 [ E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
-                , E.column [ E.scrollbarY, E.height (E.px 1000) ] <|
+                , E.column [ E.scrollbarY, E.height E.fill ] <|
                     List.map (availableExerciseView pastExerciseUsages model) filteredExercises
                 ]
             , E.column
