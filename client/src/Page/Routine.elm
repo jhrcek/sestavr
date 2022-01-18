@@ -48,7 +48,6 @@ import Domain
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
-import Element.Events as Event
 import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes as Attr
@@ -70,7 +69,6 @@ type alias Model =
     , dnd : DnDList.Model
     , tagFilter : IdSet TagIdTag
     , positionFilter : IdSet PositionIdTag
-    , showingPopupFor : Maybe ExerciseId
     , hasUnsavedChanges : Bool
     , showInspiration : Bool
     , inspirationOffset : Int
@@ -136,7 +134,6 @@ initEditor exercises routine =
     , dnd = dndSystem.model
     , tagFilter = Id.emptySet
     , positionFilter = Id.emptySet
-    , showingPopupFor = Nothing
     , hasUnsavedChanges = False
     , showInspiration = False
     , inspirationOffset = 0
@@ -164,7 +161,6 @@ emptyEditor =
     , dnd = dndSystem.model
     , tagFilter = Id.emptySet
     , positionFilter = Id.emptySet
-    , showingPopupFor = Nothing
     , hasUnsavedChanges = False
     , showInspiration = False
     , inspirationOffset = 0
@@ -191,8 +187,6 @@ type Msg
     | ChangeTopic String
     | ClearTagAndPositionFilters
     | SaveRoutine
-    | ShowExerciseDetailsPopup ExerciseId
-    | HideExerciseDetailsPopup
     | ThrowAwayChanges
     | PrevInspiration
     | NextInspiration
@@ -430,16 +424,6 @@ update config exercises msg model =
 
         ChangeTopic newTopic ->
             ( markUnsaved { model | topic = newTopic }
-            , Cmd.none
-            )
-
-        ShowExerciseDetailsPopup exerciseIndex ->
-            ( { model | showingPopupFor = Just exerciseIndex }
-            , Cmd.none
-            )
-
-        HideExerciseDetailsPopup ->
-            ( { model | showingPopupFor = Nothing }
             , Cmd.none
             )
 
@@ -916,7 +900,7 @@ editor exercises tags positions routines lessons inspirations today model =
             , E.column colAttrs
                 [ E.el [ Font.bold, E.padding 5 ] (E.text "Dostupné cviky")
                 , E.column [ E.scrollbarY, E.height E.fill ] <|
-                    List.map (availableExerciseView pastExerciseUsages model) filteredExercises
+                    List.map (availableExerciseView pastExerciseUsages) filteredExercises
                 ]
             , E.column
                 (E.inFront (ghostView model.dnd model.routineItems) :: E.spacing 5 :: colAttrs)
@@ -1059,8 +1043,8 @@ filtersColumn tags positions exercises model filteredExercises =
         ]
 
 
-availableExerciseView : IdDict ExerciseIdTag ExerciseUsages -> Model -> Exercise -> Element Msg
-availableExerciseView pastExerciseUsages model exercise =
+availableExerciseView : IdDict ExerciseIdTag ExerciseUsages -> Exercise -> Element Msg
+availableExerciseView pastExerciseUsages exercise =
     E.row
         [ Border.solid
         , Border.width 1
@@ -1101,19 +1085,7 @@ availableExerciseView pastExerciseUsages model exercise =
             , E.padding 5
             , E.alignRight
             , Font.color Color.midGrey
-            , Event.onMouseEnter (ShowExerciseDetailsPopup exercise.id)
-            , Event.onMouseLeave HideExerciseDetailsPopup
-            , E.onLeft <|
-                case model.showingPopupFor of
-                    Just exIdWithPopup ->
-                        if exercise.id == exIdWithPopup then
-                            exerciseUsagePopup exercise pastExerciseUsages
 
-                        else
-                            E.none
-
-                    Nothing ->
-                        E.none
             ]
             (E.text <|
                 case Dict.Any.get exercise.id pastExerciseUsages of
@@ -1200,47 +1172,6 @@ getPastExerciseUsages today routines lessons =
     <|
         Dict.Any.filter (\_ lesson -> Time.posixToMillis lesson.datetime < Time.posixToMillis today)
             lessons
-
-
-exerciseUsagePopup :
-    Exercise
-    -> IdDict ExerciseIdTag ExerciseUsages
-    -> Element msg
-exerciseUsagePopup exercise exerciseUsages =
-    case Dict.Any.get exercise.id exerciseUsages of
-        Nothing ->
-            E.none
-
-        Just [] ->
-            E.none
-
-        Just usages ->
-            E.column
-                [ Border.width 1
-                , Border.solid
-                , Border.color Color.black
-                , Background.color Color.white
-                , Font.color Color.black
-                , E.padding 10
-                ]
-            <|
-                E.text "Naposledy použito"
-                    :: List.map
-                        (\{ lesson, routineTopic } ->
-                            E.text <|
-                                Time.formatDateTime lesson.datetime
-                                    ++ " - "
-                                    ++ (if String.length routineTopic > 28 then
-                                            String.left 25 routineTopic ++ "…"
-
-                                        else
-                                            routineTopic
-                                       )
-                        )
-                        (List.sortBy
-                            (negate << Time.posixToMillis << .datetime << .lesson)
-                            usages
-                        )
 
 
 positionCheckboxes : IdDict PositionIdTag Position -> IdSet PositionIdTag -> Element Msg
