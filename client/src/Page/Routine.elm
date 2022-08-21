@@ -1085,7 +1085,6 @@ availableExerciseView pastExerciseUsages exercise =
             , E.padding 5
             , E.alignRight
             , Font.color Color.midGrey
-
             ]
             (E.text <|
                 case Dict.Any.get exercise.id pastExerciseUsages of
