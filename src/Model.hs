@@ -18,48 +18,49 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Model (
-    Exercise,
-    ExerciseId,
-    ExerciseTagId,
-    ExerciseTag (..),
-    EntityField (
-        ExerciseTagExerciseId,
+module Model
+    ( Exercise
+    , ExerciseId
+    , ExerciseTagId
+    , ExerciseTag (..)
+    , EntityField
+        ( ExerciseTagExerciseId,
         RoutineItemRoutineId
-    ),
-    ImageVerificationResult (..),
-    Inspiration,
-    InspirationId,
-    ItemInRoutine,
-    Lesson,
-    LessonId,
-    Position,
-    PositionId,
-    RoutineWithExercises,
-    RoutineId,
-    RoutineItem (..),
-    Routine,
-    ItemPayload (..),
-    RoutineItemId,
-    Tag,
-    TagId,
-    ExerciseWithTags,
-    createDemoData,
-    eirDuration,
-    eirPayload,
-    exerciseDescription,
-    exerciseId,
-    exerciseImage,
-    fromExercise,
-    fromRoutine,
-    getDurationMinutes,
-    migrateAll,
-    routineId,
-    rweExercises,
-    tagIds,
-    toExercise,
-    toRoutine,
-) where
+        )
+    , ImageVerificationResult (..)
+    , Inspiration
+    , InspirationId
+    , ItemInRoutine
+    , Lesson
+    , LessonId
+    , Position
+    , PositionId
+    , RoutineWithExercises
+    , RoutineId
+    , RoutineItem (..)
+    , Routine
+    , ItemPayload (..)
+    , RoutineItemId
+    , Tag
+    , TagId
+    , ExerciseWithTags
+    , createDemoData
+    , eirDuration
+    , eirPayload
+    , exerciseDescription
+    , exerciseId
+    , exerciseImage
+    , fromExercise
+    , fromRoutine
+    , getDurationMinutes
+    , migrateAll
+    , routineId
+    , rweExercises
+    , tagIds
+    , toExercise
+    , toRoutine
+    )
+where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON, object, toJSON, (.=))
@@ -72,7 +73,6 @@ import Database.Persist.Sqlite (runSqlite)
 import Database.Persist.TH
 import Database.Persist.Types (Entity, entityKey, entityVal)
 import GHC.Generics (Generic)
-
 
 share
     [mkPersist sqlSettings, mkMigrate "migrateAll"]
@@ -114,7 +114,6 @@ Inspiration json
     UniqueInspirationMonthNumber monthNumber
 |]
 
-
 -- This is to alleviate frontend from having to join TagIds from join table
 data ExerciseWithTags = ExerciseWithTags
     { exerciseId :: ExerciseId
@@ -127,7 +126,6 @@ data ExerciseWithTags = ExerciseWithTags
     }
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
-
 
 fromExercise :: Entity Exercise -> [TagId] -> ExerciseWithTags
 fromExercise entity tagIds =
@@ -143,7 +141,6 @@ fromExercise entity tagIds =
             , tagIds = tagIds
             }
 
-
 toExercise :: ExerciseWithTags -> Exercise
 toExercise ewt =
     Exercise
@@ -154,7 +151,6 @@ toExercise ewt =
         , exercisePositionId = positionId ewt
         }
 
-
 -- This is to alleviate frontend from having to join Exercises from RoutineItems join table
 data RoutineWithExercises = RoutineWithExercises
     { routineId :: RoutineId
@@ -164,7 +160,6 @@ data RoutineWithExercises = RoutineWithExercises
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
-
 data ItemInRoutine = ItemInRoutine
     { eirPayload :: ItemPayload
     , eirDuration :: DurationMinutes
@@ -172,17 +167,14 @@ data ItemInRoutine = ItemInRoutine
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
-
 data ItemPayload
     = IExerciseId ExerciseId
     | IComment Text
     deriving stock (Generic)
     deriving anyclass (ToJSON, FromJSON)
 
-
 newtype DurationMinutes = DurationMinutes {getDurationMinutes :: Int}
     deriving (ToJSON, FromJSON) via Int
-
 
 fromRoutine :: Entity Routine -> [RoutineItem] -> RoutineWithExercises
 fromRoutine entity res =
@@ -203,23 +195,20 @@ fromRoutine entity res =
                     <$> List.sortOn routineItemOrder res
             }
 
-
 toRoutine :: RoutineWithExercises -> Routine
 toRoutine rwe =
     Routine
         { routineTopic = topic rwe
         }
 
-
 data ImageVerificationResult = ImageVerificationResult
-    { -- | images being referenced in Exercises but without corresponding file in the images directory
-      invalidLinks :: [(ExerciseId, [FilePath])]
-    , -- | image files in images directory, which are not linked from any exercise
-      unusedImages :: [FilePath]
+    { invalidLinks :: [(ExerciseId, [FilePath])]
+    -- ^ images being referenced in Exercises but without corresponding file in the images directory
+    , unusedImages :: [FilePath]
+    -- ^ image files in images directory, which are not linked from any exercise
     , knownImages :: [FilePath]
     }
     deriving stock (Generic)
-
 
 instance ToJSON ImageVerificationResult where
     toJSON (ImageVerificationResult invalidLinks_ unusedImages_ knownImages_) =
@@ -236,7 +225,6 @@ instance ToJSON ImageVerificationResult where
             , "unusedImages" .= unusedImages_
             , "knownImages" .= knownImages_
             ]
-
 
 createDemoData :: IO ()
 createDemoData = runSqlite "sestavr.db" $ do

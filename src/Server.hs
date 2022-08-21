@@ -8,9 +8,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Server (
-    run,
-) where
+module Server
+    ( run
+    )
+where
 
 import Api (SestavrAPI, sestavrApi)
 import Config (Config (..))
@@ -33,85 +34,84 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Database.Persist ((==.))
-import Database.Persist.Class (
-    delete,
-    deleteWhere,
-    get,
-    insert,
-    insertEntity,
-    insertMany_,
-    replace,
-    selectList,
- )
+import Database.Persist.Class
+    ( delete
+    , deleteWhere
+    , get
+    , insert
+    , insertEntity
+    , insertMany_
+    , replace
+    , selectList
+    )
 import Database.Persist.Sql (SqlPersistM)
-import Database.Persist.Sqlite (
-    ConnectionPool,
-    createSqlitePool,
-    runSqlPersistMPool,
- )
+import Database.Persist.Sqlite
+    ( ConnectionPool
+    , createSqlitePool
+    , runSqlPersistMPool
+    )
 import Database.Persist.Types (Entity, entityKey, entityVal)
-import Database.Sqlite (
-    Error (ErrorConstraint),
-    SqliteException,
-    seError,
- )
-import Model (
-    EntityField (
-        ExerciseTagExerciseId,
+import Database.Sqlite
+    ( Error (ErrorConstraint)
+    , SqliteException
+    , seError
+    )
+import Model
+    ( EntityField
+        ( ExerciseTagExerciseId,
         RoutineItemRoutineId
-    ),
-    Exercise,
-    ExerciseId,
-    ExerciseTag (..),
-    ExerciseWithTags,
-    ImageVerificationResult (..),
-    Inspiration,
-    InspirationId,
-    ItemInRoutine,
-    ItemPayload (..),
-    Lesson,
-    LessonId,
-    Position,
-    PositionId,
-    Routine,
-    RoutineId,
-    RoutineItem (..),
-    RoutineWithExercises,
-    Tag,
-    TagId,
-    eirDuration,
-    eirPayload,
-    exerciseDescription,
-    exerciseId,
-    exerciseImage,
-    exerciseTagExerciseId,
-    exerciseTagTagId,
-    fromExercise,
-    fromRoutine,
-    getDurationMinutes,
-    routineId,
-    routineItemRoutineId,
-    rweExercises,
-    tagIds,
-    toExercise,
-    toRoutine,
- )
+        )
+    , Exercise
+    , ExerciseId
+    , ExerciseTag (..)
+    , ExerciseWithTags
+    , ImageVerificationResult (..)
+    , Inspiration
+    , InspirationId
+    , ItemInRoutine
+    , ItemPayload (..)
+    , Lesson
+    , LessonId
+    , Position
+    , PositionId
+    , Routine
+    , RoutineId
+    , RoutineItem (..)
+    , RoutineWithExercises
+    , Tag
+    , TagId
+    , eirDuration
+    , eirPayload
+    , exerciseDescription
+    , exerciseId
+    , exerciseImage
+    , exerciseTagExerciseId
+    , exerciseTagTagId
+    , fromExercise
+    , fromRoutine
+    , getDurationMinutes
+    , routineId
+    , routineItemRoutineId
+    , rweExercises
+    , tagIds
+    , toExercise
+    , toRoutine
+    )
 import qualified Network.Wai.Handler.Warp as Warp
-import Servant (
-    Application,
-    Handler,
-    Server,
-    err404,
-    err409,
-    errBody,
-    serve,
-    throwError,
-    (:<|>) (..),
- )
+import Servant
+    ( Application
+    , Handler
+    , Server
+    , err404
+    , err409
+    , errBody
+    , serve
+    , throwError
+    , (:<|>) (..)
+    )
 import Servant.Server.StaticFiles (serveDirectoryWebApp)
 import System.Directory (doesFileExist, listDirectory, removeFile)
 import System.FilePath.Posix ((</>))
-
 
 run :: Config -> IO ()
 run config = do
@@ -121,7 +121,7 @@ run config = do
         poolSize = configConnectionPoolSize config
 
     pool <- runStderrLoggingT $ createSqlitePool (Text.pack dbFile) poolSize
-    --runSqlPool (runMigration migrateAll) pool
+    -- runSqlPool (runMigration migrateAll) pool
 
     let app = serveApp pool imagesDir
 
@@ -133,10 +133,8 @@ run config = do
             ]
     Warp.run port app
 
-
 serveApp :: ConnectionPool -> FilePath -> Application
 serveApp pool imagesDir = serve sestavrApi $ apiServer pool imagesDir
-
 
 apiServer :: ConnectionPool -> FilePath -> Server SestavrAPI
 apiServer pool imagesDir =
@@ -366,7 +364,6 @@ apiServer pool imagesDir =
         exists <- doesFileExist imagePath
         when exists $ removeFile imagePath
 
-
 mkRoutineItem :: RoutineId -> ItemInRoutine -> Int -> RoutineItem
 mkRoutineItem rid e index =
     let (mExerciseId, comment) = case eirPayload e of
@@ -380,14 +377,11 @@ mkRoutineItem rid e index =
             , routineItemOrder = index
             }
 
-
 throw409 :: SqliteException -> LBS.ByteString -> Handler a
 throw409 e detail = throwError $ err409{errBody = detail <> "; " <> LBS.pack (show e)}
 
-
 getIndex :: Handler ByteString
 getIndex = pure indexHtml
-
 
 getElmApp :: Handler ByteString
 #ifdef DEV
@@ -398,7 +392,6 @@ getElmApp = pure $(embedFile "client/dist/main.js")
 
 indexHtml :: ByteString
 indexHtml = $(embedFile "client/dist/index.html")
-
 
 verifyImages_ :: FilePath -> SqlPersistM ImageVerificationResult
 verifyImages_ imagesDir = do
@@ -422,7 +415,6 @@ verifyImages_ imagesDir = do
                 allImageReferences
         unusedImages_ = Set.toList $ imageFiles `Set.difference` foldMap snd allImageReferences
     pure $ ImageVerificationResult invalidLinks_ unusedImages_ (Set.toList imageFiles)
-
 
 extractImageLinks :: Exercise -> Set FilePath
 extractImageLinks exercise =

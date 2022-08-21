@@ -1,14 +1,14 @@
-module Config (
-    Config (..),
-    parseArgs,
-) where
+module Config
+    ( Config (..)
+    , parseArgs
+    )
+where
 
 import Control.Monad (unless, when)
 import qualified Model
 import Options.Applicative
 import System.Directory (doesDirectoryExist, doesFileExist)
 import System.Exit (die)
-
 
 data Config = Config
     { configPort :: Int
@@ -17,7 +17,6 @@ data Config = Config
     , configCreateDemoData :: Bool
     , configConnectionPoolSize :: Int
     }
-
 
 configParser :: Parser Config
 configParser =
@@ -53,7 +52,6 @@ configParser =
                 <> showDefault
             )
 
-
 parseArgs :: IO Config
 parseArgs = ensureValid =<< execParser opts
   where
@@ -64,7 +62,6 @@ parseArgs = ensureValid =<< execParser opts
                 <> progDesc "application for planning yoga lessons"
                 <> header "sestavr"
             )
-
 
 ensureValid :: Config -> IO Config
 ensureValid config = do
